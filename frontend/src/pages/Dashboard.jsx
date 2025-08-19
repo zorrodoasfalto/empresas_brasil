@@ -38,6 +38,14 @@ const Title = styled.h1`
   color: #00ffaa;
   text-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
   margin: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: #00ccff;
+    text-shadow: 0 0 15px rgba(0, 204, 255, 0.7);
+    transform: translateY(-1px);
+  }
 `;
 
 const UserInfo = styled.div`
@@ -492,6 +500,10 @@ const Dashboard = () => {
     navigate('/checkout');
   };
 
+  const handleLogoClick = () => {
+    navigate('/');
+  };
+
 
   const handleSearch = async (page = 1) => {
     // Validate at least one filter is selected
@@ -837,7 +849,7 @@ const Dashboard = () => {
     <SubscriptionGate showTrialMessage={true}>
       <Container>
       <Header>
-        <Title>🏢 Empresas Brasil</Title>
+        <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
         <UserInfo>
           <span>Olá, {user?.email}</span>
           <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>

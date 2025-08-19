@@ -9,9 +9,18 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:6000',
+        target: process.env.VITE_API_URL || 'http://localhost:6000',
         changeOrigin: true,
       }
     }
+  },
+  preview: {
+    port: 4001,
+    host: true,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1600
   }
 })

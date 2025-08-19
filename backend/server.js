@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
-const PORT = 6000;
+const PORT = process.env.PORT || 6000;
 
 // Import routes
 const stripeRoutes = require('./stripe-routes');
@@ -16,11 +16,23 @@ const authRoutes = require('./routes/auth');
 const { createUsersTable } = require('./database/init-users');
 
 const pool = new Pool({
-  connectionString: 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-  ssl: { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-app.use(cors());
+// Configure CORS for production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        process.env.FRONTEND_URL || 'https://your-frontend.railway.app',
+        'https://*.railway.app'
+      ]
+    : ['http://localhost:4001', 'http://localhost:3000'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Stripe webhook endpoint (deve vir ANTES do express.json() para webhooks)

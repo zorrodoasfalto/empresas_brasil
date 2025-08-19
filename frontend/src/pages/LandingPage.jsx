@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { 
   Search, 
   Database, 
@@ -17,6 +17,23 @@ import {
   Shield,
   Sparkles
 } from 'lucide-react';
+
+// Global styles to prevent horizontal scroll
+const GlobalStyles = createGlobalStyle`
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+  }
+`;
 
 // Animations
 const float = keyframes`
@@ -112,9 +129,12 @@ const neonOverlay = keyframes`
 // Styled Components
 const Container = styled.div`
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
   animation: ${neonWave} 12s ease-in-out infinite;
   position: relative;
   overflow-x: hidden;
+  box-sizing: border-box;
   
   &::before {
     content: '';
@@ -144,12 +164,19 @@ const Container = styled.div`
 const Section = styled.section`
   padding: 6rem 2rem;
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     padding: 4rem 1rem;
+    max-width: 100vw;
+  }
+
+  @media (max-width: 480px) {
+    padding: 3rem 0.5rem;
   }
 `;
 
@@ -159,19 +186,34 @@ const Header = styled.header`
   top: 0;
   left: 0;
   right: 0;
+  width: 100vw;
   z-index: 100;
   backdrop-filter: blur(20px);
   background: rgba(15, 15, 35, 0.8);
   border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  box-sizing: border-box;
 `;
 
 const HeaderContent = styled.div`
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 1rem 1rem;
+    max-width: 100vw;
+  }
+
+  @media (max-width: 480px) {
+    padding: 0.75rem 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
 `;
 
 const Logo = styled.div`
@@ -183,6 +225,14 @@ const Logo = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  white-space: nowrap;
+  min-width: 0;
+  flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    font-size: 1.2rem;
+    gap: 0.25rem;
+  }
 `;
 
 // Hero Section
@@ -204,9 +254,21 @@ const HeroTitle = styled.h1`
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   line-height: 1.2;
+  text-align: center;
+  max-width: 100%;
+  word-wrap: break-word;
 
   @media (max-width: 768px) {
     font-size: 2.5rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 2rem;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 320px) {
+    font-size: 1.8rem;
   }
 `;
 
@@ -215,8 +277,23 @@ const HeroSubtitle = styled.p`
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 3rem;
   max-width: 600px;
+  width: 100%;
   font-weight: 300;
   letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.5;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+    max-width: 90%;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
 `;
 
 const CTAButton = styled.button`
@@ -231,14 +308,30 @@ const CTAButton = styled.button`
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   backdrop-filter: blur(20px);
   box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+  white-space: nowrap;
+  min-width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
 
   &:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
     background: linear-gradient(135deg, #1e40af, #3b82f6);
+  }
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    padding: 0.875rem 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    padding: 0.75rem 1.25rem;
+    gap: 0.25rem;
   }
 `;
 
@@ -252,6 +345,8 @@ const GlassCard = styled.div`
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 
   &::before {
     content: '';
@@ -268,6 +363,14 @@ const GlassCard = styled.div`
     background: rgba(255, 255, 255, 0.08);
     box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
   }
+
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 1rem;
+  }
 `;
 
 // Stats Section
@@ -277,12 +380,22 @@ const StatsGrid = styled.div`
   gap: 2rem;
   margin-top: 4rem;
   max-width: 600px;
+  width: 100%;
   margin-left: auto;
   margin-right: auto;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
+    max-width: 90%;
+    margin-top: 3rem;
+  }
+
+  @media (max-width: 480px) {
+    gap: 0.75rem;
+    margin-top: 2rem;
+    max-width: 95%;
   }
 `;
 
@@ -299,6 +412,16 @@ const StatNumber = styled.div`
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 0.5rem;
+  text-align: center;
+  word-break: break-word;
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.5rem;
+  }
 `;
 
 const StatLabel = styled.div`
@@ -307,6 +430,13 @@ const StatLabel = styled.div`
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 500;
+  text-align: center;
+  line-height: 1.3;
+
+  @media (max-width: 480px) {
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+  }
 `;
 
 // Features Section
@@ -315,6 +445,19 @@ const FeaturesGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   margin-top: 4rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 3rem;
+  }
+
+  @media (max-width: 480px) {
+    gap: 1rem;
+    margin-top: 2rem;
+  }
 `;
 
 const FeatureCard = styled(GlassCard)`
@@ -350,49 +493,6 @@ const FeatureDescription = styled.p`
   line-height: 1.6;
 `;
 
-// Segments Section
-const SegmentsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-top: 4rem;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const SegmentCard = styled(GlassCard)`
-  padding: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  &:hover {
-    border-color: rgba(59, 130, 246, 0.3);
-  }
-`;
-
-const SegmentEmoji = styled.div`
-  font-size: 2rem;
-`;
-
-const SegmentInfo = styled.div`
-  flex: 1;
-`;
-
-const SegmentName = styled.h4`
-  color: white;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-`;
-
-const SegmentStats = styled.div`
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.9rem;
-`;
-
 // Section Titles
 const SectionTitle = styled.h2`
   font-size: 2.5rem;
@@ -402,6 +502,18 @@ const SectionTitle = styled.h2`
   background: linear-gradient(135deg, #ffffff, #3b82f6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  max-width: 100%;
+  word-wrap: break-word;
+  line-height: 1.2;
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 1.75rem;
+    line-height: 1.3;
+  }
 `;
 
 const SectionSubtitle = styled.p`
@@ -409,13 +521,28 @@ const SectionSubtitle = styled.p`
   color: rgba(255, 255, 255, 0.7);
   font-size: 1.1rem;
   max-width: 600px;
+  width: 100%;
   margin: 0 auto;
   line-height: 1.6;
+  box-sizing: border-box;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    font-size: 1rem;
+    max-width: 90%;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 0.9rem;
+    max-width: 95%;
+    padding: 0 0.5rem;
+  }
 `;
 
 // Pricing Section
 const PricingCard = styled(GlassCard)`
   max-width: 400px;
+  width: 100%;
   margin: 4rem auto 0;
   text-align: center;
   position: relative;
@@ -424,6 +551,7 @@ const PricingCard = styled(GlassCard)`
     rgba(59, 130, 246, 0.1), 
     rgba(147, 51, 234, 0.1)
   );
+  box-sizing: border-box;
 
   &::before {
     content: 'MAIS POPULAR';
@@ -438,11 +566,27 @@ const PricingCard = styled(GlassCard)`
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 1px;
+    white-space: nowrap;
   }
 
   &:hover {
     transform: translateY(-8px) scale(1.02);
     box-shadow: 0 25px 50px rgba(59, 130, 246, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    max-width: 90%;
+    margin: 3rem auto 0;
+  }
+
+  @media (max-width: 480px) {
+    max-width: 95%;
+    margin: 2rem auto 0;
+    
+    &::before {
+      font-size: 0.7rem;
+      padding: 0.4rem 1.5rem;
+    }
   }
 `;
 
@@ -490,14 +634,41 @@ const Footer = styled.footer`
   border-top: 1px solid rgba(59, 130, 246, 0.2);
   padding: 4rem 2rem 2rem;
   margin-top: 6rem;
+  width: 100%;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 3rem 1rem 1.5rem;
+    margin-top: 4rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 2rem 0.5rem 1rem;
+    margin-top: 3rem;
+  }
 `;
 
 const FooterContent = styled.div`
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 3rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    max-width: 90%;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 95%;
+  }
 `;
 
 const FooterSection = styled.div`
@@ -587,355 +758,188 @@ const LandingPage = () => {
   };
 
   return (
-    <Container>
-      <Header>
-        <HeaderContent>
-          <Logo>
-            <Database size={28} />
-            Empresas Brasil
-          </Logo>
+    <>
+      <GlobalStyles />
+      <Container>
+        <Header>
+          <HeaderContent>
+            <Logo>
+              <Database size={28} />
+              Empresas Brasil
+            </Logo>
+            <CTAButton onClick={() => navigate('/register')}>
+              Acessar Sistema
+              <ArrowRight size={20} />
+            </CTAButton>
+          </HeaderContent>
+        </Header>
+
+        {/* Hero Section */}
+        <HeroSection>
+          <HeroTitle>
+            A Maior Base de Dados<br />
+            Empresariais do Brasil
+          </HeroTitle>
+          <HeroSubtitle>
+            Acesse informações completas de 66 milhões de empresas brasileiras.
+            Performance superior, dados atualizados da Receita Federal.
+          </HeroSubtitle>
           <CTAButton onClick={() => navigate('/register')}>
-            Acessar Sistema
-            <ArrowRight size={20} />
+            <Search size={20} />
+            Começar Consulta Gratuita
           </CTAButton>
-        </HeaderContent>
-      </Header>
 
-      {/* Hero Section */}
-      <HeroSection>
-        <HeroTitle>
-          A Maior Base de Dados<br />
-          Empresariais do Brasil
-        </HeroTitle>
-        <HeroSubtitle>
-          Acesse informações completas de 66 milhões de empresas brasileiras.
-          Performance superior, dados atualizados da Receita Federal.
-        </HeroSubtitle>
-        <CTAButton onClick={() => navigate('/register')}>
-          <Search size={20} />
-          Começar Consulta Gratuita
-        </CTAButton>
+          <StatsGrid>
+            <StatCard delay="0s">
+              <StatNumber>{formatNumber(counts.empresas)}+</StatNumber>
+              <StatLabel>Empresas Cadastradas</StatLabel>
+            </StatCard>
+            <StatCard delay="0.2s">
+              <StatNumber>{formatNumber(counts.velocidade)}</StatNumber>
+              <StatLabel>Empresas / 2.5min</StatLabel>
+            </StatCard>
+            <StatCard delay="0.4s">
+              <StatNumber>{counts.segmentos}</StatNumber>
+              <StatLabel>Segmentos Mapeados</StatLabel>
+            </StatCard>
+            <StatCard delay="0.6s">
+              <StatNumber>{counts.estados}</StatNumber>
+              <StatLabel>Estados Conectados</StatLabel>
+            </StatCard>
+          </StatsGrid>
+        </HeroSection>
 
-        <StatsGrid>
-          <StatCard delay="0s">
-            <StatNumber>{formatNumber(counts.empresas)}+</StatNumber>
-            <StatLabel>Empresas Cadastradas</StatLabel>
-          </StatCard>
-          <StatCard delay="0.2s">
-            <StatNumber>{formatNumber(counts.velocidade)}</StatNumber>
-            <StatLabel>Empresas / 2.5min</StatLabel>
-          </StatCard>
-          <StatCard delay="0.4s">
-            <StatNumber>{counts.segmentos}</StatNumber>
-            <StatLabel>Segmentos Mapeados</StatLabel>
-          </StatCard>
-          <StatCard delay="0.6s">
-            <StatNumber>{counts.estados}</StatNumber>
-            <StatLabel>Estados Conectados</StatLabel>
-          </StatCard>
-        </StatsGrid>
-      </HeroSection>
+        {/* Features Section */}
+        <Section>
+          <SectionTitle>Funcionalidades Avançadas</SectionTitle>
+          <SectionSubtitle>
+            Sistema completo com filtros inteligentes, consultas em massa e exportação profissional
+          </SectionSubtitle>
 
-      {/* Features Section */}
-      <Section>
-        <SectionTitle>Funcionalidades Avançadas</SectionTitle>
-        <SectionSubtitle>
-          Sistema completo com filtros inteligentes, consultas em massa e exportação profissional
-        </SectionSubtitle>
+          <FeaturesGrid>
+            <FeatureCard>
+              <FeatureIcon>
+                <Search size={24} color="white" />
+              </FeatureIcon>
+              <FeatureTitle>Filtros Inteligentes</FeatureTitle>
+              <FeatureDescription>
+                20 segmentos de negócio, todos os estados, situação cadastral, 
+                CNPJ, razão social e muito mais
+              </FeatureDescription>
+            </FeatureCard>
 
-        <FeaturesGrid>
-          <FeatureCard>
-            <FeatureIcon>
-              <Search size={24} color="white" />
-            </FeatureIcon>
-            <FeatureTitle>Filtros Inteligentes</FeatureTitle>
-            <FeatureDescription>
-              20 segmentos de negócio, todos os estados, situação cadastral, 
-              CNPJ, razão social e muito mais
-            </FeatureDescription>
-          </FeatureCard>
+            <FeatureCard>
+              <FeatureIcon>
+                <Zap size={24} color="white" />
+              </FeatureIcon>
+              <FeatureTitle>Consulta em Massa</FeatureTitle>
+              <FeatureDescription>
+                De 1 a 50.000 empresas por consulta. Performance otimizada 
+                com barra de progresso em tempo real
+              </FeatureDescription>
+            </FeatureCard>
 
-          <FeatureCard>
-            <FeatureIcon>
-              <Zap size={24} color="white" />
-            </FeatureIcon>
-            <FeatureTitle>Consulta em Massa</FeatureTitle>
-            <FeatureDescription>
-              De 1 a 50.000 empresas por consulta. Performance otimizada 
-              com barra de progresso em tempo real
-            </FeatureDescription>
-          </FeatureCard>
+            <FeatureCard>
+              <FeatureIcon>
+                <Database size={24} color="white" />
+              </FeatureIcon>
+              <FeatureTitle>Dados Completos</FeatureTitle>
+              <FeatureDescription>
+                Informações da empresa, sócios detalhados, endereço completo,
+                contatos e status do Simples Nacional
+              </FeatureDescription>
+            </FeatureCard>
 
-          <FeatureCard>
-            <FeatureIcon>
-              <Database size={24} color="white" />
-            </FeatureIcon>
-            <FeatureTitle>Dados Completos</FeatureTitle>
-            <FeatureDescription>
-              Informações da empresa, sócios detalhados, endereço completo,
-              contatos e status do Simples Nacional
-            </FeatureDescription>
-          </FeatureCard>
+            <FeatureCard>
+              <FeatureIcon>
+                <Download size={24} color="white" />
+              </FeatureIcon>
+              <FeatureTitle>Exportação Profissional</FeatureTitle>
+              <FeatureDescription>
+                Excel (.xlsx) formatado e CSV estruturado. 32+ colunas organizadas 
+                com cada sócio em campos separados
+              </FeatureDescription>
+            </FeatureCard>
+          </FeaturesGrid>
+        </Section>
 
-          <FeatureCard>
-            <FeatureIcon>
-              <Download size={24} color="white" />
-            </FeatureIcon>
-            <FeatureTitle>Exportação Profissional</FeatureTitle>
-            <FeatureDescription>
-              Excel (.xlsx) formatado e CSV estruturado. 32+ colunas organizadas 
-              com cada sócio em campos separados
-            </FeatureDescription>
-          </FeatureCard>
-        </FeaturesGrid>
-      </Section>
-
-      {/* Segments Section */}
-      <Section>
-        <SectionTitle>20 Segmentos Mapeados</SectionTitle>
-        <SectionSubtitle>
-          Empresas organizadas por setores da economia com CNAEs reais e volumes atualizados
-        </SectionSubtitle>
-
-        <SegmentsGrid>
-          <SegmentCard>
-            <SegmentEmoji>👗</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Vestuário e Moda</SegmentName>
-              <SegmentStats>3,5M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🍽️</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Alimentação e Restaurantes</SegmentName>
-              <SegmentStats>3,6M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>💄</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Beleza e Estética</SegmentName>
-              <SegmentStats>2,5M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🏪</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Comércio e Mercados</SegmentName>
-              <SegmentStats>2,5M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🏗️</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Construção Civil</SegmentName>
-              <SegmentStats>2,3M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🚛</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Transportes e Logística</SegmentName>
-              <SegmentStats>2,1M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>💼</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Serviços Profissionais</SegmentName>
-              <SegmentStats>2,0M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🛍️</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Varejo Especializado</SegmentName>
-              <SegmentStats>1,5M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>📚</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Educação e Treinamento</SegmentName>
-              <SegmentStats>1,2M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🚗</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Automóveis e Oficinas</SegmentName>
-              <SegmentStats>1,0M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>💻</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Tecnologia e Informática</SegmentName>
-              <SegmentStats>800K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>💊</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Saúde e Farmácias</SegmentName>
-              <SegmentStats>700K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🏠</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Serviços Domésticos</SegmentName>
-              <SegmentStats>500K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🍰</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Alimentação - Produção</SegmentName>
-              <SegmentStats>400K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>📱</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Comunicação e Mídia</SegmentName>
-              <SegmentStats>300K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🌾</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Agricultura e Pecuária</SegmentName>
-              <SegmentStats>200K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>⚡</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Energia e Utilities</SegmentName>
-              <SegmentStats>100K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>💰</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Finanças e Seguros</SegmentName>
-              <SegmentStats>100K empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>🏛️</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Organizações e Associações</SegmentName>
-              <SegmentStats>4,2M empresas</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-
-          <SegmentCard>
-            <SegmentEmoji>📋</SegmentEmoji>
-            <SegmentInfo>
-              <SegmentName>Outros Setores</SegmentName>
-              <SegmentStats>Demais atividades</SegmentStats>
-            </SegmentInfo>
-          </SegmentCard>
-        </SegmentsGrid>
-      </Section>
-
-      {/* Pricing Section */}
-      <Section style={{ textAlign: 'center' }}>
-        <SectionTitle>Escolha Seu Plano</SectionTitle>
-        <SectionSubtitle>
-          Acesso completo à maior base de dados empresariais do Brasil
-        </SectionSubtitle>
-        
-        <PricingCard onClick={() => navigate('/checkout')}>
-          <h3 style={{ color: 'white', fontSize: '1.5rem', margin: '0 0 1rem 0' }}>
-            Plano Profissional
-          </h3>
-          <PriceDisplay>R$ 79,90</PriceDisplay>
-          <PriceSubtext>por mês</PriceSubtext>
+        {/* Pricing Section */}
+        <Section style={{ textAlign: 'center' }}>
+          <SectionTitle>Escolha Seu Plano</SectionTitle>
+          <SectionSubtitle>
+            Acesso completo à maior base de dados empresariais do Brasil
+          </SectionSubtitle>
           
-          <PricingFeatures>
-            <li>Acesso a 66 milhões de empresas</li>
-            <li>Consultas ilimitadas até 50k por vez</li>
-            <li>Exportação profissional Excel/CSV</li>
-            <li>Dados completos + sócios</li>
-            <li>Todos os 20 segmentos</li>
-            <li>Filtros avançados</li>
-            <li>Performance otimizada</li>
-            <li>Suporte técnico</li>
-          </PricingFeatures>
-          
-          <CTAButton style={{ 
-            width: '100%', 
-            fontSize: '1.2rem', 
-            padding: '1rem',
-            marginTop: '1rem'
-          }}>
-            <Sparkles size={24} />
-            Começar Agora
-          </CTAButton>
-        </PricingCard>
-      </Section>
+          <PricingCard onClick={() => navigate('/checkout')}>
+            <h3 style={{ color: 'white', fontSize: '1.5rem', margin: '0 0 1rem 0' }}>
+              Plano Profissional
+            </h3>
+            <PriceDisplay>R$ 79,90</PriceDisplay>
+            <PriceSubtext>por mês</PriceSubtext>
+            
+            <PricingFeatures>
+              <li>Acesso a 66 milhões de empresas</li>
+              <li>Consultas ilimitadas até 50k por vez</li>
+              <li>Exportação profissional Excel/CSV</li>
+              <li>Dados completos + sócios</li>
+              <li>Todos os 20 segmentos</li>
+              <li>Filtros avançados</li>
+              <li>Performance otimizada</li>
+              <li>Suporte técnico</li>
+            </PricingFeatures>
+            
+            <CTAButton style={{ 
+              width: '100%', 
+              fontSize: '1.2rem', 
+              padding: '1rem',
+              marginTop: '1rem'
+            }}>
+              <Sparkles size={24} />
+              Começar Agora
+            </CTAButton>
+          </PricingCard>
+        </Section>
 
-      <Footer>
-        <FooterContent>
-          <FooterSection>
-            <h4>Empresas Brasil</h4>
-            <p>A maior e mais completa base de dados empresariais do Brasil. 
-               66 milhões de empresas com informações atualizadas da Receita Federal.</p>
-          </FooterSection>
+        <Footer>
+          <FooterContent>
+            <FooterSection>
+              <h4>Empresas Brasil</h4>
+              <p>A maior e mais completa base de dados empresariais do Brasil. 
+                 66 milhões de empresas com informações atualizadas da Receita Federal.</p>
+            </FooterSection>
+            
+            <FooterSection>
+              <h4>Funcionalidades</h4>
+              <a href="#features">Consulta em Massa</a>
+              <a href="#features">Filtros Avançados</a>
+              <a href="#features">Exportação Excel/CSV</a>
+              <a href="#features">20 Segmentos</a>
+            </FooterSection>
+            
+            <FooterSection>
+              <h4>Suporte</h4>
+              <a href="mailto:contato@empresasbrasil.com">contato@empresasbrasil.com</a>
+              <a href="tel:+5511999999999">(11) 99999-9999</a>
+              <a href="#help">Central de Ajuda</a>
+              <a href="#docs">Documentação</a>
+            </FooterSection>
+            
+            <FooterSection>
+              <h4>Empresa</h4>
+              <Link to="/about">Sobre Nós</Link>
+              <Link to="/privacy">Política de Privacidade</Link>
+              <Link to="/terms">Termos de Uso</Link>
+              <Link to="/security">Segurança</Link>
+            </FooterSection>
+          </FooterContent>
           
-          <FooterSection>
-            <h4>Funcionalidades</h4>
-            <a href="#features">Consulta em Massa</a>
-            <a href="#features">Filtros Avançados</a>
-            <a href="#features">Exportação Excel/CSV</a>
-            <a href="#features">20 Segmentos</a>
-          </FooterSection>
-          
-          <FooterSection>
-            <h4>Suporte</h4>
-            <a href="mailto:contato@empresasbrasil.com">contato@empresasbrasil.com</a>
-            <a href="tel:+5511999999999">(11) 99999-9999</a>
-            <a href="#help">Central de Ajuda</a>
-            <a href="#docs">Documentação</a>
-          </FooterSection>
-          
-          <FooterSection>
-            <h4>Empresa</h4>
-            <Link to="/about">Sobre Nós</Link>
-            <Link to="/privacy">Política de Privacidade</Link>
-            <Link to="/terms">Termos de Uso</Link>
-            <Link to="/security">Segurança</Link>
-          </FooterSection>
-        </FooterContent>
-        
-        <FooterBottom>
-          <p>&copy; 2025 Empresas Brasil. Todos os direitos reservados.</p>
-          <p>Dados oficiais da Receita Federal • CNPJ • Sistema Seguro</p>
-        </FooterBottom>
-      </Footer>
-    </Container>
+          <FooterBottom>
+            <p>&copy; 2025 Empresas Brasil. Todos os direitos reservados.</p>
+            <p>Dados oficiais da Receita Federal • CNPJ • Sistema Seguro</p>
+          </FooterBottom>
+        </Footer>
+      </Container>
+    </>
   );
 };
 
