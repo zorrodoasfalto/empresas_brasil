@@ -39,15 +39,80 @@ const pulse = keyframes`
   50% { opacity: 0.5; }
 `;
 
+const neonWave = keyframes`
+  0% {
+    background: linear-gradient(135deg, 
+      #0f0f23 0%, 
+      #1a1a2e 25%, 
+      #16213e 50%, 
+      #0f0f23 100%
+    );
+  }
+  25% {
+    background: linear-gradient(135deg, 
+      #0f0f23 0%, 
+      #1a1a2e 20%, 
+      #16213e 45%, 
+      rgba(0, 255, 170, 0.08) 60%,
+      #16213e 75%,
+      #0f0f23 100%
+    );
+  }
+  50% {
+    background: linear-gradient(135deg, 
+      #0f0f23 0%, 
+      rgba(59, 130, 246, 0.08) 15%,
+      #1a1a2e 30%, 
+      #16213e 50%, 
+      rgba(147, 51, 234, 0.08) 70%,
+      #0f0f23 100%
+    );
+  }
+  75% {
+    background: linear-gradient(135deg, 
+      #0f0f23 0%, 
+      #1a1a2e 25%, 
+      rgba(6, 182, 212, 0.08) 40%,
+      #16213e 55%, 
+      #1a1a2e 80%,
+      #0f0f23 100%
+    );
+  }
+  100% {
+    background: linear-gradient(135deg, 
+      #0f0f23 0%, 
+      #1a1a2e 25%, 
+      #16213e 50%, 
+      #0f0f23 100%
+    );
+  }
+`;
+
+const neonOverlay = keyframes`
+  0%, 100% {
+    background: 
+      radial-gradient(circle at 20% 80%, rgba(0, 255, 170, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+  }
+  33% {
+    background: 
+      radial-gradient(circle at 30% 70%, rgba(147, 51, 234, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 70% 30%, rgba(0, 255, 170, 0.06) 0%, transparent 50%),
+      radial-gradient(circle at 50% 60%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
+  }
+  66% {
+    background: 
+      radial-gradient(circle at 60% 40%, rgba(6, 182, 212, 0.07) 0%, transparent 50%),
+      radial-gradient(circle at 40% 60%, rgba(147, 51, 234, 0.07) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(0, 255, 170, 0.07) 0%, transparent 50%);
+  }
+`;
+
 // Styled Components
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, 
-    #0f0f23 0%, 
-    #1a1a2e 25%, 
-    #16213e 50%, 
-    #0f0f23 100%
-  );
+  animation: ${neonWave} 12s ease-in-out infinite;
   position: relative;
   overflow-x: hidden;
   
@@ -58,10 +123,20 @@ const Container = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
+    animation: ${neonOverlay} 15s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: 
-      radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+      radial-gradient(circle at 50% 50%, rgba(0, 255, 170, 0.02) 0%, transparent 70%);
+    animation: ${pulse} 8s ease-in-out infinite;
     pointer-events: none;
   }
 `;

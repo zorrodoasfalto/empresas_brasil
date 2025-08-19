@@ -144,7 +144,17 @@ const SubscriptionGate = ({ children, showTrialMessage = false }) => {
     );
   }
 
+  // TEMPORARIAMENTE DESABILITADO PARA DEBUG - rodyrodrigo@gmail.com
   if (hasActiveSubscription) {
+    return children;
+  }
+  
+  // DEBUG: Permitir acesso para rodyrodrigo@gmail.com
+  const debugEmails = ['rodyrodrigo@gmail.com', 'rodrigo.orsi.pagotto@hotmail.com'];
+  const userEmail = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user'))?.email : null;
+  
+  if (debugEmails.includes(userEmail)) {
+    console.log('🐛 DEBUG: Allowing access for', userEmail);
     return children;
   }
 

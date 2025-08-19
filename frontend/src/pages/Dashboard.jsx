@@ -515,11 +515,11 @@ const Dashboard = () => {
       progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 85) {
-            return Math.min(prev + 1, 95);
+            return Math.min(prev + 0.5, 98); // Mais lento perto do fim, mas não trava em 95%
           }
-          return Math.min(prev + Math.random() * 10 + 2, 85);
+          return Math.min(prev + Math.random() * 8 + 3, 85);
         });
-      }, 800);
+      }, 600); // Mais rápido
     }
 
     try {
@@ -535,8 +535,8 @@ const Dashboard = () => {
         page
       };
 
-      // Timeout customizado para consultas grandes
-      const timeoutMs = companyLimit >= 25000 ? 180000 : 120000; // 3min para 25k+, 2min para outros
+      // Timeout otimizado - mais rápido
+      const timeoutMs = companyLimit >= 25000 ? 90000 : 60000; // 1.5min para 25k+, 1min para outros
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -559,6 +559,9 @@ const Dashboard = () => {
         clearInterval(progressInterval);
         setProgress(100);
       }
+      
+      // Forçar 100% mesmo se não tinha interval
+      setProgress(100);
       
       if (data.success) {
         
@@ -587,7 +590,7 @@ const Dashboard = () => {
         setTimeout(() => {
           setShowProgress(false);
           setProgress(0);
-        }, 2000);
+        }, 1500); // Mais rápido para esconder
       } else {
         console.error('API Error:', data);
         toast.error(data.message || 'Erro na busca');

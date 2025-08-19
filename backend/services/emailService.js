@@ -1,9 +1,33 @@
-const { Resend } = require('resend');
+const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
+const twilio = require('twilio');
 
 class EmailService {
   constructor() {
-    this.resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+    // Configurar Twilio se credenciais disponíveis
+    if (process.env.TWILIO_ACCOUNT_SID && 
+        process.env.TWILIO_AUTH_TOKEN && 
+        process.env.TWILIO_AUTH_TOKEN !== 'COLOQUE_AQUI_SEU_AUTH_TOKEN') {
+      this.twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      this.twilioEnabled = true;
+      console.log('✅ Twilio configurado');
+    } else {
+      this.twilioEnabled = false;
+    }
+
+    // Configurar SendGrid se API key disponível
+    if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'SG.COLOQUE_AQUI_A_CHAVE_DO_SENDGRID') {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      this.sendgridEnabled = true;
+      console.log('✅ SendGrid configurado');
+    } else {
+      this.sendgridEnabled = false;
+    }
+
+    if (!this.twilioEnabled && !this.sendgridEnabled) {
+      console.log('⚠️ Nenhum provedor de email configurado - usando Ethereal fallback');
+    }
+    
     this.transporter = this.createTransporter();
   }
 
@@ -259,41 +283,62 @@ Este é um email automático, não responda.
       console.log('📧 Sending verification email to:', email);
       console.log('🔗 Verification URL:', verificationUrl);
 
-      // Usar Resend se tiver domínio configurado
-      const hasVerifiedDomain = process.env.RESEND_FROM_EMAIL && 
-                                process.env.RESEND_FROM_EMAIL !== 'noreply@seudominio.com';
-      
-      // Tentar enviar com Resend primeiro (com domínio verificado)
-      if (this.resend && hasVerifiedDomain) {
+      // Tentar enviar com Twilio primeiro (mais confiável)
+      if (this.twilioEnabled) {
         try {
-          console.log('📤 Using Resend API...');
+          console.log('📤 Using Twilio SendGrid API...');
           
-          const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+          const fromEmail = process.env.EMAIL_FROM || 'noreply@empresasbrasil.com';
           
-          const { data, error } = await this.resend.emails.send({
-            from: `Empresas Brasil <${fromEmail}>`,
-            to: [email],
+          const message = await this.twilioClient.messages.create({
+            from: fromEmail,
+            to: email,
             subject: '🏢 Verifique seu email - Empresas Brasil',
-            html: this.getVerificationEmailTemplate(name, verificationUrl),
-            text: this.getVerificationEmailText(name, verificationUrl)
+            html: this.getVerificationEmailTemplate(name, verificationUrl)
           });
-
-          if (error) {
-            console.error('❌ Resend error:', error);
-            throw new Error(error.message);
-          }
-
-          console.log('✅ Email sent successfully via Resend:', data.id);
+          
+          console.log('✅ Email sent successfully via Twilio:', message.sid);
           
           return {
             success: true,
-            messageId: data.id,
+            messageId: message.sid,
             verificationUrl,
-            provider: 'resend'
+            provider: 'twilio'
           };
 
-        } catch (resendError) {
-          console.warn('⚠️ Resend failed, trying fallback...', resendError.message);
+        } catch (twilioError) {
+          console.warn('⚠️ Twilio failed, trying SendGrid...', twilioError.message);
+        }
+      }
+
+      // Fallback: SendGrid direto
+      if (this.sendgridEnabled) {
+        try {
+          console.log('📤 Using SendGrid API...');
+          
+          const fromEmail = process.env.EMAIL_FROM || 'noreply@empresasbrasil.com';
+          
+          const msg = {
+            to: email,
+            from: `Empresas Brasil <${fromEmail}>`,
+            subject: '🏢 Verifique seu email - Empresas Brasil',
+            html: this.getVerificationEmailTemplate(name, verificationUrl),
+            text: this.getVerificationEmailText(name, verificationUrl)
+          };
+
+          const [response] = await sgMail.send(msg);
+          
+          console.log('✅ Email sent successfully via SendGrid:', response.messageId);
+          
+          return {
+            success: true,
+            messageId: response.messageId,
+            verificationUrl,
+            provider: 'sendgrid'
+          };
+
+        } catch (sendgridError) {
+          console.warn('⚠️ SendGrid failed, trying fallback...', sendgridError.message);
         }
       }
 
