@@ -14,15 +14,17 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
-    if (token && userData) {
+    if (storedToken && userData) {
+      setToken(storedToken);
       setUser(JSON.parse(userData));
-      authService.setAuthToken(token);
+      authService.setAuthToken(storedToken);
     }
     
     setLoading(false);
@@ -36,6 +38,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(response.user));
       authService.setAuthToken(response.token);
       
+      setToken(response.token);
       setUser(response.user);
       toast.success('Login realizado com sucesso!');
       
@@ -55,6 +58,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(response.user));
       authService.setAuthToken(response.token);
       
+      setToken(response.token);
       setUser(response.user);
       toast.success('Cadastro realizado com sucesso!');
       
@@ -70,16 +74,18 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     authService.removeAuthToken();
+    setToken(null);
     setUser(null);
     toast.info('Logout realizado com sucesso!');
   };
 
   const value = {
     user,
+    token,
     login,
     register,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user && !!token
   };
 
   if (loading) {

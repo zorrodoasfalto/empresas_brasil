@@ -9,6 +9,13 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import AboutUs from './pages/AboutUs';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
+import SecurityPolicy from './pages/SecurityPolicy';
+import Checkout from './pages/Checkout';
+import CheckoutSimple from './pages/CheckoutSimple';
+import VerifyEmail from './pages/VerifyEmail';
 import GlobalStyles from './styles/GlobalStyles';
 
 function App() {
@@ -21,6 +28,13 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email/:token" element={<VerifyEmail />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfUse />} />
+            <Route path="/security" element={<SecurityPolicy />} />
+            <Route path="/checkout" element={<Checkout />} />
+            <Route path="/checkout-debug" element={<CheckoutSimple />} />
             <Route 
               path="/dashboard" 
               element={

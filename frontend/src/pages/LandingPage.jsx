@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { 
   Search, 
@@ -519,7 +519,7 @@ const LandingPage = () => {
             <Database size={28} />
             Empresas Brasil
           </Logo>
-          <CTAButton onClick={() => navigate('/dashboard')}>
+          <CTAButton onClick={() => navigate('/register')}>
             Acessar Sistema
             <ArrowRight size={20} />
           </CTAButton>
@@ -536,7 +536,7 @@ const LandingPage = () => {
           Acesse informações completas de 66 milhões de empresas brasileiras.
           Performance superior, dados atualizados da Receita Federal.
         </HeroSubtitle>
-        <CTAButton onClick={() => navigate('/dashboard')}>
+        <CTAButton onClick={() => navigate('/register')}>
           <Search size={20} />
           Começar Consulta Gratuita
         </CTAButton>
@@ -792,7 +792,7 @@ const LandingPage = () => {
           Acesso completo à maior base de dados empresariais do Brasil
         </SectionSubtitle>
         
-        <PricingCard onClick={() => navigate('/dashboard')}>
+        <PricingCard onClick={() => navigate('/checkout')}>
           <h3 style={{ color: 'white', fontSize: '1.5rem', margin: '0 0 1rem 0' }}>
             Plano Profissional
           </h3>
@@ -848,10 +848,10 @@ const LandingPage = () => {
           
           <FooterSection>
             <h4>Empresa</h4>
-            <a href="#about">Sobre Nós</a>
-            <a href="#privacy">Política de Privacidade</a>
-            <a href="#terms">Termos de Uso</a>
-            <a href="#security">Segurança</a>
+            <Link to="/about">Sobre Nós</Link>
+            <Link to="/privacy">Política de Privacidade</Link>
+            <Link to="/terms">Termos de Uso</Link>
+            <Link to="/security">Segurança</Link>
           </FooterSection>
         </FooterContent>
         

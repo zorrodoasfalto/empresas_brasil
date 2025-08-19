@@ -3,9 +3,17 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 const PORT = 6000;
+
+// Import routes
+const stripeRoutes = require('./stripe-routes');
+const authRoutes = require('./routes/auth');
+
+// Import database initialization
+const { createUsersTable } = require('./database/init-users');
 
 const pool = new Pool({
   connectionString: 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
@@ -14,6 +22,13 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json());
+
+// Stripe webhook endpoint (deve vir ANTES do express.json() para webhooks)
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
+// Use routes
+app.use('/api/stripe', stripeRoutes);
+app.use('/api/auth', authRoutes);
 
 // Endpoint temporário para verificar tabelas
 app.get('/api/check-tables', async (req, res) => {
@@ -854,11 +869,12 @@ app.post('/api/companies/filtered', async (req, res) => {
   }
 });
 
-initDB().then(() => {
+Promise.all([initDB(), createUsersTable()]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');
     console.log('✅ Database: Railway PostgreSQL');
+    console.log('✅ Authentication: Email verification enabled');
     console.log('🎯 FIXED: 20 business segments + all states');
   });
 });

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
+import SubscriptionGate from '../components/SubscriptionGate';
+import { useSubscription } from '../hooks/useSubscription';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -57,6 +60,23 @@ const LogoutButton = styled.button`
     background: linear-gradient(135deg, #ff3742, #ff5722);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+  }
+`;
+
+const UpgradeButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 `;
 
@@ -393,7 +413,9 @@ const PageInfo = styled.div`
 `;
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { subscriptionStatus } = useSubscription();
   
   const [filters, setFilters] = useState({
     segmentoNegocio: '',
@@ -464,6 +486,10 @@ const Dashboard = () => {
         [name]: value
       }));
     }
+  };
+
+  const handleUpgrade = () => {
+    navigate('/checkout');
   };
 
 
@@ -805,11 +831,13 @@ const Dashboard = () => {
 
 
   return (
-    <Container>
+    <SubscriptionGate showTrialMessage={true}>
+      <Container>
       <Header>
         <Title>🏢 Empresas Brasil</Title>
         <UserInfo>
           <span>Olá, {user?.email}</span>
+          <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
           <LogoutButton onClick={logout}>Sair</LogoutButton>
         </UserInfo>
       </Header>
@@ -1272,6 +1300,7 @@ const Dashboard = () => {
         )}
       </Content>
     </Container>
+  </SubscriptionGate>
   );
 };
 
