@@ -15,7 +15,7 @@ export default defineConfig({
     }
   },
   preview: {
-    port: 4001,
+    port: process.env.PORT || 4001,
     host: true,
   },
   build: {
