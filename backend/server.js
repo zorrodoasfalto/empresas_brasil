@@ -627,9 +627,14 @@ app.post('/api/companies/filtered', async (req, res) => {
       ];
       
       const segment = businessSegments.find(s => s.id === segmentId);
+      console.log(`🔍 DEBUG SEGMENT: ID=${segmentId}, Found=${!!segment}`);
       if (segment) {
+        console.log(`📋 SEGMENT CNAEs: ${JSON.stringify(segment.cnaes)}`);
         conditions.push(`est.cnae_fiscal = ANY($${params.length + 1})`);
         params.push(segment.cnaes);
+        console.log(`🎯 FILTER APPLIED: est.cnae_fiscal = ANY([${segment.cnaes.join(',')}])`);
+      } else {
+        console.log(`❌ SEGMENT NOT FOUND: ${segmentId}`);
       }
     }
     
@@ -747,6 +752,9 @@ app.post('/api/companies/filtered', async (req, res) => {
     console.log(`   Page: ${page}, CompanyLimit: ${companyLimit}, PerPage: ${perPage}`);
     console.log(`   Offset: ${offset}, LimitPerPage: ${limitPerPage}`);
     console.log(`   Query: LIMIT ${limitPerPage} OFFSET ${offset}`);
+    console.log(`🔍 FINAL QUERY CONDITIONS: ${JSON.stringify(conditions)}`);
+    console.log(`🔍 FINAL QUERY PARAMS: ${JSON.stringify(params.slice(0, -2))}`); // Exclude limit/offset
+    console.log(`🔍 WHERE CLAUSE: ${whereClause}`);
     console.log('Executing query...');
     const result = await pool.query(query, params);
     
