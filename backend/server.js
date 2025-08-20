@@ -881,6 +881,18 @@ app.post('/api/companies/filtered', async (req, res) => {
   }
 });
 
+// Serve React frontend in production
+const path = require('path');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api/')) {
+      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    }
+  });
+}
+
 Promise.all([initDB(), createUsersTable()]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
@@ -888,5 +900,8 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
     console.log('✅ Database: Railway PostgreSQL');
     console.log('✅ Authentication: Email verification enabled');
     console.log('🎯 FIXED: 20 business segments + all states');
+    if (process.env.NODE_ENV === 'production') {
+      console.log('✅ Frontend: Serving React from /frontend/dist');
+    }
   });
 });
