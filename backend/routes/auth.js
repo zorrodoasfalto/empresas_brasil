@@ -1,6 +1,12 @@
 const express = require('express');
 const SecurityUtils = require('../utils/security');
-const { pool } = require('../database/init-users');
+const { Pool } = require('pg');
+
+// Conectar ao banco PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 const router = express.Router();
 
@@ -11,11 +17,24 @@ router.post('/register', async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
   
   try {
+    console.log(`🔐 REGISTER ATTEMPT: ${email}`);
+    
     // Validar entrada
     if (!email || !password) {
+      console.log(`❌ REGISTER FAILED: Missing email or password`);
       return res.status(400).json({
         success: false,
         message: 'Email e senha são obrigatórios'
+      });
+    }
+
+    // Verificar se usuário já existe
+    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      console.log(`❌ REGISTER FAILED: User already exists - ${email}`);
+      return res.status(400).json({
+        success: false,
+        message: 'Este email já está cadastrado'
       });
     }
 
@@ -40,6 +59,8 @@ router.post('/register', async (req, res) => {
     // Inserir usuário no banco com trial de 15 dias
     const trialExpires = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 dias
     
+    console.log(`🔧 INSERTING USER: ${email} with UUID: ${uuid}`);
+    
     const result = await pool.query(
       `INSERT INTO users (
         uuid, email, password_hash, password_salt, 
@@ -54,9 +75,11 @@ router.post('/register', async (req, res) => {
         firstName || null, lastName || null,
         emailVerificationToken, emailVerificationExpires,
         'pending_verification', 'user', 'active', trialExpires,
-        req.ip, req.get('User-Agent')
+        req.ip || '127.0.0.1', req.get('User-Agent') || 'Unknown'
       ]
     );
+    
+    console.log(`✅ USER INSERTED SUCCESSFULLY: ${email}`);
 
     const user = result.rows[0];
 
@@ -81,13 +104,31 @@ router.post('/register', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Registration error:', error.message);
+    console.error('❌ REGISTRATION ERROR DETAILS:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack,
+      email: email
+    });
 
     if (error.code === '23505') { // Unique constraint violation
       return res.status(409).json({
         success: false,
         message: 'Email já está em uso'
       });
+    }
+
+    // Log específico para troubleshooting
+    if (error.message.includes('relation') && error.message.includes('does not exist')) {
+      console.error('❌ DATABASE TABLE MISSING - Running table creation...');
+      try {
+        const { createUsersTable } = require('../database/init-users');
+        await createUsersTable();
+        console.log('✅ Users table created, please try registration again');
+      } catch (createError) {
+        console.error('❌ Failed to create users table:', createError.message);
+      }
     }
 
     res.status(500).json({
@@ -580,6 +621,74 @@ router.post('/force-activate', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/manual-register - Registro manual para troubleshooting
+ */
+router.post('/manual-register', async (req, res) => {
+  try {
+    console.log('🔧 MANUAL REGISTER FOR CARLOS...');
+    
+    const email = 'carlos@ogservicos.com.br';
+    const password = 'Carlos123!'; // Senha temporária forte
+    
+    // Verificar se já existe
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.rows.length > 0) {
+      return res.json({
+        success: true,
+        message: 'Usuário já existe no sistema',
+        user: existing.rows[0]
+      });
+    }
+    
+    // Hash da senha
+    const { hash: passwordHash, salt: passwordSalt } = await SecurityUtils.hashPassword(password);
+    
+    // Dados do usuário
+    const uuid = SecurityUtils.generateUUID();
+    const emailVerificationToken = SecurityUtils.generateSecureToken();
+    const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const trialExpires = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+    
+    // Inserir
+    const result = await pool.query(
+      `INSERT INTO users (
+        uuid, email, password_hash, password_salt, 
+        first_name, last_name, 
+        email_verification_token, email_verification_expires,
+        status, role, subscription_status, subscription_expires,
+        created_by_ip, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id, uuid, email, status, created_at`,
+      [
+        uuid, email, passwordHash, passwordSalt,
+        'Carlos', 'OG Serviços',
+        emailVerificationToken, emailVerificationExpires,
+        'active', 'user', 'active', trialExpires, // Já ativo para ele usar
+        '127.0.0.1', 'Manual Registration'
+      ]
+    );
+    
+    console.log('✅ CARLOS REGISTERED SUCCESSFULLY');
+    
+    res.json({
+      success: true,
+      message: 'Usuário Carlos registrado com sucesso!',
+      user: result.rows[0],
+      temporaryPassword: password,
+      note: 'Usuário pode fazer login e trocar a senha'
+    });
+    
+  } catch (error) {
+    console.error('❌ MANUAL REGISTER ERROR:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro no registro manual',
+      error: error.message
     });
   }
 });
