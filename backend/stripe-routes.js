@@ -4,7 +4,14 @@ const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
 const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Initialize Stripe only if API key is available
+let stripe;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+} else {
+  console.log('⚠️  STRIPE_SECRET_KEY not found - Stripe features disabled');
+}
 
 // PostgreSQL connection
 const pool = new Pool({
@@ -62,6 +69,13 @@ createSubscriptionsTable();
 
 // POST /api/stripe/create-checkout-session
 router.post('/create-checkout-session', authenticateToken, async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Stripe não configurado - funcionalidade de pagamento indisponível' 
+    });
+  }
+  
   try {
     const userId = req.user.id;
     
@@ -142,6 +156,13 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
 
 // GET /api/stripe/subscription-status
 router.get('/subscription-status', authenticateToken, async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Stripe não configurado - funcionalidade de pagamento indisponível' 
+    });
+  }
+  
   try {
     const userId = req.user.id;
     
@@ -213,6 +234,13 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
 
 // POST /api/stripe/cancel-subscription
 router.post('/cancel-subscription', authenticateToken, async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Stripe não configurado - funcionalidade de pagamento indisponível' 
+    });
+  }
+  
   try {
     const userId = req.user.id;
     
@@ -255,6 +283,12 @@ router.post('/cancel-subscription', authenticateToken, async (req, res) => {
 
 // POST /api/stripe/webhook - Webhook do Stripe
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ 
+      success: false, 
+      message: 'Stripe webhook não configurado' 
+    });
+  }
   const sig = req.headers['stripe-signature'];
   let event;
 
