@@ -5,6 +5,39 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Function to clean nome_fantasia field - remove addresses that appear incorrectly
+function cleanNomeFantasia(nomeFantasia) {
+  if (!nomeFantasia || nomeFantasia.trim() === '') {
+    return null;
+  }
+  
+  const nome = nomeFantasia.trim();
+  
+  // Check if it looks like an address (contains common address patterns)
+  const addressPatterns = [
+    /^(RUA|AVENIDA|ALAMEDA|ESTRADA|RODOVIA|TRAVESSA|QUADRA|LOTE)/i,
+    /\bN\d+\b/, // N123 (number pattern)
+    /\b\d+\s*(KM|QUILOMETRO)/i,
+    /\bCEP\s*\d/i,
+    /\b\d{5}-?\d{3}\b/, // CEP pattern
+    /\bSALA\s*\d+/i,
+    /\bANDAR\s*\d+/i,
+    /\bBLOCO\s*[A-Z]/i
+  ];
+  
+  // If it matches address patterns, return null
+  if (addressPatterns.some(pattern => pattern.test(nome))) {
+    return null;
+  }
+  
+  // If it's too long (likely an address), return null
+  if (nome.length > 100) {
+    return null;
+  }
+  
+  return nome;
+}
+
 const app = express();
 const PORT = process.env.PORT || 6000;
 
@@ -819,7 +852,7 @@ app.post('/api/companies/filtered', async (req, res) => {
       cnpjOrdem: row.cnpj_ordem,
       cnpjDv: row.cnpj_dv,
       razaoSocial: row.razao_social || row.nome_fantasia || 'Não informado',
-      nomeFantasia: row.nome_fantasia,
+      nomeFantasia: cleanNomeFantasia(row.nome_fantasia),
       
       // SITUAÇÃO
       matrizFilial: row.matriz_filial === '1' ? 'Matriz' : row.matriz_filial === '2' ? 'Filial' : 'Não informado',
