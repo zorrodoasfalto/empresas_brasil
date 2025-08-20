@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "build": "echo 'FRONTEND PRE-BUILT - NO BUILD NEEDED'",
-    "start": "node server.js"
+    "start": "node backend/server.js"
   },
   "keywords": [
     "empresas",
