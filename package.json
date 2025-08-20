@@ -4,7 +4,7 @@
   "description": "API para consulta de empresas brasileiras - PRODUCTION READY",
   "main": "server.js",
   "scripts": {
-    "build": "echo 'FRONTEND PRE-BUILT - NO BUILD NEEDED'",
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
     "start": "node backend/server.js"
   },
   "keywords": [
