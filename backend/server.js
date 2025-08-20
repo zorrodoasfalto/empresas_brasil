@@ -728,15 +728,15 @@ app.post('/api/companies/filtered', async (req, res) => {
       const sociosQuery = companyLimit >= 50000 ? `
         SELECT 
           cnpj_basico,
+          identificador_de_socio,
           nome_socio,
           qualificacao_socio
         FROM socios s
         WHERE cnpj_basico = ANY($1)
           AND nome_socio IS NOT NULL
           AND nome_socio != ''
-          AND EXISTS (SELECT 1 FROM unnest($1) AS cb WHERE cb = s.cnpj_basico)
         ORDER BY cnpj_basico, identificador_de_socio
-        LIMIT $3
+        LIMIT $2
       ` : `
         SELECT DISTINCT ON (socios.cnpj_basico, socios.identificador_de_socio)
           socios.cnpj_basico,
@@ -771,12 +771,25 @@ app.post('/api/companies/filtered', async (req, res) => {
         const sociosResult = await pool.query(sociosQuery, queryParams);
         console.log(`📊 Found ${sociosResult.rows.length} socios records`);
         
-        // Group socios by cnpj_basico
+        // Group socios by cnpj_basico - handle different query structures
         sociosResult.rows.forEach(socio => {
           if (!sociosData[socio.cnpj_basico]) {
             sociosData[socio.cnpj_basico] = [];
           }
-          sociosData[socio.cnpj_basico].push({
+          
+          // For 50k+ queries (simplified structure) vs normal queries (full structure)
+          const socioData = companyLimit >= 50000 ? {
+            identificador: socio.identificador_de_socio || 1,
+            nome: socio.nome_socio,
+            cpf_cnpj: null, // Not available in fast query
+            qualificacao: socio.qualificacao_socio,
+            data_entrada: null, // Not available in fast query
+            pais: null, // Not available in fast query
+            representante_legal_cpf: null,
+            representante_legal_nome: null,
+            representante_legal_qualificacao: null,
+            faixa_etaria: null
+          } : {
             identificador: socio.identificador_de_socio,
             nome: socio.nome_socio,
             cpf_cnpj: socio.cnpj_cpf_socio,
@@ -787,7 +800,9 @@ app.post('/api/companies/filtered', async (req, res) => {
             representante_legal_nome: socio.nome_representante,
             representante_legal_qualificacao: socio.qualificacao_representante_legal,
             faixa_etaria: socio.faixa_etaria
-          });
+          };
+          
+          sociosData[socio.cnpj_basico].push(socioData);
         });
       } catch (sociosError) {
         console.log('⚠️ Socios query failed, continuing without socios data:', sociosError.message);
