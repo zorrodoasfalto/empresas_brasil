@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 
 // Import routes
-// const stripeRoutes = require('./stripe-routes');
-// const authRoutes = require('./routes/auth');
+const stripeRoutes = require('./stripe-routes');
+const authRoutes = require('./routes/auth');
 
 // Import database initialization
 const { createUsersTable } = require('./database/init-users');
@@ -36,8 +36,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Use routes
-// app.use('/api/stripe', stripeRoutes);
-// app.use('/api/auth', authRoutes);
+app.use('/api/stripe', stripeRoutes);
+app.use('/api/auth', authRoutes);
 
 // Endpoint temporário para verificar tabelas
 app.get('/api/check-tables', async (req, res) => {
