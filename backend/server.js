@@ -35,9 +35,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Stripe webhook endpoint (deve vir ANTES do express.json() para webhooks)
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
-
 // Use routes
 app.use('/api/stripe', stripeRoutes);
 app.use('/api/auth', authRoutes);

@@ -282,7 +282,7 @@ router.post('/cancel-subscription', authenticateToken, async (req, res) => {
 });
 
 // POST /api/stripe/webhook - Webhook do Stripe
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhook', async (req, res) => {
   if (!stripe) {
     return res.status(503).json({ 
       success: false, 
