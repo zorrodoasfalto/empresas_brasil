@@ -1,6 +1,6 @@
 {
   "name": "empresas-brasil-production-final",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "API para consulta de empresas brasileiras - PRODUCTION READY",
   "main": "server.js",
   "scripts": {
