@@ -528,7 +528,7 @@ app.post('/api/companies/filtered', async (req, res) => {
           message: 'Query timeout - consulta muito demorada. Tente filtros mais específicos.'
         });
       }
-    }, companyLimit >= 25000 ? 180000 : 120000); // 3 minutes for large queries, 2 minutes for others
+    }, companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 240000 : 120000); // 5min for 50k, 4min for 25k+, 2min others
     
     console.log('Filters:', filters);
     
@@ -710,12 +710,34 @@ app.post('/api/companies/filtered', async (req, res) => {
     // Optimized socios fetch - limit per company for better performance on large queries
     if (cnpjBasicos.length > 0) {
       console.log(`Fetching socios data for ${cnpjBasicos.length} companies...`);
-      const maxSociosPerCompany = companyLimit >= 25000 ? 3 : 5; // Fewer socios per company for large queries
-      const totalSociosLimit = Math.min(cnpjBasicos.length * maxSociosPerCompany, 150000); // Cap total socios
+      // Ultra-aggressive limits for 50k queries to prevent timeout
+      let maxSociosPerCompany = 5;
+      let totalSociosLimit = 50000;
+      
+      if (companyLimit >= 50000) {
+        maxSociosPerCompany = 1; // Only 1 socio per company for 50k+ queries  
+        totalSociosLimit = 25000; // Max 25k total socios
+      } else if (companyLimit >= 25000) {
+        maxSociosPerCompany = 2; // Max 2 socios per company for 25k+ queries
+        totalSociosLimit = 50000;
+      }
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);
       
-      const sociosQuery = `
+      // Ultra-fast query for large volumes - minimal processing
+      const sociosQuery = companyLimit >= 50000 ? `
+        SELECT 
+          cnpj_basico,
+          nome_socio,
+          qualificacao_socio
+        FROM socios s
+        WHERE cnpj_basico = ANY($1)
+          AND nome_socio IS NOT NULL
+          AND nome_socio != ''
+          AND EXISTS (SELECT 1 FROM unnest($1) AS cb WHERE cb = s.cnpj_basico)
+        ORDER BY cnpj_basico, identificador_de_socio
+        LIMIT $3
+      ` : `
         SELECT DISTINCT ON (socios.cnpj_basico, socios.identificador_de_socio)
           socios.cnpj_basico,
           socios.identificador_de_socio,
@@ -741,7 +763,12 @@ app.post('/api/companies/filtered', async (req, res) => {
       `;
       
       try {
-        const sociosResult = await pool.query(sociosQuery, [cnpjBasicos, maxSociosPerCompany, totalSociosLimit]);
+        // Different parameters for optimized vs full query
+        const queryParams = companyLimit >= 50000 
+          ? [cnpjBasicos, totalSociosLimit] // Simple query: only array and limit
+          : [cnpjBasicos, maxSociosPerCompany, totalSociosLimit]; // Full query: array, per-company limit, total limit
+          
+        const sociosResult = await pool.query(sociosQuery, queryParams);
         console.log(`📊 Found ${sociosResult.rows.length} socios records`);
         
         // Group socios by cnpj_basico
