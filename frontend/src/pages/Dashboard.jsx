@@ -5,8 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
-import SubscriptionGate from '../components/SubscriptionGate';
-import { useSubscription } from '../hooks/useSubscription';
+// import SubscriptionGate from '../components/SubscriptionGate'; // REMOVIDO - ACESSO LIVRE
+// import { useSubscription } from '../hooks/useSubscription'; // REMOVIDO - ACESSO LIVRE
 
 const Container = styled.div`
   min-height: 100vh;
@@ -846,7 +846,6 @@ const Dashboard = () => {
 
 
   return (
-    <SubscriptionGate showTrialMessage={true}>
       <Container>
       <Header>
         <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
@@ -1315,7 +1314,6 @@ const Dashboard = () => {
         )}
       </Content>
     </Container>
-  </SubscriptionGate>
   );
 };
 
