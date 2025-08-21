@@ -156,12 +156,7 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
 
 // GET /api/stripe/subscription-status
 router.get('/subscription-status', authenticateToken, async (req, res) => {
-  if (!stripe) {
-    return res.status(503).json({ 
-      success: false, 
-      message: 'Stripe não configurado - funcionalidade de pagamento indisponível' 
-    });
-  }
+  // Mesmo sem Stripe, verificar trial do usuário
   
   try {
     const userId = req.user.id;
@@ -197,6 +192,17 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
       }
     }
     
+    // Se chegou aqui, subscription expirou ou não tem - verificar Stripe se disponível
+    if (!stripe) {
+      console.log('⚠️ Stripe não configurado - usuário sem subscription ativa');
+      return res.json({ 
+        hasActiveSubscription: false,
+        status: 'no_stripe_config',
+        message: 'Trial expirado e Stripe não configurado',
+        isLoading: false
+      });
+    }
+    
     // Fallback: verificar na tabela subscriptions (Stripe)
     const result = await pool.query(
       `SELECT * FROM subscriptions 
@@ -209,7 +215,8 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
     if (result.rows.length === 0) {
       return res.json({ 
         hasActiveSubscription: false,
-        status: 'no_subscription' 
+        status: 'no_subscription',
+        isLoading: false
       });
     }
 
@@ -221,7 +228,8 @@ router.get('/subscription-status', authenticateToken, async (req, res) => {
       hasActiveSubscription: isActive,
       status: subscription.status,
       currentPeriodEnd: subscription.current_period_end,
-      stripeSubscriptionId: subscription.stripe_subscription_id
+      stripeSubscriptionId: subscription.stripe_subscription_id,
+      isLoading: false
     });
 
   } catch (error) {

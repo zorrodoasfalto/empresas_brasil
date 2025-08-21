@@ -1,9 +1,19 @@
 const sgMail = require('@sendgrid/mail');
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
+const { Resend } = require('resend');
 
 class EmailService {
   constructor() {
+    // Configurar Resend se API key disponível (PRIORIDADE 1)
+    if (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== 'COLOQUE_AQUI_A_CHAVE_DO_RESEND') {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+      this.resendEnabled = true;
+      console.log('✅ Resend configurado (PRIORIDADE)');
+    } else {
+      this.resendEnabled = false;
+    }
+
     // Configurar Twilio se credenciais disponíveis
     if (process.env.TWILIO_ACCOUNT_SID && 
         process.env.TWILIO_AUTH_TOKEN && 
@@ -24,7 +34,7 @@ class EmailService {
       this.sendgridEnabled = false;
     }
 
-    if (!this.twilioEnabled && !this.sendgridEnabled) {
+    if (!this.resendEnabled && !this.twilioEnabled && !this.sendgridEnabled) {
       console.log('⚠️ Nenhum provedor de email configurado - usando Ethereal fallback');
     }
     
@@ -283,7 +293,41 @@ Este é um email automático, não responda.
       console.log('📧 Sending verification email to:', email);
       console.log('🔗 Verification URL:', verificationUrl);
 
-      // Tentar enviar com Twilio primeiro (mais confiável)
+      // Tentar enviar com Resend primeiro (PRIORIDADE)
+      if (this.resendEnabled) {
+        try {
+          console.log('📤 Using Resend API...');
+          
+          const fromEmail = process.env.EMAIL_FROM || 'noreply@empresasbrasil.com';
+          
+          const { data, error } = await this.resend.emails.send({
+            from: `Empresas Brasil <${fromEmail}>`,
+            to: [email],
+            subject: '🏢 Verifique seu email - Empresas Brasil',
+            html: this.getVerificationEmailTemplate(name, verificationUrl),
+            text: this.getVerificationEmailText(name, verificationUrl)
+          });
+          
+          if (error) {
+            console.warn('⚠️ Resend error:', error);
+            throw new Error(error.message);
+          }
+          
+          console.log('✅ Email sent successfully via Resend:', data.id);
+          
+          return {
+            success: true,
+            messageId: data.id,
+            verificationUrl,
+            provider: 'resend'
+          };
+
+        } catch (resendError) {
+          console.warn('⚠️ Resend failed, trying Twilio...', resendError.message);
+        }
+      }
+
+      // Fallback: Twilio
       if (this.twilioEnabled) {
         try {
           console.log('📤 Using Twilio SendGrid API...');
@@ -435,6 +479,228 @@ Este é um email automático, não responda.
   async sendWelcomeEmail(email, name) {
     // TODO: Implementar email de boas-vindas
     console.log('📧 Welcome email would be sent to:', email);
+  }
+
+  /**
+   * Enviar notificação para admin sobre novo registro
+   */
+  async sendAdminNotification(adminEmail, userData) {
+    const subject = `🔔 Novo Cadastro Pendente - ${userData.userName}`;
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Novo Cadastro Pendente</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2563eb; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .content { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .user-info { background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #2563eb; }
+        .actions { text-align: center; margin: 20px 0; }
+        .approve-btn { background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; }
+        .reject-btn { background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-left: 10px; }
+        .footer { font-size: 12px; color: #6b7280; text-align: center; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏢 Empresas Brasil</h1>
+        <h2>Novo Cadastro Aguardando Aprovação</h2>
+    </div>
+    
+    <div class="content">
+        <div class="user-info">
+            <h3>📋 Dados do Usuário:</h3>
+            <p><strong>Nome:</strong> ${userData.userName}</p>
+            <p><strong>Email:</strong> ${userData.userEmail}</p>
+            <p><strong>IP:</strong> ${userData.userIP}</p>
+            <p><strong>Data:</strong> ${new Date(userData.timestamp).toLocaleString('pt-BR')}</p>
+            <p><strong>ID:</strong> ${userData.userId}</p>
+        </div>
+        
+        <div class="actions">
+            <p><strong>⚡ Ações Rápidas:</strong></p>
+            <p>Use os comandos abaixo ou acesse o painel admin:</p>
+            
+            <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; text-align: left; margin: 15px 0;">
+# Aprovar usuário:<br>
+curl -X POST http://localhost:6000/api/auth/approve-user \\<br>
+&nbsp;&nbsp;-H "Content-Type: application/json" \\<br>
+&nbsp;&nbsp;-d '{"email":"${userData.userEmail}","adminKey":"admin-empresas-brasil-2025"}'<br>
+<br>
+# Listar pendentes:<br>
+curl "http://localhost:6000/api/auth/pending-users?adminKey=admin-empresas-brasil-2025"
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Sistema Empresas Brasil - Notificação Automática</p>
+        <p>Este é um email automático, não responda.</p>
+    </div>
+</body>
+</html>`;
+
+    const textContent = `
+🏢 EMPRESAS BRASIL - NOVO CADASTRO
+
+📋 Dados do Usuário:
+• Nome: ${userData.userName}  
+• Email: ${userData.userEmail}
+• IP: ${userData.userIP}
+• Data: ${new Date(userData.timestamp).toLocaleString('pt-BR')}
+• ID: ${userData.userId}
+
+⚡ Para aprovar, use:
+curl -X POST http://localhost:6000/api/auth/approve-user -H "Content-Type: application/json" -d '{"email":"${userData.userEmail}","adminKey":"admin-empresas-brasil-2025"}'
+
+Sistema Empresas Brasil - Notificação Automática
+    `;
+
+    return await this.sendEmail({
+      to: adminEmail,
+      subject: subject,
+      html: htmlContent,
+      text: textContent
+    });
+  }
+
+  /**
+   * Enviar email de conta aprovada para usuário
+   */
+  async sendAccountApprovedEmail(email, name) {
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4001';
+    const loginUrl = `${baseUrl}/login`;
+    
+    const subject = `🎉 Sua conta foi aprovada - Empresas Brasil`;
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Conta Aprovada</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #10b981; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
+        .content { background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .login-btn { background: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin: 20px 0; }
+        .trial-info { background: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 15px 0; }
+        .footer { font-size: 12px; color: #6b7280; text-align: center; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎉 Parabéns!</h1>
+        <h2>Sua conta foi aprovada</h2>
+    </div>
+    
+    <div class="content">
+        <p>Olá${name ? `, ${name}` : ''}! 👋</p>
+        
+        <p><strong>Ótimas notícias!</strong> Sua conta na <strong>Empresas Brasil</strong> foi aprovada e está ativa.</p>
+        
+        <div class="trial-info">
+            <p><strong>🎁 Trial Gratuito Ativado!</strong></p>
+            <p>• <strong>15 dias</strong> de acesso completo</p>
+            <p>• Consulta a <strong>66+ milhões</strong> de empresas</p>
+            <p>• Exportação em <strong>Excel e CSV</strong></p>
+            <p>• Dados completos de sócios e representantes</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="${loginUrl}" class="login-btn">🚀 Fazer Login Agora</a>
+        </div>
+        
+        <p>Aproveite ao máximo sua experiência com a maior base de dados empresariais do Brasil!</p>
+    </div>
+    
+    <div class="footer">
+        <p><strong>Empresas Brasil</strong><br>
+           A maior base de dados empresariais do Brasil</p>
+        <p>📧 Suporte: suporte@empresasbrasil.com</p>
+        <p>Este é um email automático, não responda.</p>
+    </div>
+</body>
+</html>`;
+
+    const textContent = `
+🎉 CONTA APROVADA - EMPRESAS BRASIL
+
+Olá${name ? `, ${name}` : ''}!
+
+Sua conta na Empresas Brasil foi aprovada e está ativa.
+
+🎁 TRIAL GRATUITO ATIVADO:
+• 15 dias de acesso completo
+• 66+ milhões de empresas
+• Exportação Excel e CSV
+• Dados completos de sócios
+
+🚀 FAZER LOGIN: ${loginUrl}
+
+Empresas Brasil - A maior base de dados empresariais do Brasil
+    `;
+
+    return await this.sendEmail({
+      to: email,
+      subject: subject,
+      html: htmlContent,
+      text: textContent
+    });
+  }
+
+  /**
+   * Método genérico para enviar emails
+   */
+  async sendEmail({ to, subject, html, text }) {
+    try {
+      console.log(`📧 Sending email to: ${to} - ${subject}`);
+
+      // Tentar enviar com Resend primeiro (PRIORIDADE)
+      if (this.resendEnabled) {
+        try {
+          const fromEmail = process.env.EMAIL_FROM || 'noreply@empresasbrasil.com';
+          
+          const { data, error } = await this.resend.emails.send({
+            from: `Empresas Brasil <${fromEmail}>`,
+            to: [to],
+            subject: subject,
+            html: html,
+            text: text
+          });
+          
+          if (error) {
+            throw new Error(error.message);
+          }
+          
+          console.log('✅ Email sent successfully via Resend:', data.id);
+          return { success: true, messageId: data.id, provider: 'resend' };
+
+        } catch (resendError) {
+          console.warn('⚠️ Resend failed:', resendError.message);
+        }
+      }
+
+      // Em desenvolvimento, apenas logar
+      if (process.env.NODE_ENV === 'development') {
+        console.log('\n=== EMAIL CONTENT (DEV MODE) ===');
+        console.log('To:', to);
+        console.log('Subject:', subject);
+        console.log('Content:', text);
+        console.log('=== END EMAIL ===\n');
+        
+        return { success: true, messageId: 'dev-mode', provider: 'console' };
+      }
+
+      throw new Error('No email provider available');
+
+    } catch (error) {
+      console.error('❌ Failed to send email:', error.message);
+      throw error;
+    }
   }
 
   /**

@@ -2,6 +2,12 @@ const express = require('express');
 const SecurityUtils = require('../utils/security');
 const { Pool } = require('pg');
 
+// 🛡️ SISTEMA DE RATE LIMITING E SEGURANÇA
+const rateLimit = new Map();
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
+const MAX_REGISTRATIONS_PER_IP = 2; // Máximo 2 registros por IP em 15 min
+const MAX_REGISTRATIONS_PER_EMAIL_DOMAIN = 5; // Máximo 5 por domínio
+
 // Conectar ao banco PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
@@ -10,21 +16,91 @@ const pool = new Pool({
 
 const router = express.Router();
 
+// 🛡️ FUNÇÕES DE SEGURANÇA
+function checkRateLimit(ip, type = 'registration') {
+  const now = Date.now();
+  const key = `${ip}:${type}`;
+  
+  if (!rateLimit.has(key)) {
+    rateLimit.set(key, { count: 1, firstAttempt: now });
+    return true;
+  }
+  
+  const data = rateLimit.get(key);
+  
+  // Reset se passou da janela de tempo
+  if (now - data.firstAttempt > RATE_LIMIT_WINDOW) {
+    rateLimit.set(key, { count: 1, firstAttempt: now });
+    return true;
+  }
+  
+  // Verificar limite
+  if (data.count >= MAX_REGISTRATIONS_PER_IP) {
+    return false;
+  }
+  
+  data.count++;
+  rateLimit.set(key, data);
+  return true;
+}
+
+function validateBusinessEmail(email) {
+  // Bloquear emails temporários/descartáveis
+  const disposableEmailDomains = [
+    '10minutemail.com', 'guerrillamail.com', 'mailinator.com', 
+    'tempmail.org', 'yopmail.com', 'temp-mail.org', '24hourmail.com'
+  ];
+  
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (disposableEmailDomains.includes(domain)) {
+    return { valid: false, reason: 'Email temporário não permitido' };
+  }
+  
+  // Verificar formato profissional
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return { valid: false, reason: 'Formato de email inválido' };
+  }
+  
+  return { valid: true };
+}
+
 /**
  * POST /api/auth/register - Cadastro com verificação de email
  */
 router.post('/register', async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
+  const clientIP = req.ip || req.connection.remoteAddress || '127.0.0.1';
   
   try {
-    console.log(`🔐 REGISTER ATTEMPT: ${email}`);
+    console.log(`🔐 REGISTER ATTEMPT: ${email} from IP: ${clientIP}`);
     
-    // Validar entrada
-    if (!email || !password) {
-      console.log(`❌ REGISTER FAILED: Missing email or password`);
+    // 🛡️ RATE LIMITING
+    if (!checkRateLimit(clientIP, 'registration')) {
+      console.log(`🚫 RATE LIMIT EXCEEDED: ${clientIP} - Too many registrations`);
+      return res.status(429).json({
+        success: false,
+        message: 'Muitos registros foram feitos deste IP. Tente novamente em 15 minutos.',
+        retryAfter: RATE_LIMIT_WINDOW / 1000
+      });
+    }
+    
+    // Validar entrada básica
+    if (!email || !password || !firstName || !lastName) {
+      console.log(`❌ REGISTER FAILED: Missing required fields`);
       return res.status(400).json({
         success: false,
-        message: 'Email e senha são obrigatórios'
+        message: 'Email, senha, nome e sobrenome são obrigatórios'
+      });
+    }
+    
+    // 🛡️ VALIDAÇÃO DE EMAIL PROFISSIONAL
+    const emailValidation = validateBusinessEmail(email);
+    if (!emailValidation.valid) {
+      console.log(`❌ REGISTER FAILED: Invalid email - ${emailValidation.reason}`);
+      return res.status(400).json({
+        success: false,
+        message: emailValidation.reason
       });
     }
 
@@ -56,10 +132,10 @@ router.post('/register', async (req, res) => {
     const emailVerificationToken = SecurityUtils.generateSecureToken();
     const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
-    // Inserir usuário no banco com trial de 15 dias
+    // 🚀 SISTEMA SIMPLES: ATIVO COM TRIAL IMEDIATO
     const trialExpires = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 dias
     
-    console.log(`🔧 INSERTING USER: ${email} with UUID: ${uuid}`);
+    console.log(`🔧 INSERTING USER: ${email} with UUID: ${uuid} - AUTO ACTIVE`);
     
     const result = await pool.query(
       `INSERT INTO users (
@@ -67,40 +143,38 @@ router.post('/register', async (req, res) => {
         first_name, last_name, 
         email_verification_token, email_verification_expires,
         status, role, subscription_status, subscription_expires,
-        created_by_ip, user_agent
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        email_verified, created_by_ip, user_agent
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING id, uuid, email, first_name, last_name, status, role, subscription_status, subscription_expires, created_at`,
       [
         uuid, email, passwordHash, passwordSalt,
         firstName || null, lastName || null,
         emailVerificationToken, emailVerificationExpires,
-        'pending_verification', 'user', 'active', trialExpires,
-        req.ip || '127.0.0.1', req.get('User-Agent') || 'Unknown'
+        'active', 'user', 'active', trialExpires, // 🎯 ATIVO COM TRIAL
+        true, // Email já verificado
+        clientIP, req.get('User-Agent') || 'Unknown'
       ]
     );
     
-    console.log(`✅ USER INSERTED SUCCESSFULLY: ${email}`);
+    console.log(`✅ USER ACTIVE: ${email} - Trial until ${trialExpires}`);
 
     const user = result.rows[0];
 
-    // Enviar email de verificação
-    const emailService = require('../services/emailService');
-    await emailService.sendVerificationEmail(email, emailVerificationToken, user.first_name);
-
-    console.log('✅ User registered:', user.email);
-
     res.status(201).json({
       success: true,
-      message: 'Cadastro realizado com sucesso! Verifique seu email para ativar a conta.',
+      message: '🎉 Cadastro realizado com sucesso! Sua conta está ativa com 15 dias de trial.',
       user: {
         id: user.id,
         uuid: user.uuid,
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        status: user.status
+        status: user.status,
+        subscriptionStatus: user.subscription_status,
+        trialExpires: user.subscription_expires
       },
-      requiresVerification: true
+      autoActivated: true,
+      trialDays: 15
     });
 
   } catch (error) {
@@ -306,13 +380,14 @@ router.post('/login', async (req, res) => {
 
     const user = result.rows[0];
 
-    // Verificar se email foi verificado
-    if (!user.email_verified || user.status === 'pending_verification') {
-      console.log('❌ Email not verified:', user.email);
+    // ✅ VERIFICAR STATUS SIMPLES
+    if (user.status !== 'active') {
+      console.log('❌ User not active:', user.email, 'Status:', user.status);
       return res.status(403).json({
         success: false,
-        message: 'Email não verificado. Verifique sua caixa de entrada.',
-        requiresVerification: true
+        message: 'Conta não está ativa. Entre em contato conosco.',
+        requiresActivation: true,
+        status: user.status
       });
     }
 
@@ -618,6 +693,205 @@ router.post('/force-activate', async (req, res) => {
   } catch (error) {
     console.error('❌ Force activate error:', error.message);
 
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/resend-verification - Reenviar email de verificação
+ */
+router.post('/resend-verification', async (req, res) => {
+  const { email } = req.body;
+  
+  try {
+    console.log(`🔄 RESEND VERIFICATION: ${email}`);
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email é obrigatório'
+      });
+    }
+
+    // Buscar usuário
+    const userQuery = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userQuery.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
+      });
+    }
+
+    const user = userQuery.rows[0];
+    
+    // Verificar se já está ativo
+    if (user.status === 'active' && user.email_verified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Esta conta já está ativa'
+      });
+    }
+
+    // Gerar novo token se necessário
+    let emailVerificationToken = user.email_verification_token;
+    if (!emailVerificationToken || new Date() > user.email_verification_expires) {
+      const SecurityUtils = require('../utils/security');
+      emailVerificationToken = SecurityUtils.generateSecureToken();
+      const emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      
+      await pool.query(`
+        UPDATE users 
+        SET email_verification_token = $1, email_verification_expires = $2
+        WHERE email = $3
+      `, [emailVerificationToken, emailVerificationExpires, email]);
+    }
+
+    // Tentar enviar email
+    const emailService = require('../services/emailService');
+    let emailSent = false;
+    let emailError = null;
+    
+    try {
+      await emailService.sendVerificationEmail(email, emailVerificationToken, user.first_name);
+      emailSent = true;
+      console.log('✅ Verification email resent to:', email);
+    } catch (emailSendError) {
+      emailError = emailSendError.message;
+      console.warn('⚠️ Failed to resend verification email:', emailSendError.message);
+      
+      // Em desenvolvimento, logar o link
+      if (process.env.NODE_ENV === 'development' || !process.env.RESEND_API_KEY) {
+        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4001';
+        const verificationUrl = `${baseUrl}/verify-email/${emailVerificationToken}`;
+        console.log('🔗 MANUAL VERIFICATION LINK (DEV):', verificationUrl);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: emailSent 
+        ? 'Email de verificação reenviado com sucesso!'
+        : 'Houve um problema temporário. Entre em contato conosco para ativar sua conta.',
+      emailSent: emailSent,
+      emailError: emailError
+    });
+
+  } catch (error) {
+    console.error('❌ RESEND VERIFICATION ERROR:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+/**
+ * POST /api/auth/approve-user - Aprovar usuário pendente (ADMIN)
+ */
+router.post('/approve-user', async (req, res) => {
+  const { email, adminKey } = req.body;
+  
+  try {
+    // Verificação simples de admin (em produção, use JWT admin)
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'admin-empresas-brasil-2025') {
+      return res.status(403).json({
+        success: false,
+        message: 'Acesso negado'
+      });
+    }
+    
+    console.log(`🔧 ADMIN APPROVAL: ${email}`);
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email é obrigatório'
+      });
+    }
+    
+    // Ativar usuário e dar trial
+    const trialExpires = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+    
+    const result = await pool.query(`
+      UPDATE users 
+      SET 
+        status = 'active',
+        email_verified = true,
+        subscription_status = 'active',
+        subscription_expires = $2,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE email = $1 AND status = 'pending_verification'
+      RETURNING id, email, first_name, status, subscription_status, subscription_expires
+    `, [email, trialExpires]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado ou não está pendente de aprovação'
+      });
+    }
+    
+    const user = result.rows[0];
+    console.log(`✅ USER APPROVED: ${user.email} - Trial until ${user.subscription_expires}`);
+    
+    res.json({
+      success: true,
+      message: 'Usuário aprovado com sucesso!',
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        status: user.status,
+        subscriptionStatus: user.subscription_status,
+        trialExpires: user.subscription_expires
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Approve user error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+});
+
+/**
+ * GET /api/auth/pending-users - Listar usuários pendentes (ADMIN)
+ */
+router.get('/pending-users', async (req, res) => {
+  const { adminKey } = req.query;
+  
+  try {
+    // Verificação simples de admin
+    if (adminKey !== process.env.ADMIN_KEY && adminKey !== 'admin-empresas-brasil-2025') {
+      return res.status(403).json({
+        success: false,
+        message: 'Acesso negado'
+      });
+    }
+    
+    const result = await pool.query(`
+      SELECT id, email, first_name, last_name, created_at, created_by_ip, user_agent
+      FROM users 
+      WHERE status = 'pending_verification'
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+    
+    console.log(`📋 PENDING USERS REQUEST: Found ${result.rows.length} users`);
+    
+    res.json({
+      success: true,
+      users: result.rows,
+      count: result.rows.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Pending users error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor'
