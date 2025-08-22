@@ -769,7 +769,6 @@ const Dashboard = () => {
           return Math.min(prev + Math.random() * 8 + 3, 85);
         });
       }, 600); // Mais rápido
-    }
 
     try {
       // Clean CNPJ by removing formatting characters before sending to API
