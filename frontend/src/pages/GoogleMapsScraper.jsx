@@ -520,15 +520,18 @@ const GoogleMapsScraper = () => {
 
     try {
       const leadsToSave = results.map(place => ({
-        company: place.title || place.name || 'Empresa sem nome',
+        nome: place.title || place.name || 'Empresa sem nome',
+        empresa: place.title || place.name || 'Empresa sem nome',
+        telefone: place.phone || '',
         email: place.email || '',
-        phone: place.phone || '',
-        address: place.address || '',
+        endereco: place.address || '',
         website: place.website || '',
-        rating: place.rating || '',
-        reviewsCount: place.reviewsCount || 0,
-        interest: `Google Maps Lead - ${formData.searchTerms} em ${formData.locationQuery}`,
-        source: 'Google Maps Scraping'
+        categoria: place.categoryName || 'Google Maps Lead',
+        rating: place.rating || null,
+        reviews_count: place.reviewsCount || 0,
+        fonte: 'Google Maps Scraping',
+        dados_originais: place,
+        notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery}`
       }));
 
       let savedCount = 0;
@@ -536,7 +539,7 @@ const GoogleMapsScraper = () => {
 
       for (const lead of leadsToSave) {
         try {
-          const response = await fetch('/api/leads/save', {
+          const response = await fetch('/api/crm/leads-save-test', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
