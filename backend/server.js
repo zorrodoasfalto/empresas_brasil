@@ -612,6 +612,8 @@ app.get('/api/crm/funil-test', async (req, res) => {
 // DEBUG: Save lead without auth (temporary)
 app.post('/api/crm/leads-save-test', async (req, res) => {
   try {
+    console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
+    
     // Use hardcoded user ID for testing (the marketing user we just created)
     const userId = 4; // marketing@ogservicos.com.br
 
@@ -630,6 +632,8 @@ app.post('/api/crm/leads-save-test', async (req, res) => {
       dados_originais,
       notas
     } = req.body;
+    
+    console.log('🔍 Extracted data:', { nome, empresa, fonte });
 
     const result = await pool.query(`
       INSERT INTO leads (

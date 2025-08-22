@@ -508,6 +508,8 @@ const GoogleMapsScraper = () => {
   };
 
   const saveAllLeads = async () => {
+    console.log('🔍 saveAllLeads called - results:', results?.length, 'user:', !!user);
+    
     if (!results || results.length === 0) {
       toast.warning('Nenhum resultado para salvar');
       return;
@@ -537,8 +539,12 @@ const GoogleMapsScraper = () => {
       let savedCount = 0;
       let errorCount = 0;
 
+      console.log('🔍 About to save leads:', leadsToSave.length, 'leads');
+      console.log('🔍 First lead sample:', leadsToSave[0]);
+
       for (const lead of leadsToSave) {
         try {
+          console.log('🔍 Saving lead:', lead.nome);
           const response = await fetch('/api/crm/leads-save-test', {
             method: 'POST',
             headers: {
@@ -548,14 +554,18 @@ const GoogleMapsScraper = () => {
             body: JSON.stringify(lead)
           });
 
+          const result = await response.json();
+          console.log('🔍 Save response:', response.status, result);
+
           if (response.ok) {
             savedCount++;
           } else {
             errorCount++;
+            console.error('🔍 Save failed:', result);
           }
         } catch (error) {
           errorCount++;
-          console.error('Erro ao salvar lead:', error);
+          console.error('🔍 Network error:', error);
         }
       }
 
