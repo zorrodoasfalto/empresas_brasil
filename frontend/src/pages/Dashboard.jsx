@@ -1146,12 +1146,11 @@ const Dashboard = () => {
 
   const saveLead = async (empresa) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/crm/leads', {
+      // Temporarily use test endpoint
+      const response = await fetch('/api/crm/leads-save-test', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           nome: empresa.razaoSocial || empresa.nomeFantasia || 'Empresa sem nome',

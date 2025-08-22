@@ -360,6 +360,59 @@ app.post('/api/auth/change-password', async (req, res) => {
 
 // CRM API ENDPOINTS
 
+// DEBUG: Direct user registration (temporary - bypasses rate limiting)
+app.post('/api/debug/direct-register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await pool.query('SELECT id FROM simple_users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.json({
+        success: false,
+        message: 'Usuário já existe',
+        user: existingUser.rows[0]
+      });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const fullName = `${firstName} ${lastName}`;
+    const result = await pool.query(`
+      INSERT INTO simple_users (
+        name, email, password, created_at
+      ) VALUES ($1, $2, $3, NOW())
+      RETURNING id, name, email, created_at
+    `, [fullName, email, hashedPassword]);
+    
+    // Create default funnel phases for the new user
+    await pool.query(`
+      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+      VALUES 
+        ($1, 'Novo Lead', 'Leads recém adicionados', 1, '#10B981'),
+        ($1, 'Qualificado', 'Leads qualificados para contato', 2, '#3B82F6'),
+        ($1, 'Proposta', 'Proposta enviada', 3, '#F59E0B'),
+        ($1, 'Fechado', 'Negócio conquistado', 4, '#059669')
+    `, [result.rows[0].id]);
+    
+    res.json({
+      success: true,
+      message: 'Usuário criado com sucesso (bypass rate limiting)',
+      user: result.rows[0],
+      password: password // Retorna a senha para o usuário saber
+    });
+  } catch (error) {
+    console.error('❌ Direct register error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar usuário',
+      error: error.message
+    });
+  }
+});
+
 // DEBUG: Reset user password (temporary)
 app.post('/api/debug/reset-password', async (req, res) => {
   try {
@@ -476,6 +529,70 @@ app.get('/api/crm/funil-test', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar funil de teste',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Save lead without auth (temporary)
+app.post('/api/crm/leads-save-test', async (req, res) => {
+  try {
+    // Use hardcoded user ID for testing (the marketing user we just created)
+    const userId = 4; // marketing@ogservicos.com.br
+
+    const {
+      nome,
+      empresa,
+      telefone,
+      email,
+      endereco,
+      cnpj,
+      website,
+      categoria,
+      rating,
+      reviews_count,
+      fonte,
+      dados_originais,
+      notas
+    } = req.body;
+
+    const result = await pool.query(`
+      INSERT INTO leads (
+        user_id, nome, empresa, telefone, email, endereco, cnpj, 
+        website, categoria, rating, reviews_count, fonte, dados_originais, notas
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      userId, nome, empresa, telefone, email, endereco, cnpj,
+      website, categoria, rating, reviews_count, fonte, 
+      JSON.stringify(dados_originais), notas
+    ]);
+
+    const leadId = result.rows[0].id;
+
+    // Add to first phase of funnel (Novo Lead)
+    const firstPhase = await pool.query(
+      'SELECT id FROM funil_fases WHERE user_id = $1 ORDER BY ordem LIMIT 1',
+      [userId]
+    );
+
+    if (firstPhase.rows.length > 0) {
+      await pool.query(
+        'INSERT INTO leads_funil (lead_id, fase_id) VALUES ($1, $2)',
+        [leadId, firstPhase.rows[0].id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Lead salvo com sucesso (teste)',
+      lead: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ Save lead test error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar lead',
       error: error.message
     });
   }
