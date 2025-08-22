@@ -423,7 +423,7 @@ const PageInfo = styled.div`
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { subscriptionStatus } = useSubscription();
+  // const { subscriptionStatus } = useSubscription(); // REMOVIDO - ARQUIVO DELETADO
   
   const [filters, setFilters] = useState({
     segmentoNegocio: '',

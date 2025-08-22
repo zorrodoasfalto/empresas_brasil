@@ -42,7 +42,7 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 
 // Import routes
-const stripeRoutes = require('./stripe-routes');
+// const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
 const authRoutes = require('./routes/auth');
 
 // Import database initialization
@@ -69,7 +69,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Use routes
-app.use('/api/stripe', stripeRoutes);
+// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO
 app.use('/api/auth', authRoutes);
 
 // Endpoint temporário para verificar tabelas
