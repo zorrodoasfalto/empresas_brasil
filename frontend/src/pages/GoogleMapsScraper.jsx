@@ -587,7 +587,7 @@ const GoogleMapsScraper = () => {
           console.log('🔍 Saving lead:', lead.nome);
           console.log('🔍 Lead data:', JSON.stringify(lead, null, 2));
           
-          const response = await fetch('/api/crm/leads-save-test', {
+          const response = await fetch('/api/crm/leads', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

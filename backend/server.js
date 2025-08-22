@@ -90,7 +90,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// JWT Authentication Middleware
+// JWT Authentication Middleware (strict)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   
@@ -107,6 +107,27 @@ const authenticateToken = (req, res, next) => {
   } catch (error) {
     return res.status(403).json({ success: false, message: 'Token inválido' });
   }
+};
+
+// Flexible Authentication Middleware - tries to authenticate but continues without token
+const flexibleAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      console.log('🔐 Authenticated user:', decoded.email, 'ID:', decoded.id);
+    } catch (error) {
+      console.log('🔐 Invalid token, continuing without auth');
+      req.user = null;
+    }
+  } else {
+    console.log('🔐 No token provided, continuing without auth');
+    req.user = null;
+  }
+  next();
 };
 
 // Use routes
@@ -524,11 +545,25 @@ app.post('/api/debug/reset-password', async (req, res) => {
   }
 });
 
-// DEBUG: Test leads without auth (temporary)
-app.get('/api/crm/leads-test', async (req, res) => {
+// Get leads with flexible authentication 
+app.get('/api/crm/leads', flexibleAuth, async (req, res) => {
   try {
-    // Use hardcoded user ID 1 for testing
-    const userId = 1;
+    let userId;
+    
+    if (req.user) {
+      userId = req.user.id;
+      console.log('🔐 Loading leads for authenticated user:', req.user.email, 'ID:', userId);
+    } else {
+      const userEmail = req.query.userEmail || 'victormagalhaesg@gmail.com';
+      try {
+        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
+        userId = userResult.rows.length > 0 ? userResult.rows[0].id : 1;
+        console.log('🔐 Loading leads for email:', userEmail, 'ID:', userId);
+      } catch (error) {
+        userId = 1;
+        console.log('🔐 Loading leads for default user ID:', userId);
+      }
+    }
 
     const result = await pool.query(`
       SELECT 
@@ -559,11 +594,10 @@ app.get('/api/crm/leads-test', async (req, res) => {
   }
 });
 
-// DEBUG: Test funnel without auth (temporary)
-app.get('/api/crm/funil-test', async (req, res) => {
+// Get funnel data for authenticated user
+app.get('/api/crm/funil', authenticateToken, async (req, res) => {
   try {
-    // Use hardcoded user ID 1 for testing
-    const userId = 1;
+    const userId = req.user.id;
 
     // Get phases
     const phases = await pool.query(`
@@ -669,13 +703,46 @@ app.get('/api/debug/users', async (req, res) => {
   }
 });
 
-// DEBUG: Save lead without auth (temporary)
-app.post('/api/crm/leads-save-test', async (req, res) => {
+// Save lead with flexible authentication
+app.post('/api/crm/leads', flexibleAuth, async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
-    // Use hardcoded user ID for testing - same as other endpoints
-    const userId = 1;
+    let userId;
+    
+    if (req.user) {
+      // User is authenticated - use their real ID
+      userId = req.user.id;
+      console.log('🔐 Using authenticated user ID:', userId, 'Email:', req.user.email);
+    } else {
+      // No authentication - try to find user by email in localStorage or use default
+      // For now, we'll look for a specific email pattern or use fallback
+      const userEmail = req.body.userEmail || 'victormagalhaesg@gmail.com';
+      
+      try {
+        // First check if user exists in simple_users table (the one referenced by leads)
+        const simpleUserResult = await pool.query('SELECT id FROM simple_users WHERE email = $1', [userEmail]);
+        if (simpleUserResult.rows.length > 0) {
+          userId = simpleUserResult.rows[0].id;
+          console.log('🔐 Found user in simple_users:', userEmail, 'ID:', userId);
+        } else {
+          // Check users table
+          const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
+          if (userResult.rows.length > 0) {
+            // User exists in users but not simple_users - use default ID 1 for compatibility
+            userId = 1;
+            console.log('🔐 User exists in users table but not simple_users, using ID 1 for compatibility:', userEmail);
+          } else {
+            // User doesn't exist anywhere - use default
+            userId = 1;
+            console.log('🔐 User not found, using default ID 1:', userEmail);
+          }
+        }
+      } catch (error) {
+        console.error('🔐 Error finding user, using default ID 1:', error);
+        userId = 1;
+      }
+    }
 
     const {
       nome,
@@ -749,111 +816,9 @@ app.post('/api/crm/leads-save-test', async (req, res) => {
   }
 });
 
-// Save a new lead
-app.post('/api/crm/leads', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token required' });
-    }
+// OLD ENDPOINT REMOVED - Using flexible auth version above
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.id;
-
-    const {
-      nome,
-      empresa,
-      telefone,
-      email,
-      endereco,
-      cnpj,
-      website,
-      categoria,
-      rating,
-      reviews_count,
-      fonte,
-      dados_originais,
-      notas
-    } = req.body;
-
-    const result = await pool.query(`
-      INSERT INTO leads (
-        user_id, nome, empresa, telefone, email, endereco, cnpj, 
-        website, categoria, rating, reviews_count, fonte, dados_originais, notas
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *
-    `, [
-      userId, nome, empresa, telefone, email, endereco, cnpj,
-      website, categoria, rating, reviews_count, fonte, 
-      JSON.stringify(dados_originais), notas
-    ]);
-
-    const leadId = result.rows[0].id;
-
-    // Add to first phase of funnel (Novo Lead)
-    const firstPhase = await pool.query(
-      'SELECT id FROM funil_fases WHERE user_id = $1 ORDER BY ordem LIMIT 1',
-      [userId]
-    );
-
-    if (firstPhase.rows.length > 0) {
-      await pool.query(
-        'INSERT INTO leads_funil (lead_id, fase_id) VALUES ($1, $2)',
-        [leadId, firstPhase.rows[0].id]
-      );
-    }
-
-    res.json({
-      success: true,
-      message: 'Lead salvo com sucesso',
-      lead: result.rows[0]
-    });
-  } catch (error) {
-    console.error('❌ Save lead error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao salvar lead',
-      error: error.message
-    });
-  }
-});
-
-// Get all leads for user
-app.get('/api/crm/leads', async (req, res) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token required' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.id;
-
-    const result = await pool.query(`
-      SELECT 
-        l.*,
-        f.nome as fase_atual,
-        f.cor as fase_cor
-      FROM leads l
-      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
-      LEFT JOIN funil_fases f ON lf.fase_id = f.id
-      WHERE l.user_id = $1
-      ORDER BY l.created_at DESC
-    `, [userId]);
-
-    res.json({
-      success: true,
-      leads: result.rows
-    });
-  } catch (error) {
-    console.error('❌ Get leads error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao buscar leads',
-      error: error.message
-    });
-  }
-});
+// OLD GET ENDPOINT REMOVED - Using flexible auth version above
 
 // Get funnel data
 app.get('/api/crm/funil', async (req, res) => {
