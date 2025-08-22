@@ -425,6 +425,18 @@ app.get('/api/apify/featured', async (req, res) => {
   }
 });
 
+// Debug endpoint to check environment variables
+app.get('/api/debug/env', (req, res) => {
+  res.json({
+    hasApifyKey: !!process.env.APIFY_API_KEY,
+    apifyKeyLength: process.env.APIFY_API_KEY ? process.env.APIFY_API_KEY.length : 0,
+    apifyKeyPrefix: process.env.APIFY_API_KEY ? process.env.APIFY_API_KEY.substring(0, 10) + '...' : 'not set',
+    nodeEnv: process.env.NODE_ENV,
+    port: process.env.PORT,
+    clientInitialized: !!apifyClient
+  });
+});
+
 // Test Apify connection and Google Places actor specifically
 app.get('/api/apify/test', async (req, res) => {
   try {
