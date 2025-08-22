@@ -401,6 +401,12 @@ const GoogleMapsScraper = () => {
     setFormData(prev => ({ ...prev, locationQuery: location }));
   };
 
+  const clearResults = () => {
+    setResults([]);
+    setCurrentRun(null);
+    toast.info('🗑️ Resultados anteriores limpos');
+  };
+
   const runScraper = async () => {
     if (!formData.searchTerms || !formData.locationQuery) {
       if (!formData.searchTerms) {
@@ -410,6 +416,10 @@ const GoogleMapsScraper = () => {
       }
       return;
     }
+
+    // Limpar resultados anteriores automaticamente antes de nova busca
+    setResults([]);
+    setCurrentRun(null);
 
     console.log('🚀 Iniciando scraping com:', {
       searchTerms: formData.searchTerms,
@@ -742,6 +752,9 @@ const GoogleMapsScraper = () => {
                 </ActionButton>
                 <ActionButton onClick={exportToExcel}>
                   📊 Exportar para Excel
+                </ActionButton>
+                <ActionButton onClick={clearResults} style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'}}>
+                  🗑️ Limpar Resultados
                 </ActionButton>
               </ActionButtonsContainer>
               
