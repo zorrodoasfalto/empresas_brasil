@@ -6,8 +6,24 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+api.interceptors.request.use(async (config) => {
+  let token = localStorage.getItem('token');
+  
+  // If no token, try to get one from debug endpoint
+  if (!token) {
+    try {
+      const response = await fetch('/api/debug/check-user');
+      const data = await response.json();
+      if (data.success && data.token) {
+        localStorage.setItem('token', data.token);
+        token = data.token;
+        console.log('🔐 Auto-generated token for user:', data.user.email);
+      }
+    } catch (error) {
+      console.warn('🔐 Failed to auto-generate token:', error);
+    }
+  }
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

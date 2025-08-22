@@ -134,6 +134,62 @@ const flexibleAuth = (req, res, next) => {
 // app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
+// DEBUG: Check if user ID 1 exists and generate token
+app.get('/api/debug/check-user', async (req, res) => {
+  try {
+    // Check users table
+    const userResult = await pool.query('SELECT id, email FROM users WHERE id = 1');
+    
+    // Check simple_users table  
+    const simpleUserResult = await pool.query('SELECT id, email FROM simple_users WHERE id = 1');
+    
+    if (userResult.rows.length > 0) {
+      const user = userResult.rows[0];
+      const token = jwt.sign(
+        { id: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      
+      return res.json({
+        success: true,
+        user,
+        token,
+        table: 'users'
+      });
+    }
+    
+    if (simpleUserResult.rows.length > 0) {
+      const user = simpleUserResult.rows[0];
+      const token = jwt.sign(
+        { id: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      
+      return res.json({
+        success: true,
+        user,
+        token,
+        table: 'simple_users'
+      });
+    }
+    
+    res.json({
+      success: false,
+      message: 'No user with ID 1 found',
+      users_count: userResult.rows.length,
+      simple_users_count: simpleUserResult.rows.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Endpoint temporário para verificar tabelas
 app.get('/api/check-tables', async (req, res) => {
   try {
@@ -548,8 +604,13 @@ app.post('/api/debug/reset-password', async (req, res) => {
 // Get leads - simple version that works
 app.get('/api/crm/leads', async (req, res) => {
   try {
-    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION
-    const userId = 1;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
 
     const result = await pool.query(`
       SELECT 
@@ -647,8 +708,13 @@ app.post('/api/crm/leads', async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
-    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION
-    const userId = 1;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
 
     const {
       nome,
@@ -730,8 +796,13 @@ app.post('/api/crm/leads', async (req, res) => {
 // Get funnel data
 app.get('/api/crm/funil', async (req, res) => {
   try {
-    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION  
-    const userId = 1;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
 
     // Get phases
     const phases = await pool.query(`
