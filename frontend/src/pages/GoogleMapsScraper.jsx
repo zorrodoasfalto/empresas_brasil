@@ -799,9 +799,16 @@ const GoogleMapsScraper = () => {
         
         <RunButton
           onClick={addTestResults}
-          style={{background: 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)', marginTop: '0.5rem'}}
+          style={{
+            background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', 
+            marginTop: '0.5rem',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            border: '3px solid #ffd700',
+            boxShadow: '0 0 20px rgba(255, 107, 107, 0.5)'
+          }}
         >
-          🧪 Adicionar Dados de Teste (Debug)
+          🧪 CLIQUE AQUI: Adicionar Dados de Teste para Ver os Botões
         </RunButton>
       </Card>
 
@@ -822,26 +829,54 @@ const GoogleMapsScraper = () => {
             )}
           </div>
 
+          {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
+          <div style={{ marginBottom: '2rem' }}>
+            <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
+              🎯 Ações Disponíveis
+            </h3>
+            
+            <ActionButtonsContainer>
+              <ActionButton 
+                onClick={saveAllLeads}
+                disabled={!results || results.length === 0}
+                style={{
+                  opacity: (!results || results.length === 0) ? 0.5 : 1,
+                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
+              </ActionButton>
+              <ActionButton 
+                onClick={exportToExcel}
+                disabled={!results || results.length === 0}
+                style={{
+                  background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', 
+                  border: '2px solid #ffd700',
+                  opacity: (!results || results.length === 0) ? 0.5 : 1,
+                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
+              </ActionButton>
+              <ActionButton 
+                onClick={clearResults} 
+                disabled={!results || results.length === 0}
+                style={{
+                  background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
+                  opacity: (!results || results.length === 0) ? 0.5 : 1,
+                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                🗑️ Limpar Resultados
+              </ActionButton>
+            </ActionButtonsContainer>
+          </div>
+
           {results.length > 0 && (
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
                 📊 {results.length} Empresas Encontradas
               </h3>
-              
-              <ActionButtonsContainer>
-                <ActionButton onClick={saveAllLeads}>
-                  💾 Salvar Todos os Leads
-                </ActionButton>
-                <ActionButton 
-                  onClick={exportToExcel}
-                  style={{background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', border: '2px solid #ff0000'}}
-                >
-                  📊 Exportar para Excel
-                </ActionButton>
-                <ActionButton onClick={clearResults} style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'}}>
-                  🗑️ Limpar Resultados
-                </ActionButton>
-              </ActionButtonsContainer>
               
               <div style={{ 
                 maxHeight: '400px', 
