@@ -47,10 +47,20 @@ const PORT = process.env.PORT || 6000;
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
-// Initialize Apify client
-const apifyClient = new ApifyClient({
-  token: APIFY_API_KEY
-});
+// Initialize Apify client only if API key exists
+let apifyClient = null;
+if (APIFY_API_KEY) {
+  try {
+    apifyClient = new ApifyClient({
+      token: APIFY_API_KEY
+    });
+    console.log('✅ Apify client initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize Apify client:', error.message);
+  }
+} else {
+  console.warn('⚠️ APIFY_API_KEY not configured - Apify features disabled');
+}
 
 // Import routes
 // const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
@@ -294,10 +304,10 @@ app.post('/api/apify/run/:actorId', async (req, res) => {
     console.log(`🚀 Running Apify actor: ${actorId}`);
     console.log('📋 Input data:', JSON.stringify(inputData, null, 2));
 
-    if (!APIFY_API_KEY) {
+    if (!apifyClient) {
       return res.status(500).json({
         success: false,
-        message: 'Apify API key not configured'
+        message: 'Apify client not available - check API key configuration'
       });
     }
     
@@ -329,10 +339,10 @@ app.get('/api/apify/runs/:runId', async (req, res) => {
     
     console.log(`📊 Checking status for run: ${runId}`);
 
-    if (!APIFY_API_KEY) {
+    if (!apifyClient) {
       return res.status(500).json({
         success: false,
-        message: 'Apify API key not configured'
+        message: 'Apify client not available - check API key configuration'
       });
     }
     

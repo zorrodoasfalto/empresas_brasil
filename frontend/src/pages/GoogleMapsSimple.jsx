@@ -214,12 +214,12 @@ const GoogleMapsSimple = () => {
       </FormGroup>
 
       <FormGroup>
-        <Label>Quantidade de resultados</Label>
+        <Label>📊 Quantidade de empresas para buscar</Label>
         <Input
           type="number"
           value={maxResults}
           onChange={(e) => setMaxResults(e.target.value)}
-          placeholder="Ex: 20, 50, 100..."
+          placeholder="Digite um número entre 1 e 200..."
           min="1"
           max="200"
           disabled={isRunning}
