@@ -545,40 +545,11 @@ app.post('/api/debug/reset-password', async (req, res) => {
   }
 });
 
-// Get leads with flexible authentication 
-app.get('/api/crm/leads', flexibleAuth, async (req, res) => {
+// Get leads - simple version that works
+app.get('/api/crm/leads', async (req, res) => {
   try {
-    let userId;
-    
-    if (req.user) {
-      userId = req.user.id;
-      console.log('🔐 Loading leads for authenticated user:', req.user.email, 'ID:', userId);
-    } else {
-      const userEmail = req.query.userEmail || 'victormagalhaesg@gmail.com';
-      try {
-        // Use same logic as save endpoint - check simple_users first
-        const simpleUserResult = await pool.query('SELECT id FROM simple_users WHERE email = $1', [userEmail]);
-        if (simpleUserResult.rows.length > 0) {
-          userId = simpleUserResult.rows[0].id;
-          console.log('🔐 Loading leads from simple_users:', userEmail, 'ID:', userId);
-        } else {
-          // Check users table
-          const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
-          if (userResult.rows.length > 0) {
-            // User exists in users but not simple_users - use default ID 1 for compatibility
-            userId = 1;
-            console.log('🔐 User exists in users table but not simple_users, using ID 1 for compatibility:', userEmail);
-          } else {
-            // User doesn't exist anywhere - use default
-            userId = 1;
-            console.log('🔐 User not found, using default ID 1:', userEmail);
-          }
-        }
-      } catch (error) {
-        console.error('🔐 Error finding user, using default ID 1:', error);
-        userId = 1;
-      }
-    }
+    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION
+    const userId = 1;
 
     const result = await pool.query(`
       SELECT 
@@ -718,46 +689,13 @@ app.get('/api/debug/users', async (req, res) => {
   }
 });
 
-// Save lead with flexible authentication
-app.post('/api/crm/leads', flexibleAuth, async (req, res) => {
+// Save lead - simple version that works  
+app.post('/api/crm/leads', async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
-    let userId;
-    
-    if (req.user) {
-      // User is authenticated - use their real ID
-      userId = req.user.id;
-      console.log('🔐 Using authenticated user ID:', userId, 'Email:', req.user.email);
-    } else {
-      // No authentication - try to find user by email in localStorage or use default
-      // For now, we'll look for a specific email pattern or use fallback
-      const userEmail = req.body.userEmail || 'victormagalhaesg@gmail.com';
-      
-      try {
-        // First check if user exists in simple_users table (the one referenced by leads)
-        const simpleUserResult = await pool.query('SELECT id FROM simple_users WHERE email = $1', [userEmail]);
-        if (simpleUserResult.rows.length > 0) {
-          userId = simpleUserResult.rows[0].id;
-          console.log('🔐 Found user in simple_users:', userEmail, 'ID:', userId);
-        } else {
-          // Check users table
-          const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
-          if (userResult.rows.length > 0) {
-            // User exists in users but not simple_users - use default ID 1 for compatibility
-            userId = 1;
-            console.log('🔐 User exists in users table but not simple_users, using ID 1 for compatibility:', userEmail);
-          } else {
-            // User doesn't exist anywhere - use default
-            userId = 1;
-            console.log('🔐 User not found, using default ID 1:', userEmail);
-          }
-        }
-      } catch (error) {
-        console.error('🔐 Error finding user, using default ID 1:', error);
-        userId = 1;
-      }
-    }
+    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION
+    const userId = 1;
 
     const {
       nome,
