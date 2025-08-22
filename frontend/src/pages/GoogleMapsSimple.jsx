@@ -87,8 +87,10 @@ const StatusCard = styled.div`
 const GoogleMapsSimple = () => {
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
+  const [maxResults, setMaxResults] = useState(20);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState('');
+  const [results, setResults] = useState([]);
 
   const runScraper = async () => {
     if (!keyword.trim() || !location.trim()) {
@@ -107,7 +109,7 @@ const GoogleMapsSimple = () => {
           includeWebResults: false,
           language: "pt-BR",
           locationQuery: location.trim(),
-          maxCrawledPlacesPerSearch: 20,
+          maxCrawledPlacesPerSearch: parseInt(maxResults),
           maxImages: 0,
           maximumLeadsEnrichmentRecords: 0,
           scrapeContacts: false,
@@ -171,6 +173,7 @@ const GoogleMapsSimple = () => {
         } else if (data.status === 'SUCCEEDED') {
           const count = data.results?.length || 0;
           setStatus(`✅ Concluído! Encontradas ${count} empresas`);
+          setResults(data.results || []);
           toast.success(`✅ Scraping concluído! ${count} resultados`);
           setIsRunning(false);
         } else if (data.status === 'FAILED') {
@@ -210,6 +213,19 @@ const GoogleMapsSimple = () => {
         />
       </FormGroup>
 
+      <FormGroup>
+        <Label>Quantidade de resultados</Label>
+        <Input
+          type="number"
+          value={maxResults}
+          onChange={(e) => setMaxResults(e.target.value)}
+          placeholder="Ex: 20, 50, 100..."
+          min="1"
+          max="200"
+          disabled={isRunning}
+        />
+      </FormGroup>
+
       <RunButton 
         onClick={runScraper} 
         disabled={isRunning || !keyword.trim() || !location.trim()}
@@ -221,6 +237,86 @@ const GoogleMapsSimple = () => {
         <StatusCard>
           <strong>Status:</strong> {status}
         </StatusCard>
+      )}
+
+      {results.length > 0 && (
+        <div style={{
+          background: 'rgba(0, 136, 204, 0.1)',
+          border: '1px solid rgba(0, 204, 255, 0.3)',
+          borderRadius: '8px',
+          padding: '1.5rem',
+          marginTop: '2rem'
+        }}>
+          <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
+            📊 {results.length} Empresas Encontradas
+          </h3>
+          
+          <div style={{
+            maxHeight: '400px',
+            overflowY: 'auto',
+            border: '1px solid rgba(0, 255, 170, 0.2)',
+            borderRadius: '6px'
+          }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              color: '#e0e0e0'
+            }}>
+              <thead>
+                <tr style={{ background: 'rgba(0, 255, 170, 0.1)' }}>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Nome</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Endereço</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Telefone</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Avaliação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((place, index) => (
+                  <tr key={index} style={{ borderBottom: '1px solid rgba(0, 255, 170, 0.1)' }}>
+                    <td style={{ padding: '0.75rem' }}>
+                      <div>
+                        <strong style={{ color: '#00ccff' }}>
+                          {place.title || place.name || 'Nome não disponível'}
+                        </strong>
+                        {place.category && (
+                          <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.25rem' }}>
+                            {place.category}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>
+                      {place.address || place.location || 'Endereço não disponível'}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>
+                      {place.phone || place.phoneNumber || 'Telefone não disponível'}
+                    </td>
+                    <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>
+                      {place.rating ? (
+                        <span style={{ color: '#00ffaa' }}>
+                          ⭐ {place.rating} ({place.reviewsCount || 0} avaliações)
+                        </span>
+                      ) : (
+                        'Sem avaliação'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            background: 'rgba(0, 255, 170, 0.1)', 
+            borderRadius: '6px',
+            textAlign: 'center',
+            color: '#00ccff'
+          }}>
+            💡 <strong>{results.length}</strong> empresas encontradas de <strong>{keyword}</strong> em <strong>{location}</strong>
+          </div>
+        </div>
       )}
     </Container>
   );
