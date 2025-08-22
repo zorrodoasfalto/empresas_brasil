@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
+import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
   padding: 2rem;
@@ -266,6 +268,69 @@ const StatusBadge = styled.div`
   }}
 `;
 
+const ActionButtonsContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  justify-content: center;
+  flex-wrap: wrap;
+`;
+
+const ActionButton = styled.button`
+  background: linear-gradient(135deg, #00ffaa 0%, #0088cc 100%);
+  color: #0a0a19;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-width: 180px;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s ease;
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
+  
+  &:hover {
+    box-shadow: 
+      0 0 25px rgba(0, 255, 170, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    
+    &:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+`;
+
 const GoogleMapsScraper = () => {
   const [formData, setFormData] = useState({
     searchTerms: '',
@@ -275,6 +340,7 @@ const GoogleMapsScraper = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
+  const { user } = useAuth();
 
   const businessKeywords = {
     'Alimentação': [
@@ -431,6 +497,131 @@ const GoogleMapsScraper = () => {
     }
   };
 
+  const saveAllLeads = async () => {
+    if (!results || results.length === 0) {
+      toast.warning('Nenhum resultado para salvar');
+      return;
+    }
+
+    if (!user || !user.id) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    try {
+      const leadsToSave = results.map(place => ({
+        company: place.title || place.name || 'Empresa sem nome',
+        email: place.email || '',
+        phone: place.phone || '',
+        address: place.address || '',
+        website: place.website || '',
+        rating: place.rating || '',
+        reviewsCount: place.reviewsCount || 0,
+        interest: `Google Maps Lead - ${formData.searchTerms} em ${formData.locationQuery}`,
+        source: 'Google Maps Scraping'
+      }));
+
+      let savedCount = 0;
+      let errorCount = 0;
+
+      for (const lead of leadsToSave) {
+        try {
+          const response = await fetch('/api/leads/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(lead)
+          });
+
+          if (response.ok) {
+            savedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('Erro ao salvar lead:', error);
+        }
+      }
+
+      if (savedCount > 0) {
+        toast.success(`✅ ${savedCount} leads salvos com sucesso!`);
+      }
+      if (errorCount > 0) {
+        toast.warning(`⚠️ ${errorCount} leads falharam ao salvar`);
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar leads:', error);
+      toast.error('Erro ao salvar leads');
+    }
+  };
+
+  const exportToExcel = () => {
+    if (!results || results.length === 0) {
+      toast.warning('Nenhum resultado para exportar');
+      return;
+    }
+
+    try {
+      const exportData = results.map((place, index) => ({
+        'Nº': index + 1,
+        'Nome/Empresa': place.title || place.name || '',
+        'Endereço': place.address || '',
+        'Telefone': place.phone || '',
+        'Website': place.website || '',
+        'Email': place.email || '',
+        'Avaliação': place.rating || '',
+        'Número de Avaliações': place.reviewsCount || 0,
+        'Categoria': place.categoryName || '',
+        'Horário de Funcionamento': place.openingHours || '',
+        'Coordenadas Lat': place.location?.lat || '',
+        'Coordenadas Lng': place.location?.lng || '',
+        'Busca Realizada': formData.searchTerms,
+        'Localização Pesquisada': formData.locationQuery,
+        'Data da Exportação': new Date().toLocaleDateString('pt-BR'),
+        'Hora da Exportação': new Date().toLocaleTimeString('pt-BR')
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      const columnWidths = [
+        { wch: 5 },   // Nº
+        { wch: 25 },  // Nome/Empresa
+        { wch: 30 },  // Endereço
+        { wch: 15 },  // Telefone
+        { wch: 25 },  // Website
+        { wch: 20 },  // Email
+        { wch: 10 },  // Avaliação
+        { wch: 15 },  // Número de Avaliações
+        { wch: 20 },  // Categoria
+        { wch: 20 },  // Horário
+        { wch: 12 },  // Lat
+        { wch: 12 },  // Lng
+        { wch: 20 },  // Busca
+        { wch: 20 },  // Localização
+        { wch: 12 },  // Data
+        { wch: 12 }   // Hora
+      ];
+      
+      worksheet['!cols'] = columnWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Google Maps Results');
+
+      const fileName = `google-maps-${formData.searchTerms?.replace(/\s+/g, '-') || 'busca'}-${formData.locationQuery?.replace(/\s+/g, '-') || 'localizacao'}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      XLSX.writeFile(workbook, fileName);
+      toast.success(`✅ Dados exportados para ${fileName}`);
+
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      toast.error('Erro ao exportar dados para Excel');
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -544,6 +735,15 @@ const GoogleMapsScraper = () => {
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
                 📊 {results.length} Empresas Encontradas
               </h3>
+              
+              <ActionButtonsContainer>
+                <ActionButton onClick={saveAllLeads}>
+                  💾 Salvar Todos os Leads
+                </ActionButton>
+                <ActionButton onClick={exportToExcel}>
+                  📊 Exportar para Excel
+                </ActionButton>
+              </ActionButtonsContainer>
               
               <div style={{ 
                 maxHeight: '400px', 
