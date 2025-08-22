@@ -9,6 +9,7 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import GooglePlacesScraper from './pages/GooglePlacesScraper';
 import AboutUs from './pages/AboutUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/google-places" 
+              element={
+                <ProtectedRoute>
+                  <GooglePlacesScraper />
                 </ProtectedRoute>
               } 
             />

@@ -3,6 +3,7 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 require('dotenv').config();
 
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
@@ -40,6 +41,10 @@ function cleanNomeFantasia(nomeFantasia) {
 
 const app = express();
 const PORT = process.env.PORT || 6000;
+
+// Apify configuration
+const APIFY_API_KEY = process.env.APIFY_API_KEY || 'apify_api_V35PWGb8TmhGeggAVC43FrfYuAed462LAGc3';
+const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
 // Import routes
 // const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
@@ -248,6 +253,203 @@ app.post('/api/auth/change-password', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Token inválido' });
     }
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// APIFY INTEGRATION ENDPOINTS
+
+// Get available Apify actors
+app.get('/api/apify/actors', async (req, res) => {
+  try {
+    const response = await axios.get(`${APIFY_BASE_URL}/acts`, {
+      params: { token: APIFY_API_KEY, limit: 100 }
+    });
+    
+    res.json({
+      success: true,
+      actors: response.data.data.items
+    });
+  } catch (error) {
+    console.error('Apify actors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching Apify actors',
+      error: error.message
+    });
+  }
+});
+
+// Run an Apify actor
+app.post('/api/apify/run/:actorId', async (req, res) => {
+  try {
+    let { actorId } = req.params;
+    const inputData = req.body;
+    
+    // Handle the special format for compass/crawler-google-places
+    if (actorId === 'compass~crawler-google-places') {
+      actorId = 'compass/crawler-google-places';
+    }
+    
+    console.log(`🚀 Running Apify actor: ${actorId}`);
+    console.log('📋 Input data:', JSON.stringify(inputData, null, 2));
+    
+    const response = await axios.post(
+      `${APIFY_BASE_URL}/acts/${actorId}/runs`,
+      inputData,
+      {
+        params: { token: APIFY_API_KEY },
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    
+    console.log(`✅ Actor started successfully. Run ID: ${response.data.data.id}`);
+    
+    res.json({
+      success: true,
+      runId: response.data.data.id,
+      status: response.data.data.status,
+      message: 'Actor started successfully'
+    });
+  } catch (error) {
+    console.error('❌ Apify run error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error running Apify actor',
+      error: error.response?.data || error.message
+    });
+  }
+});
+
+// Get run status and results
+app.get('/api/apify/runs/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    
+    console.log(`📊 Checking status for run: ${runId}`);
+    
+    const response = await axios.get(`${APIFY_BASE_URL}/actor-runs/${runId}`, {
+      params: { token: APIFY_API_KEY }
+    });
+    
+    const runData = response.data.data;
+    console.log(`📈 Run status: ${runData.status}`);
+    
+    let results = null;
+    if (runData.status === 'SUCCEEDED' && runData.defaultDatasetId) {
+      try {
+        console.log(`📂 Fetching results from dataset: ${runData.defaultDatasetId}`);
+        const resultsResponse = await axios.get(
+          `${APIFY_BASE_URL}/datasets/${runData.defaultDatasetId}/items`,
+          { params: { token: APIFY_API_KEY, limit: 200 } }
+        );
+        results = resultsResponse.data;
+        console.log(`✅ Found ${results.length} results`);
+      } catch (resultsError) {
+        console.log('❌ Could not fetch results:', resultsError.message);
+      }
+    }
+    
+    res.json({
+      success: true,
+      status: runData.status,
+      startedAt: runData.startedAt,
+      finishedAt: runData.finishedAt,
+      results: results
+    });
+  } catch (error) {
+    console.error('❌ Apify run status error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching run status',
+      error: error.response?.data || error.message
+    });
+  }
+});
+
+// Get popular/featured actors for the dashboard
+app.get('/api/apify/featured', async (req, res) => {
+  try {
+    // List of business-relevant actor IDs
+    const businessActors = [
+      'compass/crawler-google-places',  // Google Places scraper
+      'apify/google-maps-scraper',      // Google Maps data
+      'apify/google-search-results-scraper', // Google Search results  
+      'apify/linkedin-company-scraper', // LinkedIn companies
+      'apify/web-scraper',              // General web scraper
+      'drobnikj/crawler-google-places'  // Alternative Google Places
+    ];
+    
+    const actorsData = await Promise.all(
+      businessActors.map(async (actorId) => {
+        try {
+          const response = await axios.get(`${APIFY_BASE_URL}/acts/${actorId}`, {
+            params: { token: APIFY_API_KEY }
+          });
+          return response.data.data;
+        } catch (error) {
+          console.log(`Could not fetch actor ${actorId}:`, error.message);
+          return {
+            id: actorId,
+            name: actorId,
+            description: 'Actor not available or access restricted',
+            isError: true
+          };
+        }
+      })
+    );
+    
+    res.json({
+      success: true,
+      actors: actorsData
+    });
+  } catch (error) {
+    console.error('Featured actors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching featured actors',
+      error: error.message
+    });
+  }
+});
+
+// Test Apify connection and Google Places actor specifically
+app.get('/api/apify/test', async (req, res) => {
+  try {
+    // Test basic connection
+    const connectionTest = await axios.get(`${APIFY_BASE_URL}/acts`, {
+      params: { token: APIFY_API_KEY, limit: 1 }
+    });
+    
+    // Test Google Places actor specifically
+    let googlePlacesActor = null;
+    try {
+      const actorResponse = await axios.get(`${APIFY_BASE_URL}/acts/compass~crawler-google-places`, {
+        params: { token: APIFY_API_KEY }
+      });
+      googlePlacesActor = actorResponse.data.data;
+    } catch (actorError) {
+      console.log('Google Places actor test failed:', actorError.message);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Apify connection successful',
+      totalActors: connectionTest.data.data.total,
+      googlePlacesActor: googlePlacesActor ? {
+        id: googlePlacesActor.id,
+        name: googlePlacesActor.name,
+        username: googlePlacesActor.username,
+        isPublic: googlePlacesActor.isPublic
+      } : 'Not accessible',
+      apiKey: APIFY_API_KEY ? 'Configured' : 'Missing'
+    });
+  } catch (error) {
+    console.error('Apify test error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Apify connection failed',
+      error: error.response?.data || error.message
+    });
   }
 });
 
@@ -605,6 +807,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     const filters = req.body;
     const page = filters.page || 1;
     let companyLimit = filters.companyLimit || 1000;
+    const searchMode = filters.searchMode || 'normal';
 
     // Set timeout for this request based on company limit
     const timeoutId = setTimeout(() => {
@@ -747,6 +950,31 @@ app.post('/api/companies/filtered', async (req, res) => {
     const offset = (page - 1) * perPage;
     const limitPerPage = perPage;
     
+    // Dynamic ORDER BY based on search mode
+    let orderByClause = 'ORDER BY est.cnpj_basico'; // default
+    switch (searchMode) {
+      case 'random':
+        orderByClause = 'ORDER BY RANDOM()';
+        break;
+      case 'alphabetic':
+        orderByClause = 'ORDER BY est.razao_social ASC';
+        break;
+      case 'alphabetic_desc':
+        orderByClause = 'ORDER BY est.razao_social DESC';
+        break;
+      case 'newest':
+        orderByClause = 'ORDER BY est.data_inicio_atividades DESC NULLS LAST';
+        break;
+      case 'largest':
+        orderByClause = 'ORDER BY COALESCE(est.capital_social::NUMERIC, 0) DESC';
+        break;
+      case 'reverse':
+        orderByClause = 'ORDER BY est.cnpj_basico DESC';
+        break;
+      default:
+        orderByClause = 'ORDER BY est.cnpj_basico';
+    }
+    
     // Complete query with all data including Simples Nacional
     const query = `
       SELECT 
@@ -795,7 +1023,7 @@ app.post('/api/companies/filtered', async (req, res) => {
       LEFT JOIN empresas emp ON est.cnpj_basico = emp.cnpj_basico
       LEFT JOIN simples ON est.cnpj_basico = simples.cnpj_basico
       ${whereClause}
-      ORDER BY est.cnpj_basico
+      ${orderByClause}
       LIMIT $${params.length + 1} OFFSET $${params.length + 2}
     `;
     
@@ -803,7 +1031,8 @@ app.post('/api/companies/filtered', async (req, res) => {
     
     console.log(`🔧 PAGINAÇÃO DEBUG:`);
     console.log(`   Page: ${page}, CompanyLimit: ${companyLimit}, PerPage: ${perPage}`);
-    console.log(`   Offset: ${offset}, LimitPerPage: ${limitPerPage}`);
+    console.log(`   SearchMode: ${searchMode}, Offset: ${offset}, LimitPerPage: ${limitPerPage}`);
+    console.log(`   OrderBy: ${orderByClause}`);
     console.log(`   Query: LIMIT ${limitPerPage} OFFSET ${offset}`);
     console.log(`🔍 FINAL QUERY CONDITIONS: ${JSON.stringify(conditions)}`);
     console.log(`🔍 FINAL QUERY PARAMS: ${JSON.stringify(params.slice(0, -2))}`); // Exclude limit/offset
@@ -1022,6 +1251,75 @@ app.post('/api/companies/filtered', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'Erro na busca de empresas',
+      error: error.message,
+      queryTimeMs: queryTime
+    });
+  }
+});
+
+// Get total company count with filters (without returning data)
+app.post('/api/companies/count', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    const { uf, segmentoNegocio, situacaoCadastral, porteEmpresa } = req.body;
+    
+    let whereConditions = ['1=1'];
+    let queryParams = [];
+    let paramCount = 0;
+
+    // UF filter
+    if (uf && uf.trim() !== '') {
+      paramCount++;
+      whereConditions.push(`e.uf = $${paramCount}`);
+      queryParams.push(uf.trim());
+    }
+
+    // Business segment filter (CNAE mapping)
+    if (segmentoNegocio) {
+      const segmentCnaes = getSegmentCnaes(segmentoNegocio);
+      if (segmentCnaes.length > 0) {
+        const placeholders = segmentCnaes.map((_, index) => `$${paramCount + index + 1}`).join(',');
+        whereConditions.push(`e.cnae_fiscal_principal IN (${placeholders})`);
+        queryParams.push(...segmentCnaes);
+        paramCount += segmentCnaes.length;
+      }
+    }
+
+    // Build count query
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM empresa e
+      WHERE ${whereConditions.join(' AND ')}
+    `;
+
+    console.log('🔍 Count query:', countQuery);
+    console.log('📊 Parameters:', queryParams);
+
+    const countResult = await pool.query(countQuery, queryParams);
+    const totalCompanies = parseInt(countResult.rows[0].total);
+    const queryTime = Date.now() - startTime;
+
+    console.log(`📊 Total companies found: ${totalCompanies.toLocaleString()}`);
+
+    res.json({
+      success: true,
+      totalCompanies,
+      filters: {
+        uf: uf || null,
+        segmentoNegocio: segmentoNegocio || null,
+        situacaoCadastral: situacaoCadastral || null,
+        porteEmpresa: porteEmpresa || null
+      },
+      queryTimeMs: queryTime
+    });
+
+  } catch (error) {
+    const queryTime = Date.now() - startTime;
+    console.error('❌ Count error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erro ao contar empresas',
       error: error.message,
       queryTimeMs: queryTime
     });

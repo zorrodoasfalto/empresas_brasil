@@ -287,6 +287,60 @@ const Select = styled.select`
   }
 `;
 
+const CountSection = styled.div`
+  background: rgba(0, 136, 204, 0.1);
+  border: 1px solid rgba(0, 204, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+`;
+
+const CountInfo = styled.div`
+  color: #00ccff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  
+  .total {
+    color: #00ffaa;
+    font-size: 1.3rem;
+    font-weight: bold;
+  }
+`;
+
+const OffsetControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+`;
+
+const OffsetButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    background: rgba(255, 255, 255, 0.1);
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const Input = styled.input`
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(0, 255, 170, 0.3);
@@ -638,6 +692,11 @@ const Dashboard = () => {
         [name]: value
       }));
     }
+    
+    // Reset results when filters change
+    if (name !== 'companyLimit') {
+      setEmpresas([]);
+    }
   };
 
   const handleUpgrade = () => {
@@ -648,6 +707,8 @@ const Dashboard = () => {
     navigate('/');
   };
 
+
+  // Simplified search - no complex counting needed
 
   const handleSearch = async (page = 1) => {
     // Validate at least one filter is selected
@@ -1027,6 +1088,7 @@ const Dashboard = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  // Removed complex offset system - using search modes instead
   
   const toggleRepresentantes = (empresaIndex) => {
     setExpandedRepresentantes(prev => ({
@@ -1130,10 +1192,10 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
-            onClick={() => setActiveModal('password')}
+            onClick={() => window.location.href = '/google-maps'}
           >
-            <span className="icon">🔐</span>
-            <span className="text">Alterar Senha</span>
+            <span className="icon">📍</span>
+            <span className="text">Google Maps</span>
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
@@ -1352,6 +1414,23 @@ const Dashboard = () => {
             </FormGroup>
 
             <FormGroup>
+              <Label>Modo de Busca</Label>
+              <Select
+                name="searchMode"
+                value={filters.searchMode || 'normal'}
+                onChange={handleInputChange}
+              >
+                <option value="normal">📋 Busca Normal (CNPJ crescente)</option>
+                <option value="random">🎲 Empresas Aleatórias</option>
+                <option value="alphabetic">🔤 Ordem Alfabética (A-Z)</option>
+                <option value="alphabetic_desc">🔤 Ordem Alfabética (Z-A)</option>
+                <option value="newest">🆕 Empresas Mais Recentes</option>
+                <option value="largest">💰 Maior Capital Social</option>
+                <option value="reverse">🔄 CNPJ Decrescente</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
               <Label>Limite de Empresas</Label>
               <Select
                 value={companyLimit}
@@ -1365,6 +1444,26 @@ const Dashboard = () => {
               </Select>
             </FormGroup>
           </FiltersGrid>
+
+          {/* Search Mode Info */}
+          {filters.searchMode && filters.searchMode !== 'normal' && (
+            <div style={{
+              background: 'rgba(0, 204, 255, 0.1)',
+              border: '1px solid rgba(0, 204, 255, 0.3)',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1rem',
+              color: '#00ccff',
+              textAlign: 'center'
+            }}>
+              {filters.searchMode === 'random' && '🎲 Modo aleatório ativo - você verá empresas diferentes a cada busca'}
+              {filters.searchMode === 'alphabetic' && '🔤 Ordenação alfabética A-Z ativa'}
+              {filters.searchMode === 'alphabetic_desc' && '🔤 Ordenação alfabética Z-A ativa'}
+              {filters.searchMode === 'newest' && '🆕 Mostrando empresas mais recentes primeiro'}
+              {filters.searchMode === 'largest' && '💰 Ordenando por maior capital social'}
+              {filters.searchMode === 'reverse' && '🔄 CNPJ em ordem decrescente'}
+            </div>
+          )}
 
           <SearchButton onClick={() => {
             setCurrentPage(1);
@@ -1726,6 +1825,29 @@ const Dashboard = () => {
                 }}>
                   {user?.firstName || 'Usuário'}
                 </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <button
+                  onClick={() => setActiveModal('password')}
+                  style={{
+                    background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
+                    border: 'none',
+                    color: '#fff',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    width: '100%',
+                    fontSize: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  🔐 Alterar Senha
+                </button>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

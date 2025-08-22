@@ -1,72 +1,72 @@
 @echo off
-echo ==========================================
-echo    DEPLOY COMPLETO PARA RAILWAY
-echo ==========================================
-echo.
+echo =============================================
+echo 🚀 DEPLOY RAILWAY - EMPRESAS BRASIL BACKEND
+echo =============================================
 
-echo 🔧 Verificando Railway CLI...
-where railway >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ❌ Railway CLI não encontrado. Instalando...
-    npm install -g @railway/cli
+echo.
+echo 📁 Navegando para diretório backend...
+cd /d "%~dp0backend"
+
+echo.
+echo 📦 Verificando package.json...
+if not exist package.json (
+    echo ❌ package.json não encontrado!
+    pause
+    exit /b 1
 )
 
+echo ✅ package.json encontrado
 echo.
-echo 🔐 Verificando login...
-railway whoami >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ❌ Não logado no Railway. Execute: railway login
+
+echo 🔧 Instalando dependências...
+call npm install
+if errorlevel 1 (
+    echo ❌ Erro ao instalar dependências
     pause
     exit /b 1
 )
 
 echo.
-echo 🔙 Deploy do Backend...
-cd backend
-echo Fazendo deploy do backend para Railway...
-railway up
-if %errorlevel% neq 0 (
-    echo ❌ Erro no deploy do backend!
-    pause
-    exit /b 1
+echo 🚀 Iniciando deploy no Railway...
+echo Tentativa 1: Deploy direto
+call railway deploy --detach
+if not errorlevel 1 (
+    echo ✅ Deploy realizado com sucesso!
+    goto :success
 )
 
 echo.
-echo 🎨 Preparando Frontend...
-cd ..\frontend
-
-echo Configurando URL da API para produção...
-echo VITE_API_URL=https://backend-service.up.railway.app/api > .env
-
-echo Construindo frontend...
-npm run build
-if %errorlevel% neq 0 (
-    echo ❌ Erro no build do frontend!
-    pause
-    exit /b 1
+echo Tentativa 2: Deploy forçado
+call railway deploy . 
+if not errorlevel 1 (
+    echo ✅ Deploy realizado com sucesso!
+    goto :success
 )
 
-echo Deploy do frontend para Railway...
-railway up
-if %errorlevel% neq 0 (
-    echo ❌ Erro no deploy do frontend!
-    pause
-    exit /b 1
+echo.
+echo Tentativa 3: Deploy com verbose
+call railway deploy --verbose
+if not errorlevel 1 (
+    echo ✅ Deploy realizado com sucesso!
+    goto :success
 )
 
-cd ..
+echo.
+echo ❌ Todas as tentativas falharam
+echo 💡 Execute manualmente: railway deploy
+echo 💡 Se pedir template, escolha: Node.js
+pause
+exit /b 1
 
+:success
 echo.
-echo ✅ Deploy completo finalizado!
+echo =============================================
+echo ✅ DEPLOY CONCLUÍDO COM SUCESSO!
+echo =============================================
 echo.
-echo 🌐 URLs de Produção:
-echo Backend:  https://backend-service.up.railway.app/api
-echo Frontend: https://frontend-service.up.railway.app
-echo Database: Railway PostgreSQL (já ativo)
-echo.
-echo 📋 Próximos passos:
-echo 1. Verificar se ambos serviços estão rodando
-echo 2. Testar login no frontend
-echo 3. Testar consulta de empresas
+echo 🌐 Seu backend está sendo deployado
+echo 📊 Verifique o status no Railway Dashboard
+echo 🔧 Backend sem sistema de subscription
+echo 🎯 Acesso direto ao dashboard garantido
 echo.
 pause
