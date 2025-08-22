@@ -407,6 +407,42 @@ const GoogleMapsScraper = () => {
     toast.info('🗑️ Resultados anteriores limpos');
   };
 
+  // Função temporária para adicionar dados de teste
+  const addTestResults = () => {
+    const testData = [
+      {
+        title: 'Restaurante Dom Luigi',
+        name: 'Dom Luigi Restaurante',
+        address: 'Rua Augusta, 123 - São Paulo, SP',
+        phone: '(11) 3456-7890',
+        website: 'https://domluigi.com.br',
+        email: 'contato@domluigi.com.br',
+        rating: 4.5,
+        reviewsCount: 245,
+        categoryName: 'Restaurante Italiano',
+        openingHours: '18:00-23:00',
+        location: { lat: -23.5505, lng: -46.6333 }
+      },
+      {
+        title: 'Padaria Central',
+        name: 'Padaria Central Ltda',
+        address: 'Av. Paulista, 456 - São Paulo, SP',
+        phone: '(11) 2345-6789',
+        website: 'https://padariacentral.com.br',
+        email: 'vendas@padariacentral.com.br',
+        rating: 4.2,
+        reviewsCount: 180,
+        categoryName: 'Padaria',
+        openingHours: '06:00-20:00',
+        location: { lat: -23.5515, lng: -46.6343 }
+      }
+    ];
+    
+    setResults(testData);
+    setFormData({ searchTerms: 'restaurantes', locationQuery: 'São Paulo, SP' });
+    toast.success('🧪 Dados de teste adicionados! Agora teste os botões.');
+  };
+
   const runScraper = async () => {
     if (!formData.searchTerms || !formData.locationQuery) {
       if (!formData.searchTerms) {
@@ -605,6 +641,8 @@ const GoogleMapsScraper = () => {
   };
 
   const exportToExcel = () => {
+    console.log('🔍 exportToExcel called - results:', results?.length);
+    toast.info('🔍 Botão Excel clicado! Iniciando exportação...');
     if (!results || results.length === 0) {
       toast.warning('Nenhum resultado para exportar');
       return;
@@ -756,6 +794,13 @@ const GoogleMapsScraper = () => {
             <>🚀 Iniciar Google Maps Scraping</>
           )}
         </RunButton>
+        
+        <RunButton
+          onClick={addTestResults}
+          style={{background: 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)', marginTop: '0.5rem'}}
+        >
+          🧪 Adicionar Dados de Teste (Debug)
+        </RunButton>
       </Card>
 
       {currentRun && (
@@ -785,7 +830,10 @@ const GoogleMapsScraper = () => {
                 <ActionButton onClick={saveAllLeads}>
                   💾 Salvar Todos os Leads
                 </ActionButton>
-                <ActionButton onClick={exportToExcel}>
+                <ActionButton 
+                  onClick={exportToExcel}
+                  style={{background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', border: '2px solid #ff0000'}}
+                >
                   📊 Exportar para Excel
                 </ActionButton>
                 <ActionButton onClick={clearResults} style={{background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)'}}>
