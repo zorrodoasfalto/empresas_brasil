@@ -609,6 +609,66 @@ app.get('/api/crm/funil-test', async (req, res) => {
   }
 });
 
+// DEBUG: Create user Victor (temporary)
+app.post('/api/debug/create-victor', async (req, res) => {
+  try {
+    const email = 'victormagalhaesg@gmail.com';
+    const password = 'victor123';
+    const name = 'Victor Magalhaes';
+    
+    // Check if user already exists
+    const existingUser = await pool.query('SELECT * FROM simple_users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.json({
+        success: true,
+        message: 'Usuário Victor já existe',
+        user: { id: existingUser.rows[0].id, email: existingUser.rows[0].email }
+      });
+    }
+    
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    // Create user
+    const result = await pool.query(
+      'INSERT INTO simple_users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
+      [email, hashedPassword, name]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Usuário Victor criado com sucesso',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ Error creating Victor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar usuário Victor',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: List users (temporary)
+app.get('/api/debug/users', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM simple_users ORDER BY created_at DESC LIMIT 10');
+    res.json({
+      success: true,
+      users: result.rows
+    });
+  } catch (error) {
+    console.error('❌ Error listing users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao listar usuários',
+      error: error.message
+    });
+  }
+});
+
 // DEBUG: Save lead without auth (temporary)
 app.post('/api/crm/leads-save-test', async (req, res) => {
   try {

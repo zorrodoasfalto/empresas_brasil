@@ -409,6 +409,7 @@ const GoogleMapsScraper = () => {
 
   // Função temporária para adicionar dados de teste
   const addTestResults = () => {
+    console.log('🔍 addTestResults called - current results:', results.length);
     const testData = [
       {
         title: 'Restaurante Dom Luigi',
@@ -440,6 +441,7 @@ const GoogleMapsScraper = () => {
     
     setResults(testData);
     setFormData({ searchTerms: 'restaurantes', locationQuery: 'São Paulo, SP' });
+    console.log('🔍 Test data set - new results length:', testData.length);
     toast.success('🧪 Dados de teste adicionados! Agora teste os botões.');
   };
 

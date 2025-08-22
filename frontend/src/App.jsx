@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
 import GoogleMapsScraper from './pages/GoogleMapsScraper';
+import TestPage from './pages/TestPage';
 import Leads from './pages/Leads';
 import Funil from './pages/Funil';
 import Kanban from './pages/Kanban';
@@ -72,6 +73,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route path="/test-victor" element={<TestPage />} />
             <Route 
               path="/leads" 
               element={
