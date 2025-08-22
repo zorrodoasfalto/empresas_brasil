@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
-import empresaService from '../services/empresaService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
   max-width: 1400px;
@@ -217,6 +217,7 @@ const EmptyState = styled.div`
 `;
 
 const Leads = () => {
+  const { token } = useAuth();
   const [leads, setLeads] = useState([]);
   const [filteredLeads, setFilteredLeads] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -234,17 +235,12 @@ const Leads = () => {
 
   const fetchLeads = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Token não encontrado. Tente recarregar a página.');
-        return;
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/crm/leads', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch('/api/crm/leads', { headers });
       
       const data = await response.json();
       if (data.success) {

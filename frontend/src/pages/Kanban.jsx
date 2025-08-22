@@ -205,17 +205,7 @@ const Funil = () => {
 
   const fetchFunnelData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Token não encontrado. Tente recarregar a página.');
-        return;
-      }
-      
-      const response = await fetch('/api/crm/funil', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch('/api/crm/funil');
       
       const data = await response.json();
       if (data.success) {

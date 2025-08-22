@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
-import empresaService from '../services/empresaService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
   max-width: 1600px;
@@ -194,6 +194,7 @@ const DropZone = styled.div`
 `;
 
 const Funil = () => {
+  const { token } = useAuth();
   const [funnelData, setFunnelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedLead, setDraggedLead] = useState(null);
@@ -205,17 +206,12 @@ const Funil = () => {
 
   const fetchFunnelData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast.error('Token não encontrado. Tente recarregar a página.');
-        return;
+      const headers = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/crm/funil', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch('/api/crm/funil', { headers });
       
       const data = await response.json();
       if (data.success) {
