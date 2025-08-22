@@ -16,19 +16,21 @@ const Container = styled.div`
 `;
 
 const Sidebar = styled.div`
-  width: ${props => props.isOpen ? '280px' : '60px'};
+  width: ${props => props.$isOpen ? '280px' : '60px'};
   min-height: 100vh;
   background: 
-    linear-gradient(135deg, rgba(0, 255, 170, 0.05) 0%, rgba(0, 136, 204, 0.05) 100%),
-    rgba(15, 15, 35, 0.95);
+    linear-gradient(135deg, rgba(0, 255, 170, 0.1) 0%, rgba(0, 136, 204, 0.1) 100%),
+    rgba(15, 15, 35, 0.98);
   backdrop-filter: blur(10px);
-  border-right: 1px solid rgba(0, 255, 170, 0.2);
+  border-right: 2px solid rgba(0, 255, 170, 0.4);
   transition: all 0.3s ease;
-  position: fixed;
+  position: fixed !important;
   left: 0;
   top: 0;
-  z-index: 1000;
+  z-index: 99999 !important;
   overflow: hidden;
+  box-shadow: 2px 0 15px rgba(0, 255, 170, 0.2);
+  border: 1px solid rgba(0, 255, 170, 0.3);
 `;
 
 const SidebarToggle = styled.button`
@@ -36,23 +38,24 @@ const SidebarToggle = styled.button`
   top: 20px;
   right: -15px;
   background: linear-gradient(135deg, #00ffaa, #00ccff);
-  border: none;
-  width: 30px;
-  height: 30px;
+  border: 2px solid #00ffaa;
+  width: 35px;
+  height: 35px;
   border-radius: 50%;
   color: #000;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
-  z-index: 1001;
+  z-index: 100000 !important;
   transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(0, 255, 170, 0.8);
   
   &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+    transform: scale(1.2);
+    box-shadow: 0 0 20px rgba(0, 255, 170, 1);
   }
 `;
 
@@ -91,7 +94,7 @@ const SidebarItem = styled.div`
   }
   
   .text {
-    opacity: ${props => props.sidebarOpen ? '1' : '0'};
+    opacity: ${props => props.$sidebarOpen ? '1' : '0'};
     transition: opacity 0.3s ease;
     white-space: nowrap;
   }
@@ -99,7 +102,7 @@ const SidebarItem = styled.div`
 
 const MainContent = styled.div`
   flex: 1;
-  margin-left: ${props => props.sidebarOpen ? '280px' : '60px'};
+  margin-left: ${props => props.$sidebarOpen ? '280px' : '60px'};
   transition: margin-left 0.3s ease;
   min-height: 100vh;
 `;
@@ -1105,13 +1108,13 @@ const Dashboard = () => {
 
   return (
     <Container>
-      <Sidebar isOpen={sidebarOpen}>
+      <Sidebar $isOpen={sidebarOpen}>
         <SidebarToggle onClick={toggleSidebar}>
           {sidebarOpen ? '←' : '→'}
         </SidebarToggle>
         <SidebarContent>
           <SidebarItem 
-            sidebarOpen={sidebarOpen} 
+            $sidebarOpen={sidebarOpen} 
             className="active"
             onClick={() => setActiveModal(null)}
           >
@@ -1119,21 +1122,21 @@ const Dashboard = () => {
             <span className="text">Dashboard</span>
           </SidebarItem>
           <SidebarItem 
-            sidebarOpen={sidebarOpen}
+            $sidebarOpen={sidebarOpen}
             onClick={() => setActiveModal('settings')}
           >
             <span className="icon">⚙️</span>
             <span className="text">Configurações</span>
           </SidebarItem>
           <SidebarItem 
-            sidebarOpen={sidebarOpen}
+            $sidebarOpen={sidebarOpen}
             onClick={() => setActiveModal('password')}
           >
             <span className="icon">🔐</span>
             <span className="text">Alterar Senha</span>
           </SidebarItem>
           <SidebarItem 
-            sidebarOpen={sidebarOpen}
+            $sidebarOpen={sidebarOpen}
             onClick={logout}
           >
             <span className="icon">🚪</span>
@@ -1142,7 +1145,7 @@ const Dashboard = () => {
         </SidebarContent>
       </Sidebar>
 
-      <MainContent sidebarOpen={sidebarOpen}>
+      <MainContent $sidebarOpen={sidebarOpen}>
         <Header>
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
