@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
+import GoogleMapsScraper from './pages/GoogleMapsScraper';
 import Leads from './pages/Leads';
 import Funil from './pages/Funil';
 import Kanban from './pages/Kanban';
@@ -60,6 +61,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GoogleMapsSimple />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/google-maps-scraper" 
+              element={
+                <ProtectedRoute>
+                  <GoogleMapsScraper />
                 </ProtectedRoute>
               } 
             />
