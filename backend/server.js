@@ -662,17 +662,29 @@ app.post('/api/crm/leads-save-test', async (req, res) => {
       );
     }
 
+    console.log('✅ Lead saved successfully:', result.rows[0].id);
+    
     res.json({
       success: true,
       message: 'Lead salvo com sucesso (teste)',
       lead: result.rows[0]
     });
   } catch (error) {
-    console.error('❌ Save lead test error:', error.message);
+    console.error('❌ Save lead test error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint
+    });
+    
     res.status(500).json({
       success: false,
       message: 'Erro ao salvar lead',
-      error: error.message
+      error: error.message,
+      code: error.code,
+      detail: error.detail
     });
   }
 });

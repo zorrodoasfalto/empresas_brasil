@@ -544,17 +544,33 @@ const GoogleMapsScraper = () => {
 
       for (const lead of leadsToSave) {
         try {
+          const token = localStorage.getItem('token');
+          console.log('🔍 Token exists:', !!token);
           console.log('🔍 Saving lead:', lead.nome);
+          console.log('🔍 Lead data:', JSON.stringify(lead, null, 2));
+          
           const response = await fetch('/api/crm/leads-save-test', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(lead)
           });
 
-          const result = await response.json();
+          console.log('🔍 Response status:', response.status);
+          console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+          
+          let result;
+          try {
+            result = await response.json();
+          } catch (parseError) {
+            console.error('🔍 Failed to parse JSON response:', parseError);
+            const text = await response.text();
+            console.error('🔍 Raw response:', text);
+            result = { error: 'Failed to parse response', raw: text };
+          }
+          
           console.log('🔍 Save response:', response.status, result);
 
           if (response.ok) {
@@ -566,14 +582,20 @@ const GoogleMapsScraper = () => {
         } catch (error) {
           errorCount++;
           console.error('🔍 Network error:', error);
+          console.error('🔍 Error details:', error.message, error.stack);
         }
       }
 
+      console.log('🔍 Final counts:', { savedCount, errorCount, total: leadsToSave.length });
+      
       if (savedCount > 0) {
         toast.success(`✅ ${savedCount} leads salvos com sucesso!`);
       }
       if (errorCount > 0) {
-        toast.warning(`⚠️ ${errorCount} leads falharam ao salvar`);
+        toast.error(`❌ ${errorCount} leads falharam ao salvar. Verifique o console (F12) para mais detalhes.`);
+      }
+      if (savedCount === 0 && errorCount === 0) {
+        toast.warning('⚠️ Nenhum lead foi processado');
       }
 
     } catch (error) {
