@@ -304,13 +304,15 @@ const Funil = () => {
     );
   }
 
+  const totalLeads = funnelData.reduce((total, phase) => total + phase.leads.length, 0);
+
   return (
     <Container>
       <Header>
         <Title>🌪️ Funil de Vendas</Title>
         <StatsRow>
           <StatCard>
-            <StatNumber>{getTotalLeads()}</StatNumber>
+            <StatNumber>{totalLeads}</StatNumber>
             <StatLabel>Total Leads</StatLabel>
           </StatCard>
           {funnelData.map(phase => (
@@ -366,7 +368,6 @@ const Funil = () => {
           perspective: '1000px'
         }}>
           {funnelData.map((phase, index) => {
-            const totalLeads = getTotalLeads();
             const percentage = totalLeads > 0 ? (phase.leads.length / totalLeads * 100) : 25;
             const width = Math.max(percentage, 10); // Mínimo 10% para visibilidade
             const maxWidth = 600;
@@ -467,10 +468,10 @@ const Funil = () => {
             <div style={{ color: '#e0e0e0' }}>
               <div style={{ fontSize: '2rem', color: '#00ccff', marginBottom: '0.5rem' }}>
                 {funnelData[funnelData.length - 1] 
-                  ? ((funnelData[funnelData.length - 1].leads.length / getTotalLeads()) * 100).toFixed(1)
+                  ? ((funnelData[funnelData.length - 1].leads.length / totalLeads) * 100).toFixed(1)
                   : 0}%
               </div>
-              <div>De {getTotalLeads()} leads iniciais para {funnelData[funnelData.length - 1]?.leads.length || 0} finalizados</div>
+              <div>De {totalLeads} leads iniciais para {funnelData[funnelData.length - 1]?.leads.length || 0} finalizados</div>
             </div>
           ) : (
             <div style={{ color: '#999' }}>
