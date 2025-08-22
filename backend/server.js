@@ -44,7 +44,7 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
-// Apify configuration
+// Apify configuration - API key loaded from environment variables only
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
