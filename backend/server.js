@@ -43,7 +43,7 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 
 // Apify configuration
-const APIFY_API_KEY = process.env.APIFY_API_KEY || 'apify_api_V35PWGb8TmhGeggAVC43FrfYuAed462LAGc3';
+const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
 // Import routes
