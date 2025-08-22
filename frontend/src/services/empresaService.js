@@ -6,7 +6,8 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-api.interceptors.request.use(async (config) => {
+// Helper function to ensure we have a valid token
+const ensureToken = async () => {
   let token = localStorage.getItem('token');
   
   // If no token, try to get one from debug endpoint
@@ -24,6 +25,11 @@ api.interceptors.request.use(async (config) => {
     }
   }
   
+  return token;
+};
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -31,6 +37,8 @@ api.interceptors.request.use(async (config) => {
 });
 
 const empresaService = {
+  // Add token helper method
+  ensureToken,
   searchEmpresas: async (filters, page = 1, limit = 50) => {
     const params = new URLSearchParams();
     

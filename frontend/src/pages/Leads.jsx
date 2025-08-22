@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
+import empresaService from '../services/empresaService';
 
 const Container = styled.div`
   max-width: 1400px;
@@ -233,22 +234,7 @@ const Leads = () => {
 
   const fetchLeads = async () => {
     try {
-      let token = localStorage.getItem('token');
-      
-      // If no token, try to get one from debug endpoint
-      if (!token) {
-        try {
-          const debugResponse = await fetch('/api/debug/check-user');
-          const debugData = await debugResponse.json();
-          if (debugData.success && debugData.token) {
-            localStorage.setItem('token', debugData.token);
-            token = debugData.token;
-            console.log('🔐 Auto-generated token for user:', debugData.user.email);
-          }
-        } catch (error) {
-          console.warn('🔐 Failed to auto-generate token:', error);
-        }
-      }
+      const token = await empresaService.ensureToken();
       
       const response = await fetch('/api/crm/leads', {
         headers: {
