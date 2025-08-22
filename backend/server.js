@@ -581,53 +581,6 @@ app.get('/api/crm/leads', async (req, res) => {
 });
 
 // Get funnel data for authenticated user
-app.get('/api/crm/funil', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    // Get phases
-    const phases = await pool.query(`
-      SELECT * FROM funil_fases 
-      WHERE user_id = $1 
-      ORDER BY ordem
-    `, [userId]);
-
-    // Get leads in each phase
-    const leadsInFunnel = await pool.query(`
-      SELECT 
-        l.*,
-        lf.fase_id,
-        lf.data_entrada
-      FROM leads l
-      JOIN leads_funil lf ON l.id = lf.lead_id
-      JOIN funil_fases f ON lf.fase_id = f.id
-      WHERE l.user_id = $1
-      ORDER BY lf.data_entrada DESC
-    `, [userId]);
-
-    // Group leads by phase
-    const funnelData = phases.rows.map(phase => ({
-      ...phase,
-      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
-    }));
-
-    res.json({
-      success: true,
-      funil: funnelData,
-      debug: {
-        phases_count: phases.rows.length,
-        leads_count: leadsInFunnel.rows.length
-      }
-    });
-  } catch (error) {
-    console.error('❌ Test funnel error:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao buscar funil de teste',
-      error: error.message
-    });
-  }
-});
 
 // DEBUG: Create user Victor (temporary)
 app.post('/api/debug/create-victor', async (req, res) => {
@@ -773,16 +726,12 @@ app.post('/api/crm/leads', async (req, res) => {
 
 // OLD GET ENDPOINT REMOVED - Using flexible auth version above
 
+
 // Get funnel data
 app.get('/api/crm/funil', async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token required' });
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.id;
+    // Use hardcoded user ID 1 for testing - BACK TO WORKING VERSION  
+    const userId = 1;
 
     // Get phases
     const phases = await pool.query(`

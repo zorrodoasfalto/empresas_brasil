@@ -204,8 +204,12 @@ const Funil = () => {
 
   const fetchFunnelData = async () => {
     try {
-      // Temporarily use test endpoint
-      const response = await fetch('/api/crm/funil-test');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/crm/funil', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       const data = await response.json();
       if (data.success) {

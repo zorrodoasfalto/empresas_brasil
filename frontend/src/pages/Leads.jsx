@@ -233,8 +233,12 @@ const Leads = () => {
 
   const fetchLeads = async () => {
     try {
-      // Temporarily use test endpoint
-      const response = await fetch('/api/crm/leads-test');
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/crm/leads', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       const data = await response.json();
       if (data.success) {
