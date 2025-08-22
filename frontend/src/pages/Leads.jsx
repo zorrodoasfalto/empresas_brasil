@@ -234,7 +234,11 @@ const Leads = () => {
 
   const fetchLeads = async () => {
     try {
-      const token = await empresaService.ensureToken();
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Token não encontrado. Tente recarregar a página.');
+        return;
+      }
       
       const response = await fetch('/api/crm/leads', {
         headers: {

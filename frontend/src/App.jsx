@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -25,6 +25,26 @@ import VerifyEmail from './pages/VerifyEmail';
 import GlobalStyles from './styles/GlobalStyles';
 
 function App() {
+  // Initialize token on app start
+  useEffect(() => {
+    const initializeToken = async () => {
+      const existingToken = localStorage.getItem('token');
+      if (!existingToken) {
+        try {
+          const response = await fetch('/api/debug/check-user');
+          const data = await response.json();
+          if (data.success && data.token) {
+            localStorage.setItem('token', data.token);
+            console.log('🔐 App initialized with token for user:', data.user.email);
+          }
+        } catch (error) {
+          console.warn('🔐 Failed to initialize token:', error);
+        }
+      }
+    };
+    initializeToken();
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
