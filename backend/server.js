@@ -289,7 +289,7 @@ app.post('/api/auth/login', async (req, res) => {
     
     const token = jwt.sign(
       { id: user.id, email: user.email },
-      'your-secret-key',
+      JWT_SECRET,
       { expiresIn: '24h' }
     );
     
@@ -316,7 +316,7 @@ app.post('/api/auth/change-password', async (req, res) => {
     }
     
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, 'your-secret-key');
+    const decoded = jwt.verify(token, JWT_SECRET);
     
     // Get user from database
     const userResult = await pool.query('SELECT * FROM simple_users WHERE id = $1', [decoded.id]);
