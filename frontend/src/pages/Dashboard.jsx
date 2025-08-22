@@ -1270,6 +1270,13 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/kanban'}
+          >
+            <span className="icon">📋</span>
+            <span className="text">Kanban</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
             onClick={() => setActiveModal('settings')}
           >
             <span className="icon">⚙️</span>

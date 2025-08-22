@@ -396,6 +396,41 @@ app.post('/api/debug/reset-password', async (req, res) => {
   }
 });
 
+// DEBUG: Test leads without auth (temporary)
+app.get('/api/crm/leads-test', async (req, res) => {
+  try {
+    // Use hardcoded user ID 1 for testing
+    const userId = 1;
+
+    const result = await pool.query(`
+      SELECT 
+        l.*,
+        f.nome as fase_atual,
+        f.cor as fase_cor
+      FROM leads l
+      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+      LEFT JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY l.created_at DESC
+    `, [userId]);
+
+    res.json({
+      success: true,
+      leads: result.rows,
+      debug: {
+        leads_count: result.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ Test leads error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar leads de teste',
+      error: error.message
+    });
+  }
+});
+
 // DEBUG: Test funnel without auth (temporary)
 app.get('/api/crm/funil-test', async (req, res) => {
   try {

@@ -307,7 +307,7 @@ const Funil = () => {
   return (
     <Container>
       <Header>
-        <Title>🌪️ Funil de Vendas</Title>
+        <Title>📋 Kanban - Gestão de Leads</Title>
         <StatsRow>
           <StatCard>
             <StatNumber>{getTotalLeads()}</StatNumber>
@@ -322,95 +322,64 @@ const Funil = () => {
         </StatsRow>
       </Header>
 
-      {/* Funil Visual Simplificado */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        marginTop: '3rem',
-        flexDirection: 'column',
-        gap: '2rem'
-      }}>
-        <h2 style={{ color: '#00ccff', fontSize: '1.8rem', textAlign: 'center' }}>
-          📊 Visão Geral do Funil
-        </h2>
-        
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}>
-          {funnelData.map((phase, index) => (
-            <div key={phase.id} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{
-                background: `linear-gradient(135deg, ${phase.cor}, ${phase.cor}dd)`,
-                color: 'white',
-                padding: '1.5rem 2rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                minWidth: '180px',
-                boxShadow: `0 8px 20px ${phase.cor}30`
-              }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  {phase.leads.length}
-                </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                  {phase.nome}
-                </div>
-                {phase.descricao && (
-                  <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '0.25rem' }}>
-                    {phase.descricao}
-                  </div>
-                )}
-              </div>
-              
-              {index < funnelData.length - 1 && (
-                <div style={{
-                  margin: '0 1rem',
-                  fontSize: '2rem',
-                  color: '#00ccff'
-                }}>
-                  →
-                </div>
+      <FunnelContainer>
+        {funnelData.map(phase => (
+          <FunnelColumn
+            key={phase.id}
+            color={phase.cor}
+            onDragOver={(e) => handleDragOver(e, phase.id)}
+            onDragLeave={(e) => handleDragLeave(e, phase.id)}
+            onDrop={(e) => handleDrop(e, phase.id)}
+          >
+            <DropZone show={dropZoneVisible[phase.id]}>
+              📥 Soltar aqui
+            </DropZone>
+            
+            <ColumnHeader color={phase.cor}>
+              <ColumnTitle color={phase.cor}>{phase.nome}</ColumnTitle>
+              <LeadCount color={phase.cor}>{phase.leads.length}</LeadCount>
+            </ColumnHeader>
+            
+            {phase.descricao && (
+              <ColumnDescription>{phase.descricao}</ColumnDescription>
+            )}
+            
+            <LeadsArea>
+              {phase.leads.length === 0 ? (
+                <EmptyColumn>
+                  <div className="icon">📭</div>
+                  <div>Nenhum lead nesta fase</div>
+                </EmptyColumn>
+              ) : (
+                phase.leads.map(lead => (
+                  <LeadCard
+                    key={lead.id}
+                    phaseColor={phase.cor}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, lead)}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <LeadName>{lead.nome}</LeadName>
+                    {lead.empresa && (
+                      <LeadCompany>🏢 {lead.empresa}</LeadCompany>
+                    )}
+                    
+                    <div style={{ margin: '0.5rem 0', color: '#e0e0e0', fontSize: '0.8rem' }}>
+                      {lead.telefone && <div>📞 {lead.telefone}</div>}
+                      {lead.email && <div>📧 {lead.email}</div>}
+                    </div>
+                    
+                    <LeadInfo>
+                      <LeadSource>{lead.fonte}</LeadSource>
+                      <div>{formatDate(lead.data_entrada)}</div>
+                    </LeadInfo>
+                  </LeadCard>
+                ))
               )}
-            </div>
-          ))}
-        </div>
-
-        <div style={{
-          background: 'rgba(0, 136, 204, 0.1)',
-          border: '1px solid rgba(0, 204, 255, 0.3)',
-          borderRadius: '12px',
-          padding: '2rem',
-          textAlign: 'center',
-          maxWidth: '600px',
-          marginTop: '2rem'
-        }}>
-          <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-            💡 Como usar o sistema
-          </h3>
-          <div style={{ color: '#e0e0e0', lineHeight: '1.6' }}>
-            <div>1. 📊 <strong>Salve leads</strong> da busca de 66M empresas</div>
-            <div>2. 🗺️ <strong>Capture contatos</strong> via Google Maps</div>
-            <div>3. 🗃️ <strong>Gerencie todos</strong> na página Leads</div>
-            <div>4. 🌪️ <strong>Acompanhe progresso</strong> neste funil</div>
-          </div>
-          
-          {getTotalLeads() === 0 && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              background: 'rgba(0, 255, 170, 0.1)',
-              borderRadius: '8px',
-              color: '#00ffaa'
-            }}>
-              🚀 <strong>Comece salvando seu primeiro lead!</strong>
-            </div>
-          )}
-        </div>
-      </div>
+            </LeadsArea>
+          </FunnelColumn>
+        ))}
+      </FunnelContainer>
     </Container>
   );
 };
