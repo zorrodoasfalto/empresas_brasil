@@ -556,12 +556,27 @@ app.get('/api/crm/leads', flexibleAuth, async (req, res) => {
     } else {
       const userEmail = req.query.userEmail || 'victormagalhaesg@gmail.com';
       try {
-        const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
-        userId = userResult.rows.length > 0 ? userResult.rows[0].id : 1;
-        console.log('🔐 Loading leads for email:', userEmail, 'ID:', userId);
+        // Use same logic as save endpoint - check simple_users first
+        const simpleUserResult = await pool.query('SELECT id FROM simple_users WHERE email = $1', [userEmail]);
+        if (simpleUserResult.rows.length > 0) {
+          userId = simpleUserResult.rows[0].id;
+          console.log('🔐 Loading leads from simple_users:', userEmail, 'ID:', userId);
+        } else {
+          // Check users table
+          const userResult = await pool.query('SELECT id FROM users WHERE email = $1', [userEmail]);
+          if (userResult.rows.length > 0) {
+            // User exists in users but not simple_users - use default ID 1 for compatibility
+            userId = 1;
+            console.log('🔐 User exists in users table but not simple_users, using ID 1 for compatibility:', userEmail);
+          } else {
+            // User doesn't exist anywhere - use default
+            userId = 1;
+            console.log('🔐 User not found, using default ID 1:', userEmail);
+          }
+        }
       } catch (error) {
+        console.error('🔐 Error finding user, using default ID 1:', error);
         userId = 1;
-        console.log('🔐 Loading leads for default user ID:', userId);
       }
     }
 
