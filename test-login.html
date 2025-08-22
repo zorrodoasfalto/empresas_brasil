@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login</title>
+</head>
+<body>
+    <h1>Test Login for marketing@ogservicos.com.br</h1>
+    <button onclick="testLogin()">Test Login</button>
+    <div id="result"></div>
+
+    <script>
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing login...';
+            
+            try {
+                console.log('🔍 Starting login test...');
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'marketing@ogservicos.com.br',
+                        password: 'OGMarketing2025@#'
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('📄 Response data:', data);
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>✅ Login SUCCESS!</h2>
+                        <p><strong>Token:</strong> ${data.token}</p>
+                        <p><strong>User:</strong> ${JSON.stringify(data.user)}</p>
+                    `;
+                    
+                    // Test token storage
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    console.log('💾 Token stored in localStorage');
+                    
+                } else {
+                    resultDiv.innerHTML = `
+                        <h2>❌ Login FAILED</h2>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                    `;
+                }
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                resultDiv.innerHTML = `
+                    <h2>💥 ERROR</h2>
+                    <p>${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -18,8 +18,15 @@ const authService = {
   },
 
   login: async (email, password) => {
-    const response = await api.post('/auth/login', { email, password });
-    return response.data;
+    try {
+      console.log('🔍 AuthService: Attempting login for', email);
+      const response = await api.post('/auth/login', { email, password });
+      console.log('✅ AuthService: Login response', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ AuthService: Login error', error.response?.data || error.message);
+      throw error;
+    }
   },
 
   register: async (email, password) => {

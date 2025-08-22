@@ -33,6 +33,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);
+      console.log('🔍 AuthContext: Login response received', response);
       
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
@@ -40,10 +41,13 @@ export const AuthProvider = ({ children }) => {
       
       setToken(response.token);
       setUser(response.user);
+      
+      console.log('🔍 AuthContext: State updated - token:', !!response.token, 'user:', !!response.user);
       toast.success('Login realizado com sucesso!');
       
       return { success: true };
     } catch (error) {
+      console.error('🔍 AuthContext: Login error', error);
       const message = error.response?.data?.message || 'Erro ao fazer login';
       toast.error(message);
       return { success: false, message };
