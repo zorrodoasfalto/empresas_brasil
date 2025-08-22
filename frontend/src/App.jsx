@@ -10,6 +10,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
+import Leads from './pages/Leads';
+import Funil from './pages/Funil';
 import AboutUs from './pages/AboutUs';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse from './pages/TermsOfUse';
@@ -57,6 +59,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GoogleMapsSimple />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/leads" 
+              element={
+                <ProtectedRoute>
+                  <Leads />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/funil" 
+              element={
+                <ProtectedRoute>
+                  <Funil />
                 </ProtectedRoute>
               } 
             />

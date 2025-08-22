@@ -169,6 +169,7 @@ app.get('/api/debug-filters', async (req, res) => {
 
 async function initDB() {
   try {
+    // Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS simple_users (
         id SERIAL PRIMARY KEY,
@@ -178,7 +179,91 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       )
     `);
-    console.log('✅ Database initialized');
+
+    // CRM Tables
+    
+    // Leads table - stores all saved leads
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS leads (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+        nome VARCHAR(500) NOT NULL,
+        empresa VARCHAR(500),
+        telefone VARCHAR(50),
+        email VARCHAR(255),
+        endereco TEXT,
+        cnpj VARCHAR(20),
+        website VARCHAR(500),
+        categoria VARCHAR(255),
+        rating DECIMAL(3,2),
+        reviews_count INTEGER,
+        fonte VARCHAR(100) NOT NULL, -- '66M', 'Google Maps', 'LinkedIn', etc
+        dados_originais JSONB, -- stores original data from source
+        notas TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Funil phases table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS funil_fases (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+        nome VARCHAR(255) NOT NULL,
+        descricao TEXT,
+        ordem INTEGER NOT NULL DEFAULT 1,
+        cor VARCHAR(7) DEFAULT '#3B82F6', -- hex color
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Lead pipeline tracking
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS leads_funil (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        fase_id INTEGER REFERENCES funil_fases(id) ON DELETE CASCADE,
+        data_entrada TIMESTAMP DEFAULT NOW(),
+        notas TEXT,
+        UNIQUE(lead_id) -- lead can only be in one phase at a time
+      )
+    `);
+
+    // Insert default funnel phases for new users
+    await pool.query(`
+      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+      SELECT DISTINCT u.id, 'Novo Lead', 'Leads recém adicionados', 1, '#10B981'
+      FROM simple_users u 
+      LEFT JOIN funil_fases f ON f.user_id = u.id 
+      WHERE f.id IS NULL
+    `);
+
+    await pool.query(`
+      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+      SELECT DISTINCT u.id, 'Qualificado', 'Leads qualificados para contato', 2, '#3B82F6'
+      FROM simple_users u 
+      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Qualificado'
+      WHERE f.id IS NULL
+    `);
+
+    await pool.query(`
+      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+      SELECT DISTINCT u.id, 'Proposta', 'Proposta enviada', 3, '#F59E0B'
+      FROM simple_users u 
+      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Proposta'
+      WHERE f.id IS NULL
+    `);
+
+    await pool.query(`
+      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+      SELECT DISTINCT u.id, 'Fechado', 'Negócio conquistado', 4, '#059669'
+      FROM simple_users u 
+      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Fechado'
+      WHERE f.id IS NULL
+    `);
+
+    console.log('✅ Database initialized with CRM tables');
   } catch (error) {
     console.error('❌ Database error:', error.message);
   }
@@ -269,6 +354,216 @@ app.post('/api/auth/change-password', async (req, res) => {
       return res.status(401).json({ success: false, message: 'Token inválido' });
     }
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// CRM API ENDPOINTS
+
+// Save a new lead
+app.post('/api/crm/leads', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token required' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+
+    const {
+      nome,
+      empresa,
+      telefone,
+      email,
+      endereco,
+      cnpj,
+      website,
+      categoria,
+      rating,
+      reviews_count,
+      fonte,
+      dados_originais,
+      notas
+    } = req.body;
+
+    const result = await pool.query(`
+      INSERT INTO leads (
+        user_id, nome, empresa, telefone, email, endereco, cnpj, 
+        website, categoria, rating, reviews_count, fonte, dados_originais, notas
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      userId, nome, empresa, telefone, email, endereco, cnpj,
+      website, categoria, rating, reviews_count, fonte, 
+      JSON.stringify(dados_originais), notas
+    ]);
+
+    const leadId = result.rows[0].id;
+
+    // Add to first phase of funnel (Novo Lead)
+    const firstPhase = await pool.query(
+      'SELECT id FROM funil_fases WHERE user_id = $1 ORDER BY ordem LIMIT 1',
+      [userId]
+    );
+
+    if (firstPhase.rows.length > 0) {
+      await pool.query(
+        'INSERT INTO leads_funil (lead_id, fase_id) VALUES ($1, $2)',
+        [leadId, firstPhase.rows[0].id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Lead salvo com sucesso',
+      lead: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ Save lead error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao salvar lead',
+      error: error.message
+    });
+  }
+});
+
+// Get all leads for user
+app.get('/api/crm/leads', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token required' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+
+    const result = await pool.query(`
+      SELECT 
+        l.*,
+        f.nome as fase_atual,
+        f.cor as fase_cor
+      FROM leads l
+      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+      LEFT JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY l.created_at DESC
+    `, [userId]);
+
+    res.json({
+      success: true,
+      leads: result.rows
+    });
+  } catch (error) {
+    console.error('❌ Get leads error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar leads',
+      error: error.message
+    });
+  }
+});
+
+// Get funnel data
+app.get('/api/crm/funil', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token required' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+
+    // Get phases
+    const phases = await pool.query(`
+      SELECT * FROM funil_fases 
+      WHERE user_id = $1 
+      ORDER BY ordem
+    `, [userId]);
+
+    // Get leads in each phase
+    const leadsInFunnel = await pool.query(`
+      SELECT 
+        l.*,
+        lf.fase_id,
+        lf.data_entrada
+      FROM leads l
+      JOIN leads_funil lf ON l.id = lf.lead_id
+      JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY lf.data_entrada DESC
+    `, [userId]);
+
+    // Group leads by phase
+    const funnelData = phases.rows.map(phase => ({
+      ...phase,
+      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
+    }));
+
+    res.json({
+      success: true,
+      funil: funnelData
+    });
+  } catch (error) {
+    console.error('❌ Get funnel error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar funil',
+      error: error.message
+    });
+  }
+});
+
+// Move lead between phases
+app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token required' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+    const { leadId } = req.params;
+    const { faseId, notas } = req.body;
+
+    // Verify lead belongs to user
+    const leadCheck = await pool.query(
+      'SELECT id FROM leads WHERE id = $1 AND user_id = $2',
+      [leadId, userId]
+    );
+
+    if (leadCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead não encontrado'
+      });
+    }
+
+    // Update lead phase
+    await pool.query(`
+      INSERT INTO leads_funil (lead_id, fase_id, notas)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (lead_id) 
+      DO UPDATE SET 
+        fase_id = $2, 
+        data_entrada = NOW(),
+        notas = $3
+    `, [leadId, faseId, notas]);
+
+    res.json({
+      success: true,
+      message: 'Lead movido com sucesso'
+    });
+  } catch (error) {
+    console.error('❌ Move lead error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao mover lead',
+      error: error.message
+    });
   }
 });
 

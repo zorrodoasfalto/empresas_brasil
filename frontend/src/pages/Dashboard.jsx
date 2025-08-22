@@ -444,6 +444,39 @@ const ExportButton = styled.button`
   }
 `;
 
+const SaveLeadButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 90px;
+  justify-content: center;
+
+  &:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -1111,6 +1144,44 @@ const Dashboard = () => {
     }
   };
 
+  const saveLead = async (empresa) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/crm/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nome: empresa.razaoSocial || empresa.nomeFantasia || 'Empresa sem nome',
+          empresa: empresa.razaoSocial || empresa.nomeFantasia,
+          telefone: empresa.telefone1 ? `(${empresa.ddd1}) ${empresa.telefone1}` : null,
+          email: empresa.email || null,
+          endereco: `${empresa.tipoLogradouro || ''} ${empresa.logradouro || ''}${empresa.numero ? ', ' + empresa.numero : ''}${empresa.complemento ? ' - ' + empresa.complemento : ''}, ${empresa.bairro || ''}, ${empresa.municipioDescricao || empresa.municipio || ''}, ${empresa.uf || ''} - ${empresa.cep || ''}`.trim(),
+          cnpj: empresa.cnpj,
+          website: null,
+          categoria: empresa.cnaeDescricao,
+          rating: null,
+          reviews_count: null,
+          fonte: '66M Empresas Brasil',
+          dados_originais: empresa,
+          notas: `Salvo da base de 66M empresas em ${new Date().toLocaleString()}`
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Lead salvo com sucesso!');
+      } else {
+        toast.error('Erro ao salvar lead');
+      }
+    } catch (error) {
+      console.error('Error saving lead:', error);
+      toast.error('Erro ao conectar com servidor');
+    }
+  };
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -1182,6 +1253,20 @@ const Dashboard = () => {
           >
             <span className="icon">🏢</span>
             <span className="text">Dashboard</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/leads'}
+          >
+            <span className="icon">🗃️</span>
+            <span className="text">Leads</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/funil'}
+          >
+            <span className="icon">🌪️</span>
+            <span className="text">Funil</span>
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
@@ -1544,6 +1629,7 @@ const Dashboard = () => {
                     <Th>MEI</Th>
                     <Th>Sócios/Diretores</Th>
                     <Th>Representantes Legais</Th>
+                    <Th>Ações</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1680,6 +1766,11 @@ const Dashboard = () => {
                         ) : (
                           <div style={{color: '#666'}}>Sem dados</div>
                         )}
+                      </Td>
+                      <Td style={{textAlign: 'center', minWidth: '110px'}}>
+                        <SaveLeadButton onClick={() => saveLead(empresa)}>
+                          💾 Salvar
+                        </SaveLeadButton>
                       </Td>
                     </Tr>
                   ))}

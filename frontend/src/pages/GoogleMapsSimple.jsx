@@ -84,6 +84,39 @@ const StatusCard = styled.div`
   color: #e0e0e0;
 `;
 
+const SaveLeadButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 80px;
+  justify-content: center;
+
+  &:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const GoogleMapsSimple = () => {
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
@@ -187,6 +220,44 @@ const GoogleMapsSimple = () => {
     }
   };
 
+  const saveLead = async (place) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/crm/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nome: place.title || place.name || 'Empresa sem nome',
+          empresa: place.title || place.name,
+          telefone: place.phone || place.phoneNumber || null,
+          email: null,
+          endereco: place.address || place.location || null,
+          cnpj: null,
+          website: place.website || null,
+          categoria: place.category || null,
+          rating: place.rating ? parseFloat(place.rating) : null,
+          reviews_count: place.reviewsCount || null,
+          fonte: 'Google Maps (Apify)',
+          dados_originais: place,
+          notas: `Salvo via Google Maps Scraper em ${new Date().toLocaleString()}`
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Lead salvo com sucesso!');
+      } else {
+        toast.error('Erro ao salvar lead');
+      }
+    } catch (error) {
+      console.error('Error saving lead:', error);
+      toast.error('Erro ao conectar com servidor');
+    }
+  };
+
   return (
     <Container>
       <Title>🗺️ Google Maps Scraper</Title>
@@ -268,6 +339,7 @@ const GoogleMapsSimple = () => {
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Endereço</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Telefone</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Avaliação</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid rgba(0, 255, 170, 0.2)' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -299,6 +371,11 @@ const GoogleMapsSimple = () => {
                       ) : (
                         'Sem avaliação'
                       )}
+                    </td>
+                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                      <SaveLeadButton onClick={() => saveLead(place)}>
+                        💾 Salvar
+                      </SaveLeadButton>
                     </td>
                   </tr>
                 ))}
