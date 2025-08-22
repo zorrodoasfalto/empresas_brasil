@@ -4,6 +4,7 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const { ApifyClient } = require('apify-client');
 require('dotenv').config();
 
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
@@ -45,6 +46,11 @@ const PORT = process.env.PORT || 6000;
 // Apify configuration
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
+
+// Initialize Apify client
+const apifyClient = new ApifyClient({
+  token: APIFY_API_KEY
+});
 
 // Import routes
 // const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
@@ -279,70 +285,67 @@ app.get('/api/apify/actors', async (req, res) => {
   }
 });
 
-// Run an Apify actor
+// Run an Apify actor using official client
 app.post('/api/apify/run/:actorId', async (req, res) => {
   try {
-    let { actorId } = req.params;
+    const { actorId } = req.params;
     const inputData = req.body;
-    
-    // Handle the special format for compass/crawler-google-places
-    if (actorId === 'compass~crawler-google-places') {
-      actorId = 'compass/crawler-google-places';
-    }
     
     console.log(`🚀 Running Apify actor: ${actorId}`);
     console.log('📋 Input data:', JSON.stringify(inputData, null, 2));
+
+    if (!APIFY_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: 'Apify API key not configured'
+      });
+    }
     
-    const response = await axios.post(
-      `${APIFY_BASE_URL}/acts/${actorId}/runs`,
-      inputData,
-      {
-        params: { token: APIFY_API_KEY },
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    // Use official Apify client
+    const run = await apifyClient.actor(actorId).call(inputData);
     
-    console.log(`✅ Actor started successfully. Run ID: ${response.data.data.id}`);
+    console.log(`✅ Actor started successfully. Run ID: ${run.id}`);
     
     res.json({
       success: true,
-      runId: response.data.data.id,
-      status: response.data.data.status,
+      runId: run.id,
+      status: run.status,
       message: 'Actor started successfully'
     });
   } catch (error) {
-    console.error('❌ Apify run error:', error.response?.data || error.message);
+    console.error('❌ Apify run error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error running Apify actor',
-      error: error.response?.data || error.message
+      error: error.message
     });
   }
 });
 
-// Get run status and results
+// Get run status and results using official client
 app.get('/api/apify/runs/:runId', async (req, res) => {
   try {
     const { runId } = req.params;
     
     console.log(`📊 Checking status for run: ${runId}`);
+
+    if (!APIFY_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: 'Apify API key not configured'
+      });
+    }
     
-    const response = await axios.get(`${APIFY_BASE_URL}/actor-runs/${runId}`, {
-      params: { token: APIFY_API_KEY }
-    });
-    
-    const runData = response.data.data;
-    console.log(`📈 Run status: ${runData.status}`);
+    // Get run info using official client
+    const run = await apifyClient.run(runId).get();
+    console.log(`📈 Run status: ${run.status}`);
     
     let results = null;
-    if (runData.status === 'SUCCEEDED' && runData.defaultDatasetId) {
+    if (run.status === 'SUCCEEDED' && run.defaultDatasetId) {
       try {
-        console.log(`📂 Fetching results from dataset: ${runData.defaultDatasetId}`);
-        const resultsResponse = await axios.get(
-          `${APIFY_BASE_URL}/datasets/${runData.defaultDatasetId}/items`,
-          { params: { token: APIFY_API_KEY, limit: 200 } }
-        );
-        results = resultsResponse.data;
+        console.log(`📂 Fetching results from dataset: ${run.defaultDatasetId}`);
+        const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+        results = items;
         console.log(`✅ Found ${results.length} results`);
       } catch (resultsError) {
         console.log('❌ Could not fetch results:', resultsError.message);
@@ -351,17 +354,17 @@ app.get('/api/apify/runs/:runId', async (req, res) => {
     
     res.json({
       success: true,
-      status: runData.status,
-      startedAt: runData.startedAt,
-      finishedAt: runData.finishedAt,
+      status: run.status,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
       results: results
     });
   } catch (error) {
-    console.error('❌ Apify run status error:', error.response?.data || error.message);
+    console.error('❌ Apify run status error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Error fetching run status',
-      error: error.response?.data || error.message
+      error: error.message
     });
   }
 });
