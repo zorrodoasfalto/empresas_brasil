@@ -2018,6 +2018,37 @@ app.post('/api/debug/check-user', async (req, res) => {
   }
 });
 
+// Update user name endpoint
+app.put('/api/user/update-name', authenticateToken, async (req, res) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user.id;
+    
+    if (!name || name.trim().length === 0) {
+      return res.status(400).json({ success: false, message: 'Nome é obrigatório' });
+    }
+    
+    const result = await pool.query(
+      'UPDATE simple_users SET name = $1 WHERE id = $2 RETURNING id, email, name',
+      [name.trim(), userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Nome atualizado com sucesso',
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Update user name error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
 // DEBUG: Working login endpoint (temporary)
 app.post('/api/debug/login', async (req, res) => {
   try {
