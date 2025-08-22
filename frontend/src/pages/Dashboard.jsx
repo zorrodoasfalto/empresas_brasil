@@ -1609,10 +1609,17 @@ const Dashboard = () => {
               </ExportButtonsContainer>
             </ResultsHeader>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ 
+              overflowX: 'auto', 
+              maxHeight: '600px',
+              overflowY: 'auto',
+              border: '1px solid rgba(0, 255, 170, 0.2)',
+              borderRadius: '8px'
+            }}>
               <Table>
                 <thead>
                   <tr>
+                    <Th style={{position: 'sticky', left: 0, zIndex: 10, background: 'rgba(15, 15, 35, 0.95)'}}>Ações</Th>
                     <Th>CNPJ</Th>
                     <Th>Razão Social</Th>
                     <Th>Nome Fantasia</Th>
@@ -1636,12 +1643,16 @@ const Dashboard = () => {
                     <Th>MEI</Th>
                     <Th>Sócios/Diretores</Th>
                     <Th>Representantes Legais</Th>
-                    <Th>Ações</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {empresas.map((empresa, index) => (
                     <Tr key={empresa.cnpj || index}>
+                      <Td style={{position: 'sticky', left: 0, zIndex: 5, background: 'rgba(15, 15, 35, 0.95)', textAlign: 'center', minWidth: '110px'}}>
+                        <SaveLeadButton onClick={() => saveLead(empresa)}>
+                          💾 Salvar
+                        </SaveLeadButton>
+                      </Td>
                       <Td>{formatCNPJ(empresa.cnpj)}</Td>
                       <Td>{empresa.razaoSocial || '-'}</Td>
                       <Td>{empresa.nomeFantasia || '-'}</Td>
@@ -1773,11 +1784,6 @@ const Dashboard = () => {
                         ) : (
                           <div style={{color: '#666'}}>Sem dados</div>
                         )}
-                      </Td>
-                      <Td style={{textAlign: 'center', minWidth: '110px'}}>
-                        <SaveLeadButton onClick={() => saveLead(empresa)}>
-                          💾 Salvar
-                        </SaveLeadButton>
                       </Td>
                     </Tr>
                   ))}

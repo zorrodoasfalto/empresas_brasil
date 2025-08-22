@@ -322,91 +322,159 @@ const Funil = () => {
         </StatsRow>
       </Header>
 
-      {/* Funil Visual Simplificado */}
+      {/* Botão Voltar */}
+      <div style={{ marginBottom: '2rem' }}>
+        <button
+          onClick={() => window.location.href = '/dashboard'}
+          style={{
+            background: 'rgba(0, 204, 255, 0.1)',
+            border: '1px solid #00ccff',
+            color: '#00ccff',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          ← Voltar ao Dashboard
+        </button>
+      </div>
+
+      {/* Funil Visual Gráfico REAL */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center',
-        marginTop: '3rem',
+        marginTop: '2rem',
         flexDirection: 'column',
-        gap: '2rem'
+        gap: '1rem'
       }}>
-        <h2 style={{ color: '#00ccff', fontSize: '1.8rem', textAlign: 'center' }}>
-          📊 Visão Geral do Funil
+        <h2 style={{ color: '#00ccff', fontSize: '1.8rem', textAlign: 'center', marginBottom: '3rem' }}>
+          🌪️ Funil de Conversão Visual
         </h2>
         
+        {/* Funil Gráfico */}
         <div style={{
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          gap: '1rem',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
+          gap: '0.5rem',
+          perspective: '1000px'
         }}>
-          {funnelData.map((phase, index) => (
-            <div key={phase.id} style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{
-                background: `linear-gradient(135deg, ${phase.cor}, ${phase.cor}dd)`,
-                color: 'white',
-                padding: '1.5rem 2rem',
-                borderRadius: '12px',
-                textAlign: 'center',
-                minWidth: '180px',
-                boxShadow: `0 8px 20px ${phase.cor}30`
+          {funnelData.map((phase, index) => {
+            const totalLeads = getTotalLeads();
+            const percentage = totalLeads > 0 ? (phase.leads.length / totalLeads * 100) : 25;
+            const width = Math.max(percentage, 10); // Mínimo 10% para visibilidade
+            const maxWidth = 600;
+            const actualWidth = (width / 100) * maxWidth;
+            
+            return (
+              <div key={phase.id} style={{
+                position: 'relative',
+                marginBottom: '0.5rem'
               }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  {phase.leads.length}
+                {/* Linha do Funil */}
+                <div style={{
+                  width: `${actualWidth}px`,
+                  height: '80px',
+                  background: `linear-gradient(135deg, ${phase.cor}, ${phase.cor}dd)`,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  boxShadow: `0 8px 25px ${phase.cor}40`,
+                  transform: 'perspective(500px) rotateX(10deg)',
+                  clipPath: index === 0 
+                    ? 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' // Topo mais largo
+                    : index === funnelData.length - 1
+                    ? 'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)' // Base mais estreita
+                    : 'polygon(5% 0%, 95% 0%, 85% 100%, 15% 100%)' // Meio
+                }}>
+                  <div style={{
+                    color: 'white',
+                    textAlign: 'center',
+                    fontWeight: 'bold',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}>
+                    <div style={{ fontSize: '1.8rem', marginBottom: '0.25rem' }}>
+                      {phase.leads.length}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', opacity: 0.95 }}>
+                      {phase.nome}
+                    </div>
+                  </div>
+                  
+                  {/* Porcentagem */}
+                  <div style={{
+                    position: 'absolute',
+                    right: '-80px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: phase.cor,
+                    padding: '0.5rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {totalLeads > 0 ? `${(phase.leads.length / totalLeads * 100).toFixed(1)}%` : '0%'}
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                  {phase.nome}
-                </div>
-                {phase.descricao && (
-                  <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '0.25rem' }}>
-                    {phase.descricao}
+                
+                {/* Seta entre fases */}
+                {index < funnelData.length - 1 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    margin: '0.5rem 0'
+                  }}>
+                    <div style={{
+                      width: '0',
+                      height: '0',
+                      borderLeft: '15px solid transparent',
+                      borderRight: '15px solid transparent',
+                      borderTop: `20px solid ${funnelData[index + 1]?.cor || '#00ccff'}`,
+                      opacity: 0.7,
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                    }}></div>
                   </div>
                 )}
               </div>
-              
-              {index < funnelData.length - 1 && (
-                <div style={{
-                  margin: '0 1rem',
-                  fontSize: '2rem',
-                  color: '#00ccff'
-                }}>
-                  →
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
+        {/* Taxa de Conversão */}
         <div style={{
+          marginTop: '3rem',
           background: 'rgba(0, 136, 204, 0.1)',
           border: '1px solid rgba(0, 204, 255, 0.3)',
           borderRadius: '12px',
           padding: '2rem',
           textAlign: 'center',
-          maxWidth: '600px',
-          marginTop: '2rem'
+          maxWidth: '500px'
         }}>
           <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-            💡 Como usar o sistema
+            📈 Taxa de Conversão Geral
           </h3>
-          <div style={{ color: '#e0e0e0', lineHeight: '1.6' }}>
-            <div>1. 📊 <strong>Salve leads</strong> da busca de 66M empresas</div>
-            <div>2. 🗺️ <strong>Capture contatos</strong> via Google Maps</div>
-            <div>3. 🗃️ <strong>Gerencie todos</strong> na página Leads</div>
-            <div>4. 🌪️ <strong>Acompanhe progresso</strong> neste funil</div>
-          </div>
-          
-          {getTotalLeads() === 0 && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              background: 'rgba(0, 255, 170, 0.1)',
-              borderRadius: '8px',
-              color: '#00ffaa'
-            }}>
-              🚀 <strong>Comece salvando seu primeiro lead!</strong>
+          {totalLeads > 0 && funnelData.length > 0 ? (
+            <div style={{ color: '#e0e0e0' }}>
+              <div style={{ fontSize: '2rem', color: '#00ccff', marginBottom: '0.5rem' }}>
+                {funnelData[funnelData.length - 1] 
+                  ? ((funnelData[funnelData.length - 1].leads.length / getTotalLeads()) * 100).toFixed(1)
+                  : 0}%
+              </div>
+              <div>De {getTotalLeads()} leads iniciais para {funnelData[funnelData.length - 1]?.leads.length || 0} finalizados</div>
+            </div>
+          ) : (
+            <div style={{ color: '#999' }}>
+              Adicione leads para ver as métricas de conversão
             </div>
           )}
         </div>
