@@ -90,6 +90,25 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+  }
+  
+  const token = authHeader.substring(7);
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ success: false, message: 'Token inválido' });
+  }
+};
+
 // Use routes
 // app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
