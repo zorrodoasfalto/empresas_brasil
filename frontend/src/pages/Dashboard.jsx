@@ -1192,7 +1192,7 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
-            onClick={() => window.location.href = '/google-maps'}
+            onClick={() => window.location.href = '/google-places'}
           >
             <span className="icon">📍</span>
             <span className="text">Google Maps</span>
