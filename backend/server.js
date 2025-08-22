@@ -674,8 +674,8 @@ app.post('/api/crm/leads-save-test', async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
-    // Use hardcoded user ID for testing (the marketing user we just created)
-    const userId = 4; // marketing@ogservicos.com.br
+    // Use hardcoded user ID for testing - same as other endpoints
+    const userId = 1;
 
     const {
       nome,
