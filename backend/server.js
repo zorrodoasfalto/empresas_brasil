@@ -1581,7 +1581,7 @@ app.post('/api/companies/filtered', async (req, res) => {
         orderByClause = 'ORDER BY est.data_inicio_atividades DESC NULLS LAST';
         break;
       case 'largest':
-        orderByClause = 'ORDER BY COALESCE(est.capital_social::NUMERIC, 0) DESC';
+        orderByClause = 'ORDER BY COALESCE(emp.capital_social::NUMERIC, 0) DESC';
         break;
       case 'reverse':
         orderByClause = 'ORDER BY est.cnpj_basico DESC';
