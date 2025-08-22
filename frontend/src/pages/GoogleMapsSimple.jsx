@@ -222,11 +222,17 @@ const GoogleMapsSimple = () => {
 
   const saveLead = async (place) => {
     try {
-      // Temporarily use test endpoint
-      const response = await fetch('/api/crm/leads-save-test', {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Você precisa estar logado para salvar leads');
+        return;
+      }
+      
+      const response = await fetch('/api/crm/leads', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           nome: place.title || place.name || 'Empresa sem nome',
