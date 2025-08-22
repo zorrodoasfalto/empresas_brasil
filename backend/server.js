@@ -91,8 +91,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // Use routes
-// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO
-app.use('/api/auth', authRoutes);
+// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
+// app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
 // Endpoint temporário para verificar tabelas
 app.get('/api/check-tables', async (req, res) => {
@@ -274,17 +274,17 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const result = await pool.query('SELECT * FROM simple_users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, email, password, name FROM simple_users WHERE email = $1', [email]);
     
     if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
+      return res.json({ success: false, message: 'Usuário não encontrado' });
     }
     
     const user = result.rows[0];
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
-      return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
+      return res.json({ success: false, message: 'Senha incorreta' });
     }
     
     const token = jwt.sign(
@@ -299,9 +299,65 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: { id: user.id, email: user.email, name: user.name }
     });
+    
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Erro interno' });
+    console.error('❌ Login error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// Registration endpoint (requires name)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { firstName, lastName, email, password } = req.body;
+    
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Nome, sobrenome, email e senha são obrigatórios' 
+      });
+    }
+    
+    // Check if user already exists
+    const existingUser = await pool.query('SELECT id FROM simple_users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Usuário já existe com este email' 
+      });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const fullName = `${firstName} ${lastName}`;
+    const result = await pool.query(`
+      INSERT INTO simple_users (name, email, password, created_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING id, name, email, created_at
+    `, [fullName, email, hashedPassword]);
+    
+    const user = result.rows[0];
+    
+    // Generate token
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Usuário criado com sucesso',
+      token,
+      user: { id: user.id, email: user.email, name: user.name }
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
 
@@ -1896,6 +1952,105 @@ if (process.env.NODE_ENV === 'production') {
     }
   });
 }
+
+// DEBUG: Update user password (temporary)
+app.post('/api/debug/update-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    const result = await pool.query(`
+      UPDATE simple_users 
+      SET password = $1 
+      WHERE email = $2
+      RETURNING id, email
+    `, [hashedPassword, email]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Senha atualizada com sucesso',
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Update password error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// DEBUG: Check user info (temporary)
+app.post('/api/debug/check-user', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const result = await pool.query('SELECT id, email, password FROM simple_users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+    
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        passwordHash: user.password.substring(0, 20) + '...',
+        passwordValid: validPassword
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Check user error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// DEBUG: Working login endpoint (temporary)
+app.post('/api/debug/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    const result = await pool.query('SELECT id, email, password, name FROM simple_users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+    
+    if (!validPassword) {
+      return res.json({ success: false, message: 'Senha incorreta' });
+    }
+    
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    res.json({
+      success: true,
+      message: 'Login realizado com sucesso',
+      token,
+      user: { id: user.id, email: user.email, name: user.name }
+    });
+    
+  } catch (error) {
+    console.error('❌ Debug login error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
 
 Promise.all([initDB(), createUsersTable()]).then(() => {
   app.listen(PORT, () => {
