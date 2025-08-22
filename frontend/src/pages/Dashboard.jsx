@@ -12,6 +12,147 @@ const Container = styled.div`
   min-height: 100vh;
   background: transparent;
   position: relative;
+  display: flex;
+`;
+
+const Sidebar = styled.div`
+  width: ${props => props.isOpen ? '280px' : '60px'};
+  min-height: 100vh;
+  background: 
+    linear-gradient(135deg, rgba(0, 255, 170, 0.05) 0%, rgba(0, 136, 204, 0.05) 100%),
+    rgba(15, 15, 35, 0.95);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(0, 255, 170, 0.2);
+  transition: all 0.3s ease;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  overflow: hidden;
+`;
+
+const SidebarToggle = styled.button`
+  position: absolute;
+  top: 20px;
+  right: -15px;
+  background: linear-gradient(135deg, #00ffaa, #00ccff);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #000;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1001;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 10px rgba(0, 255, 170, 0.5);
+  }
+`;
+
+const SidebarContent = styled.div`
+  padding: 80px 0 20px 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+`;
+
+const SidebarItem = styled.div`
+  padding: 15px 20px;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-left: 3px solid transparent;
+  
+  &:hover {
+    background: rgba(0, 255, 170, 0.1);
+    border-left-color: #00ffaa;
+    color: #00ffaa;
+  }
+  
+  &.active {
+    background: rgba(0, 255, 170, 0.2);
+    border-left-color: #00ffaa;
+    color: #00ffaa;
+  }
+  
+  .icon {
+    font-size: 20px;
+    min-width: 20px;
+  }
+  
+  .text {
+    opacity: ${props => props.sidebarOpen ? '1' : '0'};
+    transition: opacity 0.3s ease;
+    white-space: nowrap;
+  }
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  margin-left: ${props => props.sidebarOpen ? '280px' : '60px'};
+  transition: margin-left 0.3s ease;
+  min-height: 100vh;
+`;
+
+const Modal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+`;
+
+const ModalContent = styled.div`
+  background: 
+    linear-gradient(135deg, rgba(0, 255, 170, 0.1) 0%, rgba(0, 136, 204, 0.1) 100%),
+    rgba(15, 15, 35, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  color: #e0e0e0;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  
+  h3 {
+    color: #00ffaa;
+    margin: 0;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #e0e0e0;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  
+  &:hover {
+    color: #00ffaa;
+  }
 `;
 
 const Header = styled.header`
@@ -638,17 +779,40 @@ const Dashboard = () => {
     return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
   };
 
-  const exportToCSV = () => {
-    if (empresas.length === 0) {
-      toast.error('Nenhum dado para exportar');
+  const exportToCSV = async () => {
+    if (!filters.uf && !filters.segmentoNegocio) {
+      toast.error('Defina pelo menos um filtro antes de exportar');
       return;
     }
 
-    // Find max number of socios to create appropriate columns
-    const maxSocios = Math.max(...empresas.map(empresa => empresa.socios?.length || 0));
+    toast.info('Preparando exportação... Isso pode levar alguns minutos.');
+    
+    try {
+      // Make API call to get all companies with current filters
+      const response = await fetch('/api/companies/filtered', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...filters,
+          companyLimit: companyLimit // Use the actual selected limit
+        }),
+      });
 
-    // Prepare data with all columns separated
-    const csvData = empresas.map(empresa => {
+      const data = await response.json();
+      if (!data.success) {
+        toast.error('Erro ao buscar dados para exportação');
+        return;
+      }
+
+      const allEmpresas = data.data;
+
+      // Find max number of socios to create appropriate columns
+      const maxSocios = Math.max(...allEmpresas.map(empresa => empresa.socios?.length || 0));
+
+      // Prepare data with all columns separated
+      const csvData = allEmpresas.map(empresa => {
       const baseData = {
         'CNPJ': formatCNPJ(empresa.cnpj) || '',
         'CNPJ Básico': empresa.cnpjBasico || '',
@@ -725,20 +889,47 @@ const Dashboard = () => {
     link.click();
     URL.revokeObjectURL(link.href);
     
-    toast.success(`✅ ${empresas.length} empresas exportadas para CSV com ${header.length} colunas`);
+      toast.success(`✅ ${allEmpresas.length} empresas exportadas para CSV com ${header.length} colunas`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Erro na exportação: ' + error.message);
+    }
   };
 
-  const exportToExcel = () => {
-    if (empresas.length === 0) {
-      toast.error('Nenhum dado para exportar');
+  const exportToExcel = async () => {
+    if (!filters.uf && !filters.segmentoNegocio) {
+      toast.error('Defina pelo menos um filtro antes de exportar');
       return;
     }
 
-    // Find max number of socios to create appropriate columns
-    const maxSocios = Math.max(...empresas.map(empresa => empresa.socios?.length || 0));
+    toast.info('Preparando exportação Excel... Isso pode levar alguns minutos.');
+    
+    try {
+      // Make API call to get all companies with current filters
+      const response = await fetch('/api/companies/filtered', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...filters,
+          companyLimit: companyLimit // Use the actual selected limit
+        }),
+      });
 
-    // Prepare data for Excel export with each field in separate column
-    const excelData = empresas.map(empresa => {
+      const data = await response.json();
+      if (!data.success) {
+        toast.error('Erro ao buscar dados para exportação');
+        return;
+      }
+
+      const allEmpresas = data.data;
+
+      // Find max number of socios to create appropriate columns
+      const maxSocios = Math.max(...allEmpresas.map(empresa => empresa.socios?.length || 0));
+
+      // Prepare data for Excel export with each field in separate column
+      const excelData = allEmpresas.map(empresa => {
       const baseData = {
         'CNPJ': formatCNPJ(empresa.cnpj) || '',
         'CNPJ Básico': empresa.cnpjBasico || '',
@@ -794,24 +985,28 @@ const Dashboard = () => {
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(excelData);
 
-    // Set column widths for better formatting
-    const columnWidths = Object.keys(excelData[0]).map(key => {
+      // Set column widths for better formatting
+      const columnWidths = Object.keys(excelData[0]).map(key => {
       const maxLength = Math.max(
         key.length,
         ...excelData.map(row => String(row[key] || '').length)
       );
       return { wch: Math.min(maxLength + 2, 50) }; // Max width of 50 chars
-    });
-    worksheet['!cols'] = columnWidths;
+      });
+      worksheet['!cols'] = columnWidths;
 
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas');
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Empresas');
 
-    // Generate and download the Excel file
-    const fileName = `empresas_detalhado_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-    
-    toast.success(`✅ ${empresas.length} empresas exportadas para XLSX com ${Object.keys(excelData[0]).length} colunas`);
+      // Generate and download the Excel file
+      const fileName = `empresas_detalhado_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      toast.success(`✅ ${allEmpresas.length} empresas exportadas para XLSX com ${Object.keys(excelData[0]).length} colunas`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Erro na exportação: ' + error.message);
+    }
   };
 
   const toggleSocios = (empresaIndex) => {
@@ -822,6 +1017,13 @@ const Dashboard = () => {
   };
 
   const [expandedRepresentantes, setExpandedRepresentantes] = useState({});
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeModal, setActiveModal] = useState(null);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   
   const toggleRepresentantes = (empresaIndex) => {
     setExpandedRepresentantes(prev => ({
@@ -844,19 +1046,113 @@ const Dashboard = () => {
     }
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const handlePasswordChange = (e) => {
+    setPasswordForm(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+    
+    if (passwordForm.newPassword.length < 6) {
+      toast.error('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success('Senha alterada com sucesso!');
+        setActiveModal(null);
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        toast.error(data.message || 'Erro ao alterar senha');
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast.error('Erro ao alterar senha');
+    }
+  };
+
 
   return (
-      <Container>
-      <Header>
-        <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
-        <UserInfo>
-          <span>Olá, {user?.email}</span>
-          <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
-          <LogoutButton onClick={logout}>Sair</LogoutButton>
-        </UserInfo>
-      </Header>
+    <Container>
+      <Sidebar isOpen={sidebarOpen}>
+        <SidebarToggle onClick={toggleSidebar}>
+          {sidebarOpen ? '←' : '→'}
+        </SidebarToggle>
+        <SidebarContent>
+          <SidebarItem 
+            sidebarOpen={sidebarOpen} 
+            className="active"
+            onClick={() => setActiveModal(null)}
+          >
+            <span className="icon">🏢</span>
+            <span className="text">Dashboard</span>
+          </SidebarItem>
+          <SidebarItem 
+            sidebarOpen={sidebarOpen}
+            onClick={() => setActiveModal('settings')}
+          >
+            <span className="icon">⚙️</span>
+            <span className="text">Configurações</span>
+          </SidebarItem>
+          <SidebarItem 
+            sidebarOpen={sidebarOpen}
+            onClick={() => setActiveModal('password')}
+          >
+            <span className="icon">🔐</span>
+            <span className="text">Alterar Senha</span>
+          </SidebarItem>
+          <SidebarItem 
+            sidebarOpen={sidebarOpen}
+            onClick={logout}
+          >
+            <span className="icon">🚪</span>
+            <span className="text">Sair</span>
+          </SidebarItem>
+        </SidebarContent>
+      </Sidebar>
 
-      <Content>
+      <MainContent sidebarOpen={sidebarOpen}>
+        <Header>
+          <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
+          <UserInfo>
+            <span>Olá, {user?.email}</span>
+            <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
+            <LogoutButton onClick={logout}>Sair</LogoutButton>
+          </UserInfo>
+        </Header>
+
+        <Content>
         <SearchSection>
           <h3 style={{ color: '#00ffaa', marginBottom: '1.5rem' }}>Filtros de Busca</h3>
           
@@ -1312,7 +1608,143 @@ const Dashboard = () => {
             )}
           </ResultsSection>
         )}
-      </Content>
+        </Content>
+      </MainContent>
+
+      {/* Modal para alterar senha */}
+      {activeModal === 'password' && (
+        <Modal onClick={() => setActiveModal(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <h3>🔐 Alterar Senha</h3>
+              <CloseButton onClick={() => setActiveModal(null)}>×</CloseButton>
+            </ModalHeader>
+            
+            <form onSubmit={handlePasswordSubmit}>
+              <FormGroup style={{ marginBottom: '1rem' }}>
+                <Label>Senha Atual</Label>
+                <Input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordForm.currentPassword}
+                  onChange={handlePasswordChange}
+                  required
+                />
+              </FormGroup>
+              
+              <FormGroup style={{ marginBottom: '1rem' }}>
+                <Label>Nova Senha</Label>
+                <Input
+                  type="password"
+                  name="newPassword"
+                  value={passwordForm.newPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  minLength={6}
+                />
+              </FormGroup>
+              
+              <FormGroup style={{ marginBottom: '1.5rem' }}>
+                <Label>Confirmar Nova Senha</Label>
+                <Input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordForm.confirmPassword}
+                  onChange={handlePasswordChange}
+                  required
+                  minLength={6}
+                />
+              </FormGroup>
+              
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: '#e0e0e0',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                    border: 'none',
+                    color: '#000',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Alterar Senha
+                </button>
+              </div>
+            </form>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Modal de configurações */}
+      {activeModal === 'settings' && (
+        <Modal onClick={() => setActiveModal(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <h3>⚙️ Configurações da Conta</h3>
+              <CloseButton onClick={() => setActiveModal(null)}>×</CloseButton>
+            </ModalHeader>
+            
+            <div style={{ color: '#e0e0e0' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Label>Email</Label>
+                <div style={{ 
+                  padding: '0.75rem', 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '6px', 
+                  border: '1px solid rgba(255,255,255,0.1)' 
+                }}>
+                  {user?.email}
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Label>Nome</Label>
+                <div style={{ 
+                  padding: '0.75rem', 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '6px', 
+                  border: '1px solid rgba(255,255,255,0.1)' 
+                }}>
+                  {user?.firstName || 'Usuário'}
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  style={{
+                    background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                    border: 'none',
+                    color: '#000',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </ModalContent>
+        </Modal>
+      )}
     </Container>
   );
 };

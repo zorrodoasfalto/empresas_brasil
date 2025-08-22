@@ -198,6 +198,59 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Change password endpoint
+app.post('/api/auth/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, 'your-secret-key');
+    
+    // Get user from database
+    const userResult = await pool.query('SELECT * FROM simple_users WHERE id = $1', [decoded.id]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Verify current password
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    
+    if (!validPassword) {
+      return res.status(401).json({ success: false, message: 'Senha atual incorreta' });
+    }
+    
+    // Hash new password
+    const saltRounds = 10;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+    
+    // Update password in database
+    await pool.query(
+      'UPDATE simple_users SET password = $1 WHERE id = $2',
+      [hashedNewPassword, decoded.id]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Senha alterada com sucesso'
+    });
+    
+  } catch (error) {
+    console.error('Change password error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: 'Token inválido' });
+    }
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
 // BUSINESS SEGMENTS BASED ON REAL CNAE DATA
 app.get('/api/filters/options', async (req, res) => {
   try {
