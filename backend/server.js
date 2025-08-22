@@ -604,21 +604,18 @@ app.post('/api/debug/reset-password', async (req, res) => {
 // Get leads - simple version that works
 app.get('/api/crm/leads', async (req, res) => {
   try {
-    let userId;
-    
-    // Try to get user from JWT token first
+    // Require valid JWT token
     const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userId = decoded.id;
-      } catch (error) {
-        console.log('Invalid token, falling back to user ID 1');
-        userId = 1;
-      }
-    } else {
-      // No token provided, use default user ID 1
-      userId = 1;
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
+    }
+
+    let userId;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userId = decoded.id;
+    } catch (error) {
+      return res.status(401).json({ success: false, message: 'Token inválido. Faça login novamente.' });
     }
 
     const result = await pool.query(`
@@ -717,21 +714,18 @@ app.post('/api/crm/leads', async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
-    let userId;
-    
-    // Try to get user from JWT token first
+    // Require valid JWT token
     const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userId = decoded.id;
-      } catch (error) {
-        console.log('Invalid token, falling back to user ID 1');
-        userId = 1;
-      }
-    } else {
-      // No token provided, use default user ID 1
-      userId = 1;
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
+    }
+
+    let userId;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userId = decoded.id;
+    } catch (error) {
+      return res.status(401).json({ success: false, message: 'Token inválido. Faça login novamente.' });
     }
 
     const {
@@ -814,29 +808,52 @@ app.post('/api/crm/leads', async (req, res) => {
 // Get funnel data
 app.get('/api/crm/funil', async (req, res) => {
   try {
-    let userId;
-    
-    // Try to get user from JWT token first
+    // Require valid JWT token
     const token = req.headers.authorization?.split(' ')[1];
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        userId = decoded.id;
-      } catch (error) {
-        console.log('Invalid token, falling back to user ID 1');
-        userId = 1;
-      }
-    } else {
-      // No token provided, use default user ID 1
-      userId = 1;
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
     }
 
-    // Get phases
-    const phases = await pool.query(`
+    let userId;
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      userId = decoded.id;
+    } catch (error) {
+      return res.status(401).json({ success: false, message: 'Token inválido. Faça login novamente.' });
+    }
+
+    // Get phases - create default funnel if user doesn't have one
+    let phases = await pool.query(`
       SELECT * FROM funil_fases 
       WHERE user_id = $1 
       ORDER BY ordem
     `, [userId]);
+
+    // If user has no funnel phases, create default ones
+    if (phases.rows.length === 0) {
+      console.log(`🎯 Creating default funnel phases for user ${userId}`);
+      
+      const defaultPhases = [
+        { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
+        { nome: 'Qualificado', descricao: 'Leads qualificados para contato', ordem: 2, cor: '#3B82F6' },
+        { nome: 'Proposta', descricao: 'Proposta enviada', ordem: 3, cor: '#F59E0B' },
+        { nome: 'Fechado', descricao: 'Negócio conquistado', ordem: 4, cor: '#059669' }
+      ];
+
+      for (const phase of defaultPhases) {
+        await pool.query(`
+          INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [userId, phase.nome, phase.descricao, phase.ordem, phase.cor]);
+      }
+
+      // Fetch the newly created phases
+      phases = await pool.query(`
+        SELECT * FROM funil_fases 
+        WHERE user_id = $1 
+        ORDER BY ordem
+      `, [userId]);
+    }
 
     // Get leads in each phase
     const leadsInFunnel = await pool.query(`

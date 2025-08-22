@@ -213,6 +213,14 @@ const Funil = () => {
       
       const response = await fetch('/api/crm/funil', { headers });
       
+      if (response.status === 401) {
+        const data = await response.json();
+        toast.error(data.message || 'Acesso não autorizado. Faça login.');
+        // Optionally redirect to login
+        // window.location.href = '/login';
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setFunnelData(data.funil);
