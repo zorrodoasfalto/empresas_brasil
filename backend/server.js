@@ -360,6 +360,92 @@ app.post('/api/auth/change-password', async (req, res) => {
 
 // CRM API ENDPOINTS
 
+// DEBUG: Reset user password (temporary)
+app.post('/api/debug/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update password
+    const result = await pool.query(
+      'UPDATE simple_users SET password = $1 WHERE email = $2 RETURNING id, email',
+      [hashedPassword, email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuário não encontrado'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Senha alterada com sucesso',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ Password reset error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao alterar senha',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Test funnel without auth (temporary)
+app.get('/api/crm/funil-test', async (req, res) => {
+  try {
+    // Use hardcoded user ID 1 for testing
+    const userId = 1;
+
+    // Get phases
+    const phases = await pool.query(`
+      SELECT * FROM funil_fases 
+      WHERE user_id = $1 
+      ORDER BY ordem
+    `, [userId]);
+
+    // Get leads in each phase
+    const leadsInFunnel = await pool.query(`
+      SELECT 
+        l.*,
+        lf.fase_id,
+        lf.data_entrada
+      FROM leads l
+      JOIN leads_funil lf ON l.id = lf.lead_id
+      JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY lf.data_entrada DESC
+    `, [userId]);
+
+    // Group leads by phase
+    const funnelData = phases.rows.map(phase => ({
+      ...phase,
+      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
+    }));
+
+    res.json({
+      success: true,
+      funil: funnelData,
+      debug: {
+        phases_count: phases.rows.length,
+        leads_count: leadsInFunnel.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ Test funnel error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar funil de teste',
+      error: error.message
+    });
+  }
+});
+
 // Save a new lead
 app.post('/api/crm/leads', async (req, res) => {
   try {
