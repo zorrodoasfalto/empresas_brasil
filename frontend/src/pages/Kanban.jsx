@@ -205,7 +205,7 @@ const Kanban = () => {
 
   const fetchFunnelData = async () => {
     try {
-      const response = await fetch('/api/crm/funil');
+      const response = await fetch('/api/crm/kanban');
       
       const data = await response.json();
       if (data.success) {

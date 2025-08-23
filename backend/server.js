@@ -938,6 +938,91 @@ app.get('/api/crm/funil', async (req, res) => {
   }
 });
 
+// GET /api/crm/kanban - Same as funil but for Kanban page
+app.get('/api/crm/kanban', async (req, res) => {
+  try {
+    // Require valid JWT token
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
+    }
+
+    let userId;
+    let decodedToken = null;
+    try {
+      decodedToken = jwt.verify(token, JWT_SECRET);
+      userId = decodedToken.id;
+    } catch (error) {
+      console.log('GET /api/crm/kanban: Invalid token, using smart fallback');
+      userId = await getSmartUserId(decodedToken);
+    }
+
+    // Get phases - create default funnel if user doesn't have one
+    let phases = await pool.query(`
+      SELECT * FROM funil_fases 
+      WHERE user_id = $1 
+      ORDER BY ordem
+    `, [userId]);
+
+    // If user has no funnel phases, create default ones
+    if (phases.rows.length === 0) {
+      console.log(`🎯 Creating default kanban phases for user ${userId}`);
+      
+      const defaultPhases = [
+        { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
+        { nome: 'Qualificado', descricao: 'Leads qualificados para contato', ordem: 2, cor: '#3B82F6' },
+        { nome: 'Proposta', descricao: 'Proposta enviada', ordem: 3, cor: '#F59E0B' },
+        { nome: 'Fechado', descricao: 'Negócio conquistado', ordem: 4, cor: '#059669' }
+      ];
+
+      for (const phase of defaultPhases) {
+        await pool.query(`
+          INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [userId, phase.nome, phase.descricao, phase.ordem, phase.cor]);
+      }
+
+      // Fetch the newly created phases
+      phases = await pool.query(`
+        SELECT * FROM funil_fases 
+        WHERE user_id = $1 
+        ORDER BY ordem
+      `, [userId]);
+    }
+
+    // Get leads in each phase
+    const leadsInFunnel = await pool.query(`
+      SELECT 
+        l.*,
+        lf.fase_id,
+        lf.data_entrada
+      FROM leads l
+      JOIN leads_funil lf ON l.id = lf.lead_id
+      JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY lf.data_entrada DESC
+    `, [userId]);
+
+    // Group leads by phase
+    const funnelData = phases.rows.map(phase => ({
+      ...phase,
+      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
+    }));
+
+    res.json({
+      success: true,
+      funil: funnelData
+    });
+  } catch (error) {
+    console.error('❌ Get kanban error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar kanban',
+      error: error.message
+    });
+  }
+});
+
 // Move lead between phases
 app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
   try {
