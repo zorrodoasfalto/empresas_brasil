@@ -655,7 +655,8 @@ const GoogleMapsScraper = () => {
           locationQuery: formData.locationQuery,
           searchStringsArray: [formData.searchTerms],
           maxCrawledPlacesPerSearch: parseInt(formData.maxResults),
-          language: "pt-BR"
+          language: "pt-BR",
+          deeperCityScrape: true
         })
       });
       
