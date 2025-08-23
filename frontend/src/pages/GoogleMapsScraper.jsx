@@ -309,7 +309,8 @@ const ExportButton = styled.button`
 const GoogleMapsScraper = () => {
   const [formData, setFormData] = useState({
     searchTerms: '',
-    locationQuery: ''
+    locationQuery: '',
+    maxResults: 50
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -451,7 +452,7 @@ const GoogleMapsScraper = () => {
           includeWebResults: false,
           language: "pt-BR",
           locationQuery: formData.locationQuery,
-          maxCrawledPlacesPerSearch: 50,
+          maxCrawledPlacesPerSearch: parseInt(formData.maxResults),
           maxImages: 0,
           maximumLeadsEnrichmentRecords: 0,
           scrapeContacts: false,
@@ -521,15 +522,16 @@ const GoogleMapsScraper = () => {
   };
 
   const saveAllLeads = async () => {
-    console.log('🔍 saveAllLeads called - results:', results?.length, 'user:', !!user);
+    console.log('🔍 saveAllLeads called - results:', results?.length);
     
     if (!results || results.length === 0) {
       toast.warning('Nenhum resultado para salvar');
       return;
     }
 
-    if (!user || !user.id) {
-      toast.error('Usuário não autenticado');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Você precisa estar logado para salvar leads');
       return;
     }
 
@@ -549,19 +551,11 @@ const GoogleMapsScraper = () => {
         notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery}`
       }));
 
+      console.log('🔍 Saving leads:', leadsToSave.length, 'leads');
+      
       let savedCount = 0;
-      let errorCount = 0;
-
-      console.log('🔍 About to save leads:', leadsToSave.length, 'leads');
-      console.log('🔍 First lead sample:', leadsToSave[0]);
-
       for (const lead of leadsToSave) {
         try {
-          const token = localStorage.getItem('token');
-          console.log('🔍 Token exists:', !!token);
-          console.log('🔍 Saving lead:', lead.nome);
-          console.log('🔍 Lead data:', JSON.stringify(lead, null, 2));
-          
           const response = await fetch('/api/crm/leads', {
             method: 'POST',
             headers: {
@@ -571,44 +565,21 @@ const GoogleMapsScraper = () => {
             body: JSON.stringify(lead)
           });
 
-          console.log('🔍 Response status:', response.status);
-          console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
-          
-          let result;
-          try {
-            result = await response.json();
-          } catch (parseError) {
-            console.error('🔍 Failed to parse JSON response:', parseError);
-            const text = await response.text();
-            console.error('🔍 Raw response:', text);
-            result = { error: 'Failed to parse response', raw: text };
-          }
-          
-          console.log('🔍 Save response:', response.status, result);
-
-          if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
             savedCount++;
           } else {
-            errorCount++;
-            console.error('🔍 Save failed:', result);
+            console.error('Erro ao salvar lead:', data.message || 'Erro desconhecido');
           }
         } catch (error) {
-          errorCount++;
-          console.error('🔍 Network error:', error);
-          console.error('🔍 Error details:', error.message, error.stack);
+          console.error('Erro na requisição:', error);
         }
       }
-
-      console.log('🔍 Final counts:', { savedCount, errorCount, total: leadsToSave.length });
       
       if (savedCount > 0) {
         toast.success(`✅ ${savedCount} leads salvos com sucesso!`);
-      }
-      if (errorCount > 0) {
-        toast.error(`❌ ${errorCount} leads falharam ao salvar. Verifique o console (F12) para mais detalhes.`);
-      }
-      if (savedCount === 0 && errorCount === 0) {
-        toast.warning('⚠️ Nenhum lead foi processado');
+      } else {
+        toast.error('❌ Nenhum lead foi salvo. Verifique se você está logado.');
       }
 
     } catch (error) {
@@ -724,6 +695,22 @@ const GoogleMapsScraper = () => {
             />
           </FormGroup>
         </FormGrid>
+
+        <FormGroup style={{ marginTop: '1rem' }}>
+          <Label>Quantidade de Empresas</Label>
+          <Select
+            name="maxResults"
+            value={formData.maxResults}
+            onChange={handleInputChange}
+          >
+            <option value={10}>10 empresas</option>
+            <option value={25}>25 empresas</option>
+            <option value={50}>50 empresas (padrão)</option>
+            <option value={100}>100 empresas</option>
+            <option value={200}>200 empresas</option>
+            <option value={500}>500 empresas</option>
+          </Select>
+        </FormGroup>
 
         <RunButton
           onClick={runScraper}
