@@ -488,22 +488,23 @@ const GoogleMapsScraper = () => {
     setSearchAttempts(prev => prev + 1);
     
     const strategies = [
-      // Strategy 1: Increase results limit
+      // Strategy 1: Add 50 more results
       {
         ...formData,
-        maxResults: Math.min(formData.maxResults * 2, 200)
+        maxResults: formData.maxResults + 50
       },
-      // Strategy 2: Expand location
+      // Strategy 2: Add another 50 + expand location slightly
       {
         ...formData,
         locationQuery: expandLocationQuery(formData.locationQuery),
-        maxResults: Math.min(formData.maxResults * 1.5, 150)
+        maxResults: formData.maxResults + 100
       },
-      // Strategy 3: Add related keywords
+      // Strategy 3: Add another 50 + broader search terms
       {
         ...formData,
         searchTerms: expandSearchTerms(formData.searchTerms),
-        maxResults: Math.min(formData.maxResults * 2, 200)
+        locationQuery: expandLocationQuery(formData.locationQuery),
+        maxResults: formData.maxResults + 150
       }
     ];
 
@@ -522,7 +523,13 @@ const GoogleMapsScraper = () => {
     const expansions = {
       'São Paulo, SP': 'Grande São Paulo, SP',
       'Rio de Janeiro, RJ': 'Grande Rio de Janeiro, RJ', 
-      'Belo Horizonte, MG': 'Região Metropolitana de Belo Horizonte, MG'
+      'Belo Horizonte, MG': 'Região Metropolitana de Belo Horizonte, MG',
+      'Salvador, BA': 'Região Metropolitana de Salvador, BA',
+      'Fortaleza, CE': 'Região Metropolitana de Fortaleza, CE',
+      'Brasília, DF': 'Distrito Federal, DF',
+      'Curitiba, PR': 'Região Metropolitana de Curitiba, PR',
+      'Recife, PE': 'Região Metropolitana de Recife, PE',
+      'Porto Alegre, RS': 'Região Metropolitana de Porto Alegre, RS'
     };
     
     return expansions[location] || `${location.split(',')[0]}, Brasil`;
@@ -532,19 +539,35 @@ const GoogleMapsScraper = () => {
     const variations = {
       'restaurantes': 'restaurantes OR lanchonetes OR food',
       'padarias': 'padarias OR confeitarias OR panificadoras',
-      'farmácias': 'farmácias OR drogarias',
-      'supermercados': 'supermercados OR mercados OR mercadinhos'
+      'farmácias': 'farmácias OR drogarias OR medicamentos',
+      'supermercados': 'supermercados OR mercados OR mercadinhos',
+      'lojas': 'lojas OR comércio OR varejo',
+      'clínicas': 'clínicas OR consultórios OR saúde',
+      'oficinas': 'oficinas OR mecânicas OR automotivo',
+      'salões': 'salões OR barbearias OR beleza',
+      'academias': 'academias OR fitness OR ginástica',
+      'escolas': 'escolas OR colégios OR educação',
+      'hotéis': 'hotéis OR pousadas OR hospedagem'
     };
     
-    return variations[terms.toLowerCase()] || `${terms} OR empresas`;
+    const lowerTerms = terms.toLowerCase();
+    for (const [key, expansion] of Object.entries(variations)) {
+      if (lowerTerms.includes(key)) {
+        return expansion;
+      }
+    }
+    
+    return `${terms} OR empresas`;
   };
 
   const getStrategyDescription = (attempt) => {
+    const currentLimit = formData.maxResults;
+    
     switch(attempt) {
-      case 1: return 'Aumentando limite de resultados';
-      case 2: return 'Expandindo área geográfica';
-      case 3: return 'Variando termos de busca';
-      default: return 'Otimizando busca';
+      case 1: return `Aumentando para ${currentLimit + 50} empresas (+50)`;
+      case 2: return `Expandindo região + ${currentLimit + 100} empresas (+100)`;
+      case 3: return `Termos relacionados + ${currentLimit + 150} empresas (+150)`;
+      default: return 'Estratégia de expansão gradual';
     }
   };
 
