@@ -306,67 +306,6 @@ const ExportButton = styled.button`
   }
 `;
 
-const ToggleContainer = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(0, 255, 170, 0.2);
-  margin-bottom: 1rem;
-`;
-
-const ToggleSwitch = styled.label`
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-  
-  input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-  
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #333;
-    transition: 0.3s;
-    border-radius: 24px;
-  }
-  
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-  }
-  
-  input:checked + .slider {
-    background-color: #00ffaa;
-  }
-  
-  input:checked + .slider:before {
-    transform: translateX(26px);
-  }
-`;
-
-const ToggleLabel = styled.span`
-  color: #e0e0e0;
-  font-size: 0.9rem;
-  font-weight: 500;
-`;
 
 const GoogleMapsScraper = () => {
   const [formData, setFormData] = useState({
@@ -379,8 +318,6 @@ const GoogleMapsScraper = () => {
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
-  const [duplicateLeadsIds, setDuplicateLeadsIds] = useState(new Set());
-  const [showDuplicates, setShowDuplicates] = useState(false);
   const { user } = useAuth();
 
   // Remove internal duplicates from scraping results
@@ -410,83 +347,11 @@ const GoogleMapsScraper = () => {
     return uniqueResults;
   };
 
-  // Filter duplicate leads from display
-  const filterDuplicatesFromResults = async (resultsToFilter) => {
-    if (!resultsToFilter || resultsToFilter.length === 0) {
-      setFilteredResults([]);
-      return;
-    }
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setFilteredResults(resultsToFilter);
-      return;
-    }
-
-    try {
-      const leadsToCheck = resultsToFilter.map(place => ({
-        nome: place.title || place.name || 'Empresa sem nome',
-        empresa: place.title || place.name || 'Empresa sem nome',
-        telefone: place.phone || '',
-        email: place.email || ''
-      }));
-
-      const response = await fetch('/api/crm/leads/check-duplicates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ leads: leadsToCheck })
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        const existingIds = new Set(data.existingLeads);
-        setDuplicateLeadsIds(existingIds);
-        
-        const filtered = resultsToFilter.filter((place, index) => {
-          const lead = leadsToCheck[index];
-          const leadId = `${lead.nome}_${lead.empresa}_${lead.telefone}_${lead.email}`;
-          return !existingIds.has(leadId);
-        });
-
-        setFilteredResults(filtered);
-        console.log(`🔍 Filtered ${resultsToFilter.length - filtered.length} duplicates from display`);
-      } else {
-        setFilteredResults(resultsToFilter);
-      }
-    } catch (error) {
-      console.error('Error filtering duplicates:', error);
-      setFilteredResults(resultsToFilter);
-    }
-  };
-
-  // Update filtered results when results change or showDuplicates toggle changes
+  // Simply show all results - no database duplicate filtering
   React.useEffect(() => {
-    if (showDuplicates) {
-      setFilteredResults(results);
-    } else {
-      filterDuplicatesFromResults(results);
-    }
-  }, [results, showDuplicates]);
+    setFilteredResults(results);
+  }, [results]);
 
-  // Auto-increase search limit if all results are duplicates
-  const handleAllDuplicatesFound = async () => {
-    if (formData.maxResults < 200) {
-      const newMaxResults = Math.min(formData.maxResults * 2, 200);
-      setFormData(prev => ({ ...prev, maxResults: newMaxResults }));
-      
-      toast.info(`🔄 Aumentando busca para ${newMaxResults} resultados para encontrar leads novos...`);
-      
-      // Auto-run scraper with new limit
-      setTimeout(() => {
-        runScraper();
-      }, 1000);
-    } else {
-      toast.warning('⚠️ Limite máximo de busca atingido (200). Todos os leads na região já estão na sua base.');
-    }
-  };
 
   const businessKeywords = {
     'Alimentação': [
@@ -702,8 +567,8 @@ const GoogleMapsScraper = () => {
     console.log('🔍 saveAllLeads called');
     console.log('🔍 Results length:', results?.length);
     
-    // Use filteredResults (already filtered for duplicates) or results for backwards compatibility
-    let dataToSave = filteredResults.length > 0 ? filteredResults : results;
+    // Use all results - no pre-filtering
+    let dataToSave = results;
     if (!dataToSave || dataToSave.length === 0) {
       toast.error('❌ Nenhum resultado encontrado para salvar. Execute uma busca primeiro.');
       return;
@@ -734,13 +599,7 @@ const GoogleMapsScraper = () => {
         notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery}`
       }));
 
-      console.log('🔍 Leads to save (already filtered):', leadsToProcess.length);
-
-      if (leadsToProcess.length === 0) {
-        toast.info('🔄 Nenhum novo lead para salvar - todos já existem na sua base');
-        return;
-      }
-
+      console.log('🔍 Leads to save:', leadsToProcess.length);
       const leadsToSave = leadsToProcess;
       console.log('🔍 First lead data:', JSON.stringify(leadsToSave[0], null, 2));
       
@@ -1002,35 +861,11 @@ const GoogleMapsScraper = () => {
           </div>
 
 
-          {/* Toggle para mostrar/esconder duplicados */}
-          {results.length > 0 && (
-            <ToggleContainer>
-              <ToggleLabel>
-                🔄 Mostrar leads que já existem na base:
-              </ToggleLabel>
-              <ToggleSwitch>
-                <input 
-                  type="checkbox" 
-                  checked={showDuplicates}
-                  onChange={(e) => setShowDuplicates(e.target.checked)}
-                />
-                <span className="slider"></span>
-              </ToggleSwitch>
-              <ToggleLabel style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                {showDuplicates ? 'Mostrando todos os leads' : 'Mostrando apenas leads novos'}
-              </ToggleLabel>
-            </ToggleContainer>
-          )}
 
           {filteredResults.length > 0 && (
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-                📊 {showDuplicates ? `${filteredResults.length} Leads Encontrados` : `${filteredResults.length} Novos Leads Encontrados`}
-                {!showDuplicates && results.length > filteredResults.length && (
-                  <span style={{ color: '#00ccff', fontSize: '0.9rem', display: 'block', marginTop: '0.25rem' }}>
-                    🔄 {results.length - filteredResults.length} leads duplicados foram filtrados
-                  </span>
-                )}
+                📊 {filteredResults.length} Leads Encontrados
               </h3>
               
               <ExportButtonsContainer style={{ marginBottom: '1rem' }}>
@@ -1081,33 +916,6 @@ const GoogleMapsScraper = () => {
             </div>
           )}
           
-          {/* Mostrar quando todos são duplicados */}
-          {results.length > 0 && filteredResults.length === 0 && !showDuplicates && (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#00ccff' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
-              <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-                Todos os {results.length} leads já existem na sua base
-              </div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>
-                O scraper encontrou apenas leads que você já possui
-              </div>
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <ExportButton 
-                  onClick={() => setShowDuplicates(true)}
-                  style={{ background: 'linear-gradient(135deg, #0088cc 0%, #0066aa 100%)', color: '#fff' }}
-                >
-                  👁️ Ver Leads Duplicados
-                </ExportButton>
-                <ExportButton 
-                  onClick={handleAllDuplicatesFound}
-                  disabled={isRunning}
-                  style={{ background: 'linear-gradient(135deg, #ff8800 0%, #cc6600 100%)', color: '#fff' }}
-                >
-                  🔄 Buscar Mais Resultados
-                </ExportButton>
-              </div>
-            </div>
-          )}
         </ResultsCard>
       )}
     </Container>
