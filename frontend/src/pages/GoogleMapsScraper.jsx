@@ -700,6 +700,36 @@ const GoogleMapsScraper = () => {
 
   return (
     <Container>
+      {/* Botão Voltar */}
+      <div style={{ marginBottom: '2rem' }}>
+        <button
+          onClick={() => window.location.href = '/dashboard'}
+          style={{
+            background: 'rgba(0, 204, 255, 0.1)',
+            border: '1px solid #00ccff',
+            color: '#00ccff',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.background = 'rgba(0, 204, 255, 0.2)';
+            e.target.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.background = 'rgba(0, 204, 255, 0.1)';
+            e.target.style.transform = 'translateY(0)';
+          }}
+        >
+          ← Voltar ao Dashboard
+        </button>
+      </div>
+
       <Header>
         <Title>
           <GoogleIcon>📍</GoogleIcon>
