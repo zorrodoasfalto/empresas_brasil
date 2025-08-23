@@ -966,6 +966,44 @@ app.get('/api/crm/funil', async (req, res) => {
   }
 });
 
+// Debug endpoint to check user and token status
+app.get('/api/debug/user/:email', async (req, res) => {
+  try {
+    const email = req.params.email;
+    
+    // Check users table
+    const user = await pool.query('SELECT id, email, created_at FROM users WHERE email = $1', [email]);
+    
+    // Check simple_users table  
+    const simpleUser = await pool.query('SELECT id, email, created_at FROM simple_users WHERE email = $1', [email]);
+    
+    // Check leads count
+    let leadsCount = 0;
+    if (user.rows.length > 0) {
+      const leadsResult = await pool.query('SELECT COUNT(*) FROM leads WHERE user_id = $1', [user.rows[0].id]);
+      leadsCount = parseInt(leadsResult.rows[0].count);
+    } else if (simpleUser.rows.length > 0) {
+      const leadsResult = await pool.query('SELECT COUNT(*) FROM leads WHERE user_id = $1', [simpleUser.rows[0].id]);
+      leadsCount = parseInt(leadsResult.rows[0].count);
+    }
+    
+    res.json({
+      success: true,
+      email: email,
+      userInUsers: user.rows.length > 0 ? user.rows[0] : null,
+      userInSimpleUsers: simpleUser.rows.length > 0 ? simpleUser.rows[0] : null,
+      leadsCount: leadsCount,
+      smartFallbackId: await getSmartUserId(null)
+    });
+  } catch (error) {
+    console.error('Debug user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar usuário'
+    });
+  }
+});
+
 // Check for existing leads to filter duplicates before scraping
 app.post('/api/crm/leads/check-duplicates', async (req, res) => {
   try {
