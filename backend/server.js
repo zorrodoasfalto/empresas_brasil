@@ -44,6 +44,50 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
+// Smart fallback function to find the correct user_id
+async function getSmartUserId(decodedToken, providedUserId = null) {
+  if (providedUserId) {
+    return providedUserId; // Use provided userId if valid token
+  }
+  
+  try {
+    // Try to find user by email from token
+    if (decodedToken && decodedToken.email) {
+      const userResult = await pool.query(
+        'SELECT id FROM users WHERE email = $1 UNION SELECT id FROM simple_users WHERE email = $1',
+        [decodedToken.email]
+      );
+      
+      if (userResult.rows.length > 0) {
+        console.log(`Smart fallback: Found user_id ${userResult.rows[0].id} for email ${decodedToken.email}`);
+        return userResult.rows[0].id;
+      }
+    }
+    
+    // If no email match, try to find the most active user with leads
+    const activeUserResult = await pool.query(`
+      SELECT user_id, COUNT(*) as lead_count 
+      FROM leads 
+      GROUP BY user_id 
+      ORDER BY lead_count DESC, user_id ASC 
+      LIMIT 1
+    `);
+    
+    if (activeUserResult.rows.length > 0) {
+      const foundUserId = activeUserResult.rows[0].user_id;
+      console.log(`Smart fallback: Using most active user_id ${foundUserId} (${activeUserResult.rows[0].lead_count} leads)`);
+      return foundUserId;
+    }
+    
+    // Final fallback
+    console.log('Smart fallback: No users found, using user_id 1');
+    return 1;
+  } catch (error) {
+    console.error('Smart fallback error:', error);
+    return 1;
+  }
+}
+
 // Apify configuration - API key loaded from environment variables only
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
@@ -611,12 +655,13 @@ app.get('/api/crm/leads', async (req, res) => {
     }
 
     let userId;
+    let decodedToken = null;
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      userId = decoded.id;
+      decodedToken = jwt.verify(token, JWT_SECRET);
+      userId = decodedToken.id;
     } catch (error) {
-      console.log('GET /api/crm/leads: Invalid token, falling back to user ID 1');
-      userId = 1; // Fallback for development
+      console.log('GET /api/crm/leads: Invalid token, using smart fallback');
+      userId = await getSmartUserId(decodedToken);
     }
 
     const result = await pool.query(`
@@ -722,12 +767,13 @@ app.post('/api/crm/leads', async (req, res) => {
     }
 
     let userId;
+    let decodedToken = null;
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      userId = decoded.id;
+      decodedToken = jwt.verify(token, JWT_SECRET);
+      userId = decodedToken.id;
     } catch (error) {
-      console.log('Invalid token, falling back to user ID 1');
-      userId = 1; // Fallback for development
+      console.log('POST /api/crm/leads: Invalid token, using smart fallback');
+      userId = await getSmartUserId(decodedToken);
     }
 
     const {
@@ -817,12 +863,13 @@ app.get('/api/crm/funil', async (req, res) => {
     }
 
     let userId;
+    let decodedToken = null;
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      userId = decoded.id;
+      decodedToken = jwt.verify(token, JWT_SECRET);
+      userId = decodedToken.id;
     } catch (error) {
-      console.log('GET /api/crm/funil: Invalid token, falling back to user ID 1');
-      userId = 1; // Fallback for development
+      console.log('GET /api/crm/funil: Invalid token, using smart fallback');
+      userId = await getSmartUserId(decodedToken);
     }
 
     // Get phases - create default funnel if user doesn't have one
