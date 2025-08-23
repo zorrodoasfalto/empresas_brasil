@@ -812,6 +812,51 @@ const GoogleMapsScraper = () => {
         </RunButton>
       </Card>
 
+      {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
+      <Card>
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
+            🎯 Ações Disponíveis
+          </h3>
+          
+          <ActionButtonsContainer>
+            <ActionButton 
+              onClick={saveAllLeads}
+              disabled={!results || results.length === 0}
+              style={{
+                opacity: (!results || results.length === 0) ? 0.5 : 1,
+                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
+            </ActionButton>
+            <ActionButton 
+              onClick={exportToExcel}
+              disabled={!results || results.length === 0}
+              style={{
+                background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', 
+                border: '2px solid #ffd700',
+                opacity: (!results || results.length === 0) ? 0.5 : 1,
+                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
+            </ActionButton>
+            <ActionButton 
+              onClick={clearResults} 
+              disabled={!results || results.length === 0}
+              style={{
+                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
+                opacity: (!results || results.length === 0) ? 0.5 : 1,
+                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              🗑️ Limpar Resultados
+            </ActionButton>
+          </ActionButtonsContainer>
+        </div>
+      </Card>
+
       {currentRun && (
         <ResultsCard>
           <StatusBadge status={currentRun.status}>
@@ -829,48 +874,6 @@ const GoogleMapsScraper = () => {
             )}
           </div>
 
-          {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
-              🎯 Ações Disponíveis
-            </h3>
-            
-            <ActionButtonsContainer>
-              <ActionButton 
-                onClick={saveAllLeads}
-                disabled={!results || results.length === 0}
-                style={{
-                  opacity: (!results || results.length === 0) ? 0.5 : 1,
-                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
-              </ActionButton>
-              <ActionButton 
-                onClick={exportToExcel}
-                disabled={!results || results.length === 0}
-                style={{
-                  background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', 
-                  border: '2px solid #ffd700',
-                  opacity: (!results || results.length === 0) ? 0.5 : 1,
-                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
-              </ActionButton>
-              <ActionButton 
-                onClick={clearResults} 
-                disabled={!results || results.length === 0}
-                style={{
-                  background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
-                  opacity: (!results || results.length === 0) ? 0.5 : 1,
-                  cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-                }}
-              >
-                🗑️ Limpar Resultados
-              </ActionButton>
-            </ActionButtonsContainer>
-          </div>
 
           {results.length > 0 && (
             <div>
