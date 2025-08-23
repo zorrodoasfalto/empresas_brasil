@@ -522,7 +522,9 @@ const GoogleMapsScraper = () => {
   };
 
   const saveAllLeads = async () => {
-    console.log('🔍 saveAllLeads called - results:', results?.length);
+    console.log('🔍 saveAllLeads called');
+    console.log('🔍 Results length:', results?.length);
+    console.log('🔍 Results sample:', results?.[0]);
     
     if (!results || results.length === 0) {
       toast.warning('Nenhum resultado para salvar');
@@ -530,6 +532,9 @@ const GoogleMapsScraper = () => {
     }
 
     const token = localStorage.getItem('token');
+    console.log('🔍 Token exists:', !!token);
+    console.log('🔍 Token first 20 chars:', token?.substring(0, 20) + '...');
+    
     if (!token) {
       toast.error('Você precisa estar logado para salvar leads');
       return;
@@ -551,10 +556,16 @@ const GoogleMapsScraper = () => {
         notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery}`
       }));
 
-      console.log('🔍 Saving leads:', leadsToSave.length, 'leads');
+      console.log('🔍 Leads to save:', leadsToSave.length);
+      console.log('🔍 First lead data:', JSON.stringify(leadsToSave[0], null, 2));
       
       let savedCount = 0;
-      for (const lead of leadsToSave) {
+      let errorCount = 0;
+      
+      for (let i = 0; i < leadsToSave.length; i++) {
+        const lead = leadsToSave[i];
+        console.log(`🔍 Saving lead ${i + 1}/${leadsToSave.length}:`, lead.nome);
+        
         try {
           const response = await fetch('/api/crm/leads', {
             method: 'POST',
@@ -565,16 +576,25 @@ const GoogleMapsScraper = () => {
             body: JSON.stringify(lead)
           });
 
+          console.log(`🔍 Response status for ${lead.nome}:`, response.status);
+          
           const data = await response.json();
+          console.log(`🔍 Response data for ${lead.nome}:`, data);
+          
           if (data.success) {
             savedCount++;
+            console.log(`✅ Lead ${i + 1} saved successfully`);
           } else {
-            console.error('Erro ao salvar lead:', data.message || 'Erro desconhecido');
+            errorCount++;
+            console.error(`❌ Failed to save lead ${i + 1}:`, data.message || 'Erro desconhecido');
           }
         } catch (error) {
-          console.error('Erro na requisição:', error);
+          errorCount++;
+          console.error(`❌ Network error for lead ${i + 1}:`, error);
         }
       }
+      
+      console.log('🔍 Final results:', { savedCount, errorCount, total: leadsToSave.length });
       
       if (savedCount > 0) {
         toast.success(`✅ ${savedCount} leads salvos com sucesso!`);
