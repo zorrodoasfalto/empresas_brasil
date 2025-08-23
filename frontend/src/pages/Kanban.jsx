@@ -345,7 +345,7 @@ const Kanban = () => {
       </Header>
 
       <FunnelContainer>
-        {kanbanData.map(phase => (
+        {funnelData.map(phase => (
           <FunnelColumn
             key={phase.id}
             color={phase.cor}
