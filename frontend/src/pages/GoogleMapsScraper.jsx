@@ -785,29 +785,33 @@ const GoogleMapsScraper = () => {
         >
           🧪 CLIQUE AQUI: Adicionar Dados de Teste para Ver os Botões
         </RunButton>
-      </Card>
 
-      {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
-      <Card>
-        <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
-          🎯 Ações Disponíveis
-        </h3>
-        
-        <ExportButtonsContainer>
-          <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
-            💾 Salvar Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
-          </ExportButton>
-          <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
-            📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
-          </ExportButton>
-          <ExportButton 
-            onClick={clearResults} 
-            disabled={!results || results.length === 0}
-            style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
-          >
-            🗑️ Limpar {results && results.length > 0 ? `(${results.length})` : '(0)'}
-          </ExportButton>
-        </ExportButtonsContainer>
+        {/* BOTÕES SEMPRE VISÍVEIS - DENTRO DO MESMO CARD */}
+        <div style={{ 
+          marginTop: '2rem', 
+          borderTop: '2px solid #00ffaa', 
+          paddingTop: '1.5rem' 
+        }}>
+          <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
+            🎯 Ações Disponíveis
+          </h3>
+          
+          <ExportButtonsContainer>
+            <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
+              💾 Salvar Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
+            </ExportButton>
+            <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
+              📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
+            </ExportButton>
+            <ExportButton 
+              onClick={clearResults} 
+              disabled={!results || results.length === 0}
+              style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
+            >
+              🗑️ Limpar {results && results.length > 0 ? `(${results.length})` : '(0)'}
+            </ExportButton>
+          </ExportButtonsContainer>
+        </div>
       </Card>
 
       {currentRun && (
