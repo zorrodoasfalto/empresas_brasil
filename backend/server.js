@@ -966,6 +966,65 @@ app.get('/api/crm/funil', async (req, res) => {
   }
 });
 
+// Check for existing leads to filter duplicates before scraping
+app.post('/api/crm/leads/check-duplicates', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+
+    let userId;
+    try {
+      const decodedToken = jwt.verify(token, JWT_SECRET);
+      userId = decodedToken.id;
+    } catch (error) {
+      userId = await getSmartUserId(null);
+    }
+
+    const { leads } = req.body;
+    if (!Array.isArray(leads)) {
+      return res.status(400).json({ success: false, message: 'Leads array required' });
+    }
+
+    // Check each lead against existing database
+    const existingLeads = new Set();
+    
+    for (const lead of leads) {
+      const { nome, empresa, telefone, email } = lead;
+      
+      const duplicateCheck = await pool.query(`
+        SELECT id FROM leads 
+        WHERE user_id = $1 
+        AND (
+          (nome = $2 AND nome != '') 
+          OR (empresa = $3 AND empresa != '') 
+          OR (telefone = $4 AND telefone != '' AND telefone IS NOT NULL)
+          OR (email = $5 AND email != '' AND email IS NOT NULL)
+        )
+        LIMIT 1
+      `, [userId, nome, empresa, telefone, email]);
+
+      if (duplicateCheck.rows.length > 0) {
+        // Create unique identifier for this lead
+        const leadId = `${nome}_${empresa}_${telefone}_${email}`;
+        existingLeads.add(leadId);
+      }
+    }
+
+    res.json({
+      success: true,
+      existingLeads: Array.from(existingLeads)
+    });
+  } catch (error) {
+    console.error('❌ Check duplicates error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar duplicados'
+    });
+  }
+});
+
 // GET /api/crm/kanban - Same as funil but for Kanban page
 app.get('/api/crm/kanban', async (req, res) => {
   try {

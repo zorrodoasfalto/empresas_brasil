@@ -316,7 +316,66 @@ const GoogleMapsScraper = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]);
+  const [duplicateLeadsIds, setDuplicateLeadsIds] = useState(new Set());
   const { user } = useAuth();
+
+  // Filter duplicate leads from display
+  const filterDuplicatesFromResults = async (resultsToFilter) => {
+    if (!resultsToFilter || resultsToFilter.length === 0) {
+      setFilteredResults([]);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setFilteredResults(resultsToFilter);
+      return;
+    }
+
+    try {
+      const leadsToCheck = resultsToFilter.map(place => ({
+        nome: place.title || place.name || 'Empresa sem nome',
+        empresa: place.title || place.name || 'Empresa sem nome',
+        telefone: place.phone || '',
+        email: place.email || ''
+      }));
+
+      const response = await fetch('/api/crm/leads/check-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ leads: leadsToCheck })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const existingIds = new Set(data.existingLeads);
+        setDuplicateLeadsIds(existingIds);
+        
+        const filtered = resultsToFilter.filter((place, index) => {
+          const lead = leadsToCheck[index];
+          const leadId = `${lead.nome}_${lead.empresa}_${lead.telefone}_${lead.email}`;
+          return !existingIds.has(leadId);
+        });
+
+        setFilteredResults(filtered);
+        console.log(`🔍 Filtered ${resultsToFilter.length - filtered.length} duplicates from display`);
+      } else {
+        setFilteredResults(resultsToFilter);
+      }
+    } catch (error) {
+      console.error('Error filtering duplicates:', error);
+      setFilteredResults(resultsToFilter);
+    }
+  };
+
+  // Update filtered results when results change
+  React.useEffect(() => {
+    filterDuplicatesFromResults(results);
+  }, [results]);
 
   const businessKeywords = {
     'Alimentação': [
@@ -525,35 +584,11 @@ const GoogleMapsScraper = () => {
     console.log('🔍 saveAllLeads called');
     console.log('🔍 Results length:', results?.length);
     
-    // Se não há results do scraping, criar dados de exemplo
-    let dataToSave = results;
-    if (!results || results.length === 0) {
-      console.log('🔍 No scraping results, using test data');
-      dataToSave = [
-        {
-          title: 'Empresa Exemplo 1',
-          name: 'Exemplo Ltda',
-          address: 'Rua Exemplo, 123 - São Paulo, SP',
-          phone: '(11) 1234-5678',
-          website: 'https://exemplo.com.br',
-          email: 'contato@exemplo.com.br',
-          rating: 4.5,
-          reviewsCount: 100,
-          categoryName: 'Empresa de Exemplo'
-        },
-        {
-          title: 'Empresa Exemplo 2',
-          name: 'Teste Ltda',
-          address: 'Av. Teste, 456 - Rio de Janeiro, RJ',
-          phone: '(21) 9876-5432',
-          website: 'https://teste.com.br',
-          email: 'contato@teste.com.br',
-          rating: 4.2,
-          reviewsCount: 85,
-          categoryName: 'Empresa de Teste'
-        }
-      ];
-      toast.info('🔍 Usando dados de exemplo (2 leads)');
+    // Use filteredResults (already filtered for duplicates) or results for backwards compatibility
+    let dataToSave = filteredResults.length > 0 ? filteredResults : results;
+    if (!dataToSave || dataToSave.length === 0) {
+      toast.error('❌ Nenhum resultado encontrado para salvar. Execute uma busca primeiro.');
+      return;
     }
 
     const token = localStorage.getItem('token');
@@ -566,7 +601,7 @@ const GoogleMapsScraper = () => {
     }
 
     try {
-      const leadsToSave = dataToSave.map(place => ({
+      const leadsToProcess = dataToSave.map(place => ({
         nome: place.title || place.name || 'Empresa sem nome',
         empresa: place.title || place.name || 'Empresa sem nome',
         telefone: place.phone || '',
@@ -581,12 +616,18 @@ const GoogleMapsScraper = () => {
         notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery}`
       }));
 
-      console.log('🔍 Leads to save:', leadsToSave.length);
+      console.log('🔍 Leads to save (already filtered):', leadsToProcess.length);
+
+      if (leadsToProcess.length === 0) {
+        toast.info('🔄 Nenhum novo lead para salvar - todos já existem na sua base');
+        return;
+      }
+
+      const leadsToSave = leadsToProcess;
       console.log('🔍 First lead data:', JSON.stringify(leadsToSave[0], null, 2));
       
       let savedCount = 0;
       let errorCount = 0;
-      let duplicateCount = 0;
       
       for (let i = 0; i < leadsToSave.length; i++) {
         const lead = leadsToSave[i];
@@ -610,9 +651,6 @@ const GoogleMapsScraper = () => {
           if (data.success) {
             savedCount++;
             console.log(`✅ Lead ${i + 1} saved successfully`);
-          } else if (data.isDuplicate) {
-            duplicateCount++;
-            console.log(`🔄 Lead ${i + 1} is duplicate - skipped`);
           } else {
             errorCount++;
             console.error(`❌ Failed to save lead ${i + 1}:`, data.message || 'Erro desconhecido');
@@ -623,24 +661,14 @@ const GoogleMapsScraper = () => {
         }
       }
       
-      console.log('🔍 Final results:', { savedCount, duplicateCount, errorCount, total: leadsToSave.length });
+      console.log('🔍 Final results:', { savedCount, errorCount, total: leadsToSave.length });
       
-      // Show comprehensive results
-      let message = '';
+      // Show results
       if (savedCount > 0) {
-        message += `✅ ${savedCount} novos leads salvos`;
-      }
-      if (duplicateCount > 0) {
-        message += message ? ` | 🔄 ${duplicateCount} duplicados ignorados` : `🔄 ${duplicateCount} leads já existiam`;
-      }
-      if (errorCount > 0) {
-        message += message ? ` | ❌ ${errorCount} erros` : `❌ ${errorCount} leads com erro`;
-      }
-      
-      if (savedCount > 0) {
+        const message = errorCount > 0 
+          ? `✅ ${savedCount} leads salvos | ❌ ${errorCount} erros`
+          : `✅ ${savedCount} leads salvos com sucesso!`;
         toast.success(message);
-      } else if (duplicateCount > 0 && errorCount === 0) {
-        toast.info(`🔄 Todos os ${duplicateCount} leads já existiam na sua base`);
       } else {
         toast.error('❌ Nenhum lead foi salvo. Verifique se você está logado.');
       }
@@ -660,7 +688,8 @@ const GoogleMapsScraper = () => {
     }
 
     try {
-      const exportData = results.map((place, index) => ({
+      const dataToExport = data || filteredResults || results || [];
+      const exportData = dataToExport.map((place, index) => ({
         'Nº': index + 1,
         'Nome/Empresa': place.title || place.name || '',
         'Endereço': place.address || '',
@@ -855,11 +884,28 @@ const GoogleMapsScraper = () => {
           </div>
 
 
-          {results.length > 0 && (
+          {filteredResults.length > 0 && (
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-                📊 {results.length} Empresas Encontradas
+                📊 {filteredResults.length} Novos Leads Encontrados
+                {results.length > filteredResults.length && (
+                  <span style={{ color: '#00ccff', fontSize: '0.9rem', display: 'block', marginTop: '0.25rem' }}>
+                    🔄 {results.length - filteredResults.length} leads duplicados foram filtrados
+                  </span>
+                )}
               </h3>
+              
+              <ExportButtonsContainer style={{ marginBottom: '1rem' }}>
+                <ExportButton onClick={() => exportToCSV(filteredResults)}>
+                  📊 Exportar CSV
+                </ExportButton>
+                <ExportButton onClick={() => exportToExcel(filteredResults)}>
+                  📈 Exportar Excel
+                </ExportButton>
+                <ExportButton onClick={saveAllLeads} style={{ background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100%)' }}>
+                  💾 Salvar Leads
+                </ExportButton>
+              </ExportButtonsContainer>
               
               <div style={{ 
                 maxHeight: '400px', 
@@ -868,7 +914,7 @@ const GoogleMapsScraper = () => {
                 padding: '1rem',
                 borderRadius: '8px'
               }}>
-                {results.slice(0, 20).map((place, index) => (
+                {filteredResults.slice(0, 20).map((place, index) => (
                   <div key={index} style={{
                     background: 'rgba(0,255,170,0.1)',
                     border: '1px solid rgba(0,255,170,0.2)',
@@ -889,11 +935,24 @@ const GoogleMapsScraper = () => {
                 ))}
               </div>
               
-              {results.length > 20 && (
+              {filteredResults.length > 20 && (
                 <div style={{ color: '#00ccff', textAlign: 'center', marginTop: '1rem' }}>
-                  ... e mais {results.length - 20} empresas encontradas
+                  ... e mais {filteredResults.length - 20} novos leads encontrados
                 </div>
               )}
+            </div>
+          )}
+          
+          {/* Mostrar quando todos são duplicados */}
+          {results.length > 0 && filteredResults.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#00ccff' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
+              <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                Todos os {results.length} leads já existem na sua base
+              </div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                Nenhum lead duplicado será exibido ou salvo
+              </div>
             </div>
           )}
         </ResultsCard>
