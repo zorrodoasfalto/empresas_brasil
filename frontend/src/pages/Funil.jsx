@@ -494,6 +494,72 @@ const Funil = () => {
           )}
         </div>
       </div>
+
+      {/* Lista Detalhada de Leads por Fase */}
+      <div style={{ marginTop: '4rem' }}>
+        <h2 style={{ color: '#00ffaa', fontSize: '1.8rem', textAlign: 'center', marginBottom: '3rem' }}>
+          📋 Leads Detalhados por Fase
+        </h2>
+        
+        <FunnelContainer>
+          {funnelData.map(phase => (
+            <FunnelColumn
+              key={phase.id}
+              color={phase.cor}
+              onDragOver={(e) => handleDragOver(e, phase.id)}
+              onDragLeave={(e) => handleDragLeave(e, phase.id)}
+              onDrop={(e) => handleDrop(e, phase.id)}
+            >
+              <DropZone show={dropZoneVisible[phase.id]}>
+                📥 Soltar aqui
+              </DropZone>
+              
+              <ColumnHeader color={phase.cor}>
+                <ColumnTitle color={phase.cor}>{phase.nome}</ColumnTitle>
+                <LeadCount color={phase.cor}>{phase.leads.length}</LeadCount>
+              </ColumnHeader>
+              
+              {phase.descricao && (
+                <ColumnDescription>{phase.descricao}</ColumnDescription>
+              )}
+              
+              <LeadsArea>
+                {phase.leads.length === 0 ? (
+                  <EmptyColumn>
+                    <div className="icon">📭</div>
+                    <div>Nenhum lead nesta fase</div>
+                  </EmptyColumn>
+                ) : (
+                  phase.leads.map(lead => (
+                    <LeadCard
+                      key={lead.id}
+                      phaseColor={phase.cor}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, lead)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <LeadName>{lead.nome}</LeadName>
+                      {lead.empresa && (
+                        <LeadCompany>🏢 {lead.empresa}</LeadCompany>
+                      )}
+                      
+                      <div style={{ margin: '0.5rem 0', color: '#e0e0e0', fontSize: '0.8rem' }}>
+                        {lead.telefone && <div>📞 {lead.telefone}</div>}
+                        {lead.email && <div>📧 {lead.email}</div>}
+                      </div>
+                      
+                      <LeadInfo>
+                        <LeadSource>{lead.fonte}</LeadSource>
+                        <div>{formatDate(lead.data_entrada)}</div>
+                      </LeadInfo>
+                    </LeadCard>
+                  ))
+                )}
+              </LeadsArea>
+            </FunnelColumn>
+          ))}
+        </FunnelContainer>
+      </div>
     </Container>
   );
 };
