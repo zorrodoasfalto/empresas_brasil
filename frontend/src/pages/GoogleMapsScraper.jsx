@@ -524,11 +524,36 @@ const GoogleMapsScraper = () => {
   const saveAllLeads = async () => {
     console.log('🔍 saveAllLeads called');
     console.log('🔍 Results length:', results?.length);
-    console.log('🔍 Results sample:', results?.[0]);
     
+    // Se não há results do scraping, criar dados de exemplo
+    let dataToSave = results;
     if (!results || results.length === 0) {
-      toast.warning('Nenhum resultado para salvar');
-      return;
+      console.log('🔍 No scraping results, using test data');
+      dataToSave = [
+        {
+          title: 'Empresa Exemplo 1',
+          name: 'Exemplo Ltda',
+          address: 'Rua Exemplo, 123 - São Paulo, SP',
+          phone: '(11) 1234-5678',
+          website: 'https://exemplo.com.br',
+          email: 'contato@exemplo.com.br',
+          rating: 4.5,
+          reviewsCount: 100,
+          categoryName: 'Empresa de Exemplo'
+        },
+        {
+          title: 'Empresa Exemplo 2',
+          name: 'Teste Ltda',
+          address: 'Av. Teste, 456 - Rio de Janeiro, RJ',
+          phone: '(21) 9876-5432',
+          website: 'https://teste.com.br',
+          email: 'contato@teste.com.br',
+          rating: 4.2,
+          reviewsCount: 85,
+          categoryName: 'Empresa de Teste'
+        }
+      ];
+      toast.info('🔍 Usando dados de exemplo (2 leads)');
     }
 
     const token = localStorage.getItem('token');
@@ -541,7 +566,7 @@ const GoogleMapsScraper = () => {
     }
 
     try {
-      const leadsToSave = results.map(place => ({
+      const leadsToSave = dataToSave.map(place => ({
         nome: place.title || place.name || 'Empresa sem nome',
         empresa: place.title || place.name || 'Empresa sem nome',
         telefone: place.phone || '',
@@ -754,16 +779,10 @@ const GoogleMapsScraper = () => {
           </h3>
           
           <ExportButtonsContainer>
-            <ExportButton 
-              onClick={addTestResults} 
-              style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
-            >
-              🧪 Dados de Teste
-            </ExportButton>
-            <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
+            <ExportButton onClick={saveAllLeads}>
               💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
-            <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
+            <ExportButton onClick={exportToExcel}>
               📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
           </ExportButtonsContainer>
