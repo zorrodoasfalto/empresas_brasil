@@ -268,66 +268,41 @@ const StatusBadge = styled.div`
   }}
 `;
 
-const ActionButtonsContainer = styled.div`
+const ExportButtonsContainer = styled.div`
   display: flex;
-  gap: 1rem;
-  margin: 1.5rem 0;
+  gap: 0.5rem;
   justify-content: center;
   flex-wrap: wrap;
 `;
 
-const ActionButton = styled.button`
-  background: linear-gradient(135deg, #00ffaa 0%, #0088cc 100%);
-  color: #0a0a19;
-  padding: 0.75rem 1.5rem;
+const ExportButton = styled.button`
+  background: linear-gradient(135deg, #00ffaa 0%, #00cc88 100%);
+  color: #000;
   border: none;
+  padding: 0.5rem 1rem;
   border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  min-width: 180px;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s ease;
-  }
-  
-  &:hover::before {
-    left: 100%;
-  }
-  
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+
   &:hover {
-    box-shadow: 
-      0 0 25px rgba(0, 255, 170, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    background: linear-gradient(135deg, #00cc88 0%, #00aa66 100%);
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 255, 170, 0.3);
   }
-  
+
   &:active {
     transform: translateY(0);
   }
-  
+
   &:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
     transform: none;
-    
-    &:hover {
-      transform: none;
-      box-shadow: none;
-    }
   }
 `;
 
@@ -814,47 +789,25 @@ const GoogleMapsScraper = () => {
 
       {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
       <Card>
-        <div style={{ marginBottom: '2rem' }}>
-          <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
-            🎯 Ações Disponíveis
-          </h3>
-          
-          <ActionButtonsContainer>
-            <ActionButton 
-              onClick={saveAllLeads}
-              disabled={!results || results.length === 0}
-              style={{
-                opacity: (!results || results.length === 0) ? 0.5 : 1,
-                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </ActionButton>
-            <ActionButton 
-              onClick={exportToExcel}
-              disabled={!results || results.length === 0}
-              style={{
-                background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', 
-                border: '2px solid #ffd700',
-                opacity: (!results || results.length === 0) ? 0.5 : 1,
-                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </ActionButton>
-            <ActionButton 
-              onClick={clearResults} 
-              disabled={!results || results.length === 0}
-              style={{
-                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
-                opacity: (!results || results.length === 0) ? 0.5 : 1,
-                cursor: (!results || results.length === 0) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              🗑️ Limpar Resultados
-            </ActionButton>
-          </ActionButtonsContainer>
-        </div>
+        <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
+          🎯 Ações Disponíveis
+        </h3>
+        
+        <ExportButtonsContainer>
+          <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
+            💾 Salvar Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
+          </ExportButton>
+          <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
+            📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
+          </ExportButton>
+          <ExportButton 
+            onClick={clearResults} 
+            disabled={!results || results.length === 0}
+            style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
+          >
+            🗑️ Limpar {results && results.length > 0 ? `(${results.length})` : '(0)'}
+          </ExportButton>
+        </ExportButtonsContainer>
       </Card>
 
       {currentRun && (
