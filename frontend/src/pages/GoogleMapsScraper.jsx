@@ -432,16 +432,25 @@ const GoogleMapsScraper = () => {
 
   // Auto-expand search when no new leads found
   React.useEffect(() => {
-    if (results.length > 0 && filteredResults.length === 0 && !debugMode && !autoSearching && searchAttempts < 3) {
+    if (results.length > 0 && filteredResults.length === 0 && !debugMode && !autoSearching && searchAttempts < 3 && !isRunning) {
       console.log(`🔄 No new leads found, expanding search (attempt ${searchAttempts + 1}/3)`);
-      expandSearch();
+      // Add delay to prevent rapid loops
+      const timer = setTimeout(() => {
+        expandSearch();
+      }, 2000);
+      return () => clearTimeout(timer);
     } else if (filteredResults.length > 0 && autoSearching) {
       // Found new leads! Stop auto searching
       console.log(`✅ Found ${filteredResults.length} new leads! Stopping auto search.`);
       setAutoSearching(false);
       toast.success(`🎯 Busca automática bem-sucedida! Encontrados ${filteredResults.length} leads novos!`);
+    } else if (searchAttempts >= 3 && autoSearching && filteredResults.length === 0) {
+      // Stop after 3 attempts with no results
+      console.log('⏹️ Stopping auto-search after 3 attempts with no new leads');
+      setAutoSearching(false);
+      toast.info('🔍 Busca automática finalizada. Todos os leads já existem na sua base ou nenhum foi encontrado.');
     }
-  }, [filteredResults, results, debugMode, autoSearching, searchAttempts]);
+  }, [filteredResults, results, debugMode, autoSearching, searchAttempts, isRunning]);
 
   const expandSearch = async () => {
     if (autoSearching || !formData.searchTerms || !formData.locationQuery) return;
