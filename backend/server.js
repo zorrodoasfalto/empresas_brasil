@@ -794,6 +794,31 @@ app.post('/api/crm/leads', async (req, res) => {
     
     console.log('🔍 Extracted data:', { nome, empresa, fonte });
 
+    // Check for duplicates - by name, company, phone, or email for the same user
+    const duplicateCheck = await pool.query(`
+      SELECT id, nome, empresa, telefone, email 
+      FROM leads 
+      WHERE user_id = $1 
+      AND (
+        (nome = $2 AND nome != '') 
+        OR (empresa = $3 AND empresa != '') 
+        OR (telefone = $4 AND telefone != '' AND telefone IS NOT NULL)
+        OR (email = $5 AND email != '' AND email IS NOT NULL)
+      )
+      LIMIT 1
+    `, [userId, nome, empresa, telefone, email]);
+
+    if (duplicateCheck.rows.length > 0) {
+      const existingLead = duplicateCheck.rows[0];
+      console.log('🔍 Duplicate lead found:', existingLead);
+      return res.json({
+        success: false,
+        message: 'Lead já existe na sua base',
+        isDuplicate: true,
+        existingLead: existingLead
+      });
+    }
+
     const result = await pool.query(`
       INSERT INTO leads (
         user_id, nome, empresa, telefone, email, endereco, cnpj, 

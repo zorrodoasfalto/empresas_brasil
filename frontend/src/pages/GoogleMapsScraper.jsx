@@ -586,6 +586,7 @@ const GoogleMapsScraper = () => {
       
       let savedCount = 0;
       let errorCount = 0;
+      let duplicateCount = 0;
       
       for (let i = 0; i < leadsToSave.length; i++) {
         const lead = leadsToSave[i];
@@ -609,6 +610,9 @@ const GoogleMapsScraper = () => {
           if (data.success) {
             savedCount++;
             console.log(`✅ Lead ${i + 1} saved successfully`);
+          } else if (data.isDuplicate) {
+            duplicateCount++;
+            console.log(`🔄 Lead ${i + 1} is duplicate - skipped`);
           } else {
             errorCount++;
             console.error(`❌ Failed to save lead ${i + 1}:`, data.message || 'Erro desconhecido');
@@ -619,10 +623,24 @@ const GoogleMapsScraper = () => {
         }
       }
       
-      console.log('🔍 Final results:', { savedCount, errorCount, total: leadsToSave.length });
+      console.log('🔍 Final results:', { savedCount, duplicateCount, errorCount, total: leadsToSave.length });
+      
+      // Show comprehensive results
+      let message = '';
+      if (savedCount > 0) {
+        message += `✅ ${savedCount} novos leads salvos`;
+      }
+      if (duplicateCount > 0) {
+        message += message ? ` | 🔄 ${duplicateCount} duplicados ignorados` : `🔄 ${duplicateCount} leads já existiam`;
+      }
+      if (errorCount > 0) {
+        message += message ? ` | ❌ ${errorCount} erros` : `❌ ${errorCount} leads com erro`;
+      }
       
       if (savedCount > 0) {
-        toast.success(`✅ ${savedCount} leads salvos com sucesso!`);
+        toast.success(message);
+      } else if (duplicateCount > 0 && errorCount === 0) {
+        toast.info(`🔄 Todos os ${duplicateCount} leads já existiam na sua base`);
       } else {
         toast.error('❌ Nenhum lead foi salvo. Verifique se você está logado.');
       }
