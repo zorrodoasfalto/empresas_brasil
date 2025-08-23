@@ -194,27 +194,27 @@ const DropZone = styled.div`
 `;
 
 const Kanban = () => {
-  const [funnelData, setFunnelData] = useState([]);
+  const [kanbanData, setKanbanData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedLead, setDraggedLead] = useState(null);
   const [dropZoneVisible, setDropZoneVisible] = useState({});
 
   useEffect(() => {
-    fetchFunnelData();
+    fetchKanbanData();
   }, []);
 
-  const fetchFunnelData = async () => {
+  const fetchKanbanData = async () => {
     try {
       const response = await fetch('/api/crm/kanban');
       
       const data = await response.json();
       if (data.success) {
-        setFunnelData(data.funil);
+        setKanbanData(data.funil);
       } else {
-        toast.error('Erro ao carregar funil');
+        toast.error('Erro ao carregar kanban');
       }
     } catch (error) {
-      console.error('Error fetching funnel:', error);
+      console.error('Error fetching kanban:', error);
       toast.error('Erro ao conectar com servidor');
     } finally {
       setLoading(false);
@@ -268,7 +268,7 @@ const Kanban = () => {
       const data = await response.json();
       if (data.success) {
         toast.success('Lead movido com sucesso!');
-        fetchFunnelData(); // Refresh data
+        fetchKanbanData(); // Refresh data
       } else {
         toast.error('Erro ao mover lead');
       }
@@ -291,14 +291,14 @@ const Kanban = () => {
   };
 
   const getTotalLeads = () => {
-    return funnelData.reduce((total, phase) => total + phase.leads.length, 0);
+    return kanbanData.reduce((total, phase) => total + phase.leads.length, 0);
   };
 
   if (loading) {
     return (
       <Container>
         <div style={{ textAlign: 'center', color: '#00ccff', fontSize: '1.5rem' }}>
-          🔄 Carregando funil...
+          🔄 Carregando kanban...
         </div>
       </Container>
     );
@@ -335,7 +335,7 @@ const Kanban = () => {
             <StatNumber>{getTotalLeads()}</StatNumber>
             <StatLabel>Total Leads</StatLabel>
           </StatCard>
-          {funnelData.map(phase => (
+          {kanbanData.map(phase => (
             <StatCard key={phase.id}>
               <StatNumber>{phase.leads.length}</StatNumber>
               <StatLabel>{phase.nome}</StatLabel>
@@ -345,7 +345,7 @@ const Kanban = () => {
       </Header>
 
       <FunnelContainer>
-        {funnelData.map(phase => (
+        {kanbanData.map(phase => (
           <FunnelColumn
             key={phase.id}
             color={phase.cor}
