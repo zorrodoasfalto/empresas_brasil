@@ -684,48 +684,6 @@ const GoogleMapsScraper = () => {
 
   return (
     <Container>
-      {/* TESTE URGENTE: BOTÕES NO TOPO */}
-      <div style={{ 
-        background: 'red', 
-        color: 'white', 
-        padding: '1rem', 
-        marginBottom: '2rem',
-        textAlign: 'center',
-        fontSize: '1.2rem',
-        fontWeight: 'bold'
-      }}>
-        ⚠️ TESTE CRÍTICO: SE VOCÊ VÊ ESTA MENSAGEM, OS BOTÕES DEVEM APARECER ABAIXO ⚠️
-        <br/><br/>
-        <button 
-          onClick={saveAllLeads} 
-          style={{
-            background: 'green',
-            color: 'white',
-            border: 'none',
-            padding: '1rem 2rem',
-            margin: '0.5rem',
-            fontSize: '1rem',
-            cursor: 'pointer'
-          }}
-        >
-          💾 SALVAR LEADS {results?.length || 0}
-        </button>
-        <button 
-          onClick={exportToExcel} 
-          style={{
-            background: 'blue',
-            color: 'white',
-            border: 'none',
-            padding: '1rem 2rem',
-            margin: '0.5rem',
-            fontSize: '1rem',
-            cursor: 'pointer'
-          }}
-        >
-          📊 EXPORTAR EXCEL {results?.length || 0}
-        </button>
-      </div>
-
       <Header>
         <Title>
           <GoogleIcon>📍</GoogleIcon>
@@ -828,69 +786,31 @@ const GoogleMapsScraper = () => {
           🧪 CLIQUE AQUI: Adicionar Dados de Teste para Ver os Botões
         </RunButton>
 
-        {/* BOTÕES SEMPRE VISÍVEIS - TESTE HTML SIMPLES */}
+        {/* BOTÕES PRINCIPAIS */}
         <div style={{ 
           marginTop: '2rem', 
-          borderTop: '2px solid #00ffaa', 
+          borderTop: '1px solid rgba(0, 255, 170, 0.3)', 
           paddingTop: '1.5rem' 
         }}>
           <h3 style={{ color: '#00ffaa', marginBottom: '1rem', textAlign: 'center' }}>
-            🎯 TESTE: Ações Disponíveis (Botões HTML Simples)
+            🎯 Ações Disponíveis
           </h3>
           
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button 
-              onClick={saveAllLeads} 
-              disabled={!results || results.length === 0}
-              style={{
-                background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100%)',
-                color: '#000',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: (!results || results.length === 0) ? 0.5 : 1
-              }}
-            >
+          <ExportButtonsContainer>
+            <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
               💾 Salvar Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </button>
-            <button 
-              onClick={exportToExcel} 
-              disabled={!results || results.length === 0}
-              style={{
-                background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100%)',
-                color: '#000',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: (!results || results.length === 0) ? 0.5 : 1
-              }}
-            >
+            </ExportButton>
+            <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
               📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </button>
-            <button 
+            </ExportButton>
+            <ExportButton 
               onClick={clearResults} 
               disabled={!results || results.length === 0}
-              style={{
-                background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)',
-                color: 'white',
-                border: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                opacity: (!results || results.length === 0) ? 0.5 : 1
-              }}
+              style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
             >
               🗑️ Limpar {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </button>
-          </div>
+            </ExportButton>
+          </ExportButtonsContainer>
         </div>
       </Card>
 
