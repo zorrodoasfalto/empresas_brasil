@@ -698,24 +698,31 @@ const GoogleMapsScraper = () => {
         
         if (data.status === 'RUNNING') {
           setTimeout(() => pollResults(runId), 5000);
-        } else if (data.status === 'SUCCEEDED' && data.results) {
-          const uniqueResults = removeDuplicatesFromResults(data.results);
-          setResults(uniqueResults);
-          
-          const removedCount = data.results.length - uniqueResults.length;
-          let message = removedCount > 0 
-            ? `✅ Scraping concluído! ${uniqueResults.length} empresas únicas (${removedCount} duplicatas removidas)`
-            : `✅ Scraping concluído! ${uniqueResults.length} empresas encontradas`;
-          
-          if (autoSearching) {
-            message += ` (Busca automática ${searchAttempts}/3)`;
-          }
-          
-          toast.success(message);
+        } else if (data.status === 'SUCCEEDED') {
           setIsRunning(false);
           
-          // If auto-searching and found results, we'll let the useEffect handle filtering and potential expansion
-          if (!autoSearching) {
+          if (data.results && data.results.length > 0) {
+            const uniqueResults = removeDuplicatesFromResults(data.results);
+            setResults(uniqueResults);
+            
+            const removedCount = data.results.length - uniqueResults.length;
+            let message = removedCount > 0 
+              ? `✅ Scraping concluído! ${uniqueResults.length} empresas únicas (${removedCount} duplicatas removidas)`
+              : `✅ Scraping concluído! ${uniqueResults.length} empresas encontradas`;
+            
+            if (autoSearching) {
+              message += ` (Busca automática ${searchAttempts}/3)`;
+            }
+            
+            toast.success(message);
+            
+            // If auto-searching and found results, we'll let the useEffect handle filtering and potential expansion
+            if (!autoSearching) {
+              setAutoSearching(false);
+            }
+          } else {
+            console.log('⚠️ Scraping concluído mas sem resultados');
+            toast.warning('⚠️ Scraping concluído, mas nenhum resultado foi encontrado. Tente com termos diferentes.');
             setAutoSearching(false);
           }
         } else if (data.status === 'FAILED') {
@@ -727,7 +734,8 @@ const GoogleMapsScraper = () => {
       }
     } catch (error) {
       console.error('Polling error:', error);
-      setTimeout(() => pollResults(runId), 10000);
+      setIsRunning(false);
+      toast.error('❌ Erro ao verificar status do scraping');
     }
   };
 
