@@ -193,12 +193,69 @@ const DropZone = styled.div`
   z-index: 10;
 `;
 
+const MenuDropdown = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const MenuButton = styled.button`
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.1), rgba(0, 136, 204, 0.1));
+  border: 1px solid #00ffaa;
+  color: #00ffaa;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 170, 0.2), rgba(0, 136, 204, 0.2));
+    box-shadow: 0 5px 15px rgba(0, 255, 170, 0.3);
+  }
+`;
+
+const MenuContent = styled.div`
+  display: ${props => props.show ? 'block' : 'none'};
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: linear-gradient(135deg, rgba(15, 15, 35, 0.95), rgba(26, 26, 46, 0.95));
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+`;
+
+const MenuItem = styled.div`
+  padding: 0.75rem 1rem;
+  color: #e0e0e0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  &:hover {
+    background: rgba(0, 255, 170, 0.1);
+    color: #00ffaa;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
 const Funil = () => {
   const { token } = useAuth();
   const [funnelData, setFunnelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedLead, setDraggedLead] = useState(null);
   const [dropZoneVisible, setDropZoneVisible] = useState({});
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [filtroFonte, setFiltroFonte] = useState('todos');
 
   useEffect(() => {
     fetchFunnelData();
@@ -308,6 +365,27 @@ const Funil = () => {
     return funnelData.reduce((total, phase) => total + phase.leads.length, 0);
   };
 
+  const getFilteredPhases = () => {
+    if (filtroFonte === 'todos') return funnelData;
+    
+    return funnelData.map(phase => ({
+      ...phase,
+      leads: phase.leads.filter(lead => 
+        filtroFonte === 'todos' || lead.fonte.toLowerCase().includes(filtroFonte.toLowerCase())
+      )
+    }));
+  };
+
+  const getUniqueFontes = () => {
+    const fontes = new Set();
+    funnelData.forEach(phase => {
+      phase.leads.forEach(lead => {
+        if (lead.fonte) fontes.add(lead.fonte);
+      });
+    });
+    return Array.from(fontes);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -324,18 +402,45 @@ const Funil = () => {
     <Container>
       <Header>
         <Title>🌪️ Funil de Vendas</Title>
-        <StatsRow>
-          <StatCard>
-            <StatNumber>{totalLeads}</StatNumber>
-            <StatLabel>Total Leads</StatLabel>
-          </StatCard>
-          {funnelData.map(phase => (
-            <StatCard key={phase.id}>
-              <StatNumber>{phase.leads.length}</StatNumber>
-              <StatLabel>{phase.nome}</StatLabel>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <StatsRow>
+            <StatCard>
+              <StatNumber>{getTotalLeads()}</StatNumber>
+              <StatLabel>Total Leads</StatLabel>
             </StatCard>
-          ))}
-        </StatsRow>
+            {getFilteredPhases().map(phase => (
+              <StatCard key={phase.id}>
+                <StatNumber>{phase.leads.length}</StatNumber>
+                <StatLabel>{phase.nome}</StatLabel>
+              </StatCard>
+            ))}
+          </StatsRow>
+          
+          <MenuDropdown>
+            <MenuButton onClick={() => setMenuOpen(!menuOpen)}>
+              🔍 Filtros {menuOpen ? '▲' : '▼'}
+            </MenuButton>
+            <MenuContent show={menuOpen}>
+              <MenuItem onClick={() => { setFiltroFonte('todos'); setMenuOpen(false); }}>
+                🌐 Todos os Leads
+              </MenuItem>
+              {getUniqueFontes().map(fonte => (
+                <MenuItem 
+                  key={fonte}
+                  onClick={() => { setFiltroFonte(fonte); setMenuOpen(false); }}
+                >
+                  📊 {fonte}
+                </MenuItem>
+              ))}
+              <MenuItem onClick={() => { window.location.href = '/leads'; }}>
+                📋 Ver Tabela de Leads
+              </MenuItem>
+              <MenuItem onClick={() => { window.location.href = '/kanban'; }}>
+                📋 Ver Kanban
+              </MenuItem>
+            </MenuContent>
+          </MenuDropdown>
+        </div>
       </Header>
 
       {/* Botão Voltar */}
@@ -381,8 +486,9 @@ const Funil = () => {
           gap: '0.5rem',
           perspective: '1000px'
         }}>
-          {funnelData.map((phase, index) => {
-            const percentage = totalLeads > 0 ? (phase.leads.length / totalLeads * 100) : 25;
+          {getFilteredPhases().map((phase, index) => {
+            const filteredTotalLeads = getFilteredPhases().reduce((total, p) => total + p.leads.length, 0);
+            const percentage = filteredTotalLeads > 0 ? (phase.leads.length / filteredTotalLeads * 100) : 25;
             const width = Math.max(percentage, 10); // Mínimo 10% para visibilidade
             const maxWidth = 600;
             const actualWidth = (width / 100) * maxWidth;
@@ -438,12 +544,12 @@ const Funil = () => {
                     fontWeight: 'bold',
                     whiteSpace: 'nowrap'
                   }}>
-                    {totalLeads > 0 ? `${(phase.leads.length / totalLeads * 100).toFixed(1)}%` : '0%'}
+                    {filteredTotalLeads > 0 ? `${(phase.leads.length / filteredTotalLeads * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
                 
                 {/* Seta entre fases */}
-                {index < funnelData.length - 1 && (
+                {index < getFilteredPhases().length - 1 && (
                   <div style={{
                     display: 'flex',
                     justifyContent: 'center',
@@ -454,7 +560,7 @@ const Funil = () => {
                       height: '0',
                       borderLeft: '15px solid transparent',
                       borderRight: '15px solid transparent',
-                      borderTop: `20px solid ${funnelData[index + 1]?.cor || '#00ccff'}`,
+                      borderTop: `20px solid ${getFilteredPhases()[index + 1]?.cor || '#00ccff'}`,
                       opacity: 0.7,
                       filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
                     }}></div>
@@ -478,14 +584,14 @@ const Funil = () => {
           <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
             📈 Taxa de Conversão Geral
           </h3>
-          {totalLeads > 0 && funnelData.length > 0 ? (
+          {getFilteredPhases().length > 0 ? (
             <div style={{ color: '#e0e0e0' }}>
               <div style={{ fontSize: '2rem', color: '#00ccff', marginBottom: '0.5rem' }}>
-                {funnelData[funnelData.length - 1] 
-                  ? ((funnelData[funnelData.length - 1].leads.length / totalLeads) * 100).toFixed(1)
+                {getFilteredPhases()[getFilteredPhases().length - 1] 
+                  ? ((getFilteredPhases()[getFilteredPhases().length - 1].leads.length / getFilteredPhases().reduce((total, p) => total + p.leads.length, 0)) * 100).toFixed(1)
                   : 0}%
               </div>
-              <div>De {totalLeads} leads iniciais para {funnelData[funnelData.length - 1]?.leads.length || 0} finalizados</div>
+              <div>De {getFilteredPhases().reduce((total, p) => total + p.leads.length, 0)} leads para {getFilteredPhases()[getFilteredPhases().length - 1]?.leads.length || 0} finalizados</div>
             </div>
           ) : (
             <div style={{ color: '#999' }}>
@@ -502,7 +608,7 @@ const Funil = () => {
         </h2>
         
         <FunnelContainer>
-          {funnelData.map(phase => (
+          {getFilteredPhases().map(phase => (
             <FunnelColumn
               key={phase.id}
               color={phase.cor}

@@ -193,7 +193,7 @@ const DropZone = styled.div`
   z-index: 10;
 `;
 
-const Funil = () => {
+const Kanban = () => {
   const [funnelData, setFunnelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedLead, setDraggedLead] = useState(null);
@@ -406,4 +406,4 @@ const Funil = () => {
   );
 };
 
-export default Funil;
+export default Kanban;
