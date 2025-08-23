@@ -318,6 +318,7 @@ const GoogleMapsScraper = () => {
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
+  const [debugMode, setDebugMode] = useState(false);
   const { user } = useAuth();
 
   // Remove internal duplicates from scraping results
@@ -379,23 +380,36 @@ const GoogleMapsScraper = () => {
 
       const data = await response.json();
       if (data.success) {
+        console.log('🔍 Duplicate check response:', data);
+        console.log('🔍 Raw leads to check:', leadsToCheck.slice(0, 3));
+        console.log('🔍 Existing lead IDs from backend:', data.existingLeads?.slice(0, 10));
+        
         const existingIds = new Set(data.existingLeads);
         
         const newLeads = resultsToFilter.filter((place, index) => {
           const lead = leadsToCheck[index];
           const leadId = `${lead.nome}_${lead.empresa}_${lead.telefone}_${lead.email}`;
-          return !existingIds.has(leadId);
+          const isExisting = existingIds.has(leadId);
+          
+          if (index < 3) {
+            console.log(`🔍 Lead ${index + 1}: ${lead.nome} | ID: ${leadId} | Exists: ${isExisting}`);
+          }
+          
+          return !isExisting;
         });
 
         const filteredCount = resultsToFilter.length - newLeads.length;
         setFilteredResults(newLeads);
         
+        console.log(`🔍 Total leads from scraping: ${resultsToFilter.length}`);
+        console.log(`🔍 Leads after filtering: ${newLeads.length}`);
         console.log(`🔍 Filtered out ${filteredCount} existing leads from database`);
         
         if (filteredCount > 0) {
-          toast.info(`🔄 ${filteredCount} leads já existentes foram filtrados`);
+          toast.info(`🔄 ${filteredCount} leads já existentes foram filtrados - restaram ${newLeads.length} leads novos`);
         }
       } else {
+        console.log('🔍 Duplicate check failed, showing all results');
         setFilteredResults(resultsToFilter);
       }
     } catch (error) {
@@ -406,8 +420,13 @@ const GoogleMapsScraper = () => {
 
   // Filter existing leads whenever results change
   React.useEffect(() => {
-    filterExistingLeads(results);
-  }, [results]);
+    if (debugMode) {
+      console.log('🔧 Debug mode: showing all results without filtering');
+      setFilteredResults(results);
+    } else {
+      filterExistingLeads(results);
+    }
+  }, [results, debugMode]);
 
 
   const businessKeywords = {
@@ -922,10 +941,12 @@ const GoogleMapsScraper = () => {
           {filteredResults.length > 0 && (
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-                📊 {filteredResults.length} Leads Novos Encontrados
-                <span style={{ color: '#00ccff', fontSize: '0.8rem', display: 'block', marginTop: '0.25rem', opacity: 0.8 }}>
-                  Leads que já existem na sua base foram automaticamente filtrados
-                </span>
+                📊 {debugMode ? `${filteredResults.length} Leads (Modo Debug)` : `${filteredResults.length} Leads Novos Encontrados`}
+                {!debugMode && (
+                  <span style={{ color: '#00ccff', fontSize: '0.8rem', display: 'block', marginTop: '0.25rem', opacity: 0.8 }}>
+                    Leads que já existem na sua base foram automaticamente filtrados
+                  </span>
+                )}
               </h3>
               
               <ExportButtonsContainer style={{ marginBottom: '1rem' }}>
@@ -977,7 +998,7 @@ const GoogleMapsScraper = () => {
           )}
           
           {/* Mostrar quando todos os leads já existem na base */}
-          {results.length > 0 && filteredResults.length === 0 && (
+          {results.length > 0 && filteredResults.length === 0 && !debugMode && (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#00ccff' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
               <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
@@ -986,6 +1007,37 @@ const GoogleMapsScraper = () => {
               <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>
                 Tente uma nova busca com termos diferentes ou em outra localização
               </div>
+              <ExportButton 
+                onClick={() => setDebugMode(true)}
+                style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)', color: '#fff', margin: '0 auto', display: 'block' }}
+              >
+                🔧 Modo Debug: Ver Todos os Leads
+              </ExportButton>
+            </div>
+          )}
+
+          {/* Debug mode indicator */}
+          {debugMode && results.length > 0 && (
+            <div style={{ 
+              background: 'rgba(255, 107, 107, 0.1)', 
+              border: '1px solid #ff6b6b', 
+              borderRadius: '8px', 
+              padding: '1rem', 
+              marginBottom: '1rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ color: '#ff6b6b', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                🔧 MODO DEBUG ATIVADO
+              </div>
+              <div style={{ color: '#e0e0e0', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Mostrando TODOS os leads sem filtrar duplicados
+              </div>
+              <ExportButton 
+                onClick={() => setDebugMode(false)}
+                style={{ background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100%)', color: '#000' }}
+              >
+                ✅ Voltar ao Modo Normal
+              </ExportButton>
             </div>
           )}
           
