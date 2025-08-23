@@ -320,6 +320,33 @@ const GoogleMapsScraper = () => {
   const [duplicateLeadsIds, setDuplicateLeadsIds] = useState(new Set());
   const { user } = useAuth();
 
+  // Remove internal duplicates from scraping results
+  const removeDuplicatesFromResults = (results) => {
+    if (!results || results.length === 0) return [];
+    
+    const seen = new Set();
+    const uniqueResults = [];
+    
+    for (const place of results) {
+      // Create unique identifier based on name, address, and phone
+      const identifier = `${place.title || place.name || ''}_${place.address || ''}_${place.phone || ''}`.toLowerCase();
+      
+      if (!seen.has(identifier)) {
+        seen.add(identifier);
+        uniqueResults.push(place);
+      } else {
+        console.log(`🔄 Duplicate removed from scraping results: ${place.title || place.name}`);
+      }
+    }
+    
+    const removedCount = results.length - uniqueResults.length;
+    if (removedCount > 0) {
+      console.log(`🔄 Removed ${removedCount} internal duplicates from scraping results`);
+    }
+    
+    return uniqueResults;
+  };
+
   // Filter duplicate leads from display
   const filterDuplicatesFromResults = async (resultsToFilter) => {
     if (!resultsToFilter || resultsToFilter.length === 0) {
@@ -564,8 +591,15 @@ const GoogleMapsScraper = () => {
         if (data.status === 'RUNNING') {
           setTimeout(() => pollResults(runId), 5000);
         } else if (data.status === 'SUCCEEDED' && data.results) {
-          setResults(data.results);
-          toast.success(`✅ Scraping concluído! ${data.results.length} empresas encontradas`);
+          const uniqueResults = removeDuplicatesFromResults(data.results);
+          setResults(uniqueResults);
+          
+          const removedCount = data.results.length - uniqueResults.length;
+          const message = removedCount > 0 
+            ? `✅ Scraping concluído! ${uniqueResults.length} empresas únicas (${removedCount} duplicatas removidas)`
+            : `✅ Scraping concluído! ${uniqueResults.length} empresas encontradas`;
+          
+          toast.success(message);
           setIsRunning(false);
         } else if (data.status === 'FAILED') {
           toast.error('❌ Scraping falhou');
