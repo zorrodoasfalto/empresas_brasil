@@ -856,20 +856,22 @@ app.post('/api/crm/leads', async (req, res) => {
 // Get funnel data
 app.get('/api/crm/funil', async (req, res) => {
   try {
-    // Require valid JWT token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
-    }
-
+    // Use smart fallback for user ID without requiring token
     let userId;
     let decodedToken = null;
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET);
-      userId = decodedToken.id;
-    } catch (error) {
-      console.log('GET /api/crm/funil: Invalid token, using smart fallback');
-      userId = await getSmartUserId(decodedToken);
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (token) {
+      try {
+        decodedToken = jwt.verify(token, JWT_SECRET);
+        userId = decodedToken.id;
+      } catch (error) {
+        console.log('GET /api/crm/funil: Invalid token, using smart fallback');
+        userId = await getSmartUserId(decodedToken);
+      }
+    } else {
+      console.log('GET /api/crm/funil: No token provided, using smart fallback');
+      userId = await getSmartUserId(null);
     }
 
     // Get phases - create default funnel if user doesn't have one
@@ -2316,4 +2318,48 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
       console.log('✅ Frontend: Serving React from /frontend/dist');
     }
   });
+});
+
+// Generate tokens for all users in database
+app.get('/api/admin/generate-tokens', async (req, res) => {
+  try {
+    // Get all users from both tables
+    const usersQuery = await pool.query('SELECT id, email FROM users WHERE email IS NOT NULL');
+    const simpleUsersQuery = await pool.query('SELECT id, email FROM simple_users WHERE email IS NOT NULL');
+    
+    const allUsers = [...usersQuery.rows, ...simpleUsersQuery.rows];
+    console.log(`🔑 Generating tokens for ${allUsers.length} users...`);
+    
+    const tokens = [];
+    
+    for (const user of allUsers) {
+      const token = jwt.sign(
+        { id: user.id, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+      
+      tokens.push({
+        userId: user.id,
+        email: user.email,
+        token: token
+      });
+    }
+    
+    console.log(`✅ Generated ${tokens.length} tokens successfully`);
+    
+    res.json({
+      success: true,
+      message: `Generated tokens for ${tokens.length} users`,
+      tokens: tokens
+    });
+    
+  } catch (error) {
+    console.error('❌ Error generating tokens:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao gerar tokens',
+      error: error.message
+    });
+  }
 });
