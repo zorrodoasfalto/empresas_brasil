@@ -422,6 +422,12 @@ const GoogleMapsScraper = () => {
 
   // Filter existing leads whenever results change
   React.useEffect(() => {
+    console.log('🔍 FILTER EFFECT TRIGGERED:', {
+      resultsLength: results?.length || 0,
+      debugMode,
+      userEmail: user?.email || 'no email'
+    });
+    
     if (debugMode) {
       console.log('🔧 Debug mode: showing all results without filtering');
       setFilteredResults(results);
@@ -432,8 +438,18 @@ const GoogleMapsScraper = () => {
 
   // Auto-expand search when no new leads found
   React.useEffect(() => {
+    console.log('🔄 AUTO-EXPAND EFFECT TRIGGERED:', {
+      resultsLength: results.length,
+      filteredResultsLength: filteredResults.length,
+      debugMode,
+      autoSearching,
+      searchAttempts,
+      isRunning,
+      userEmail: user?.email || 'no email'
+    });
+    
     if (results.length > 0 && filteredResults.length === 0 && !debugMode && !autoSearching && searchAttempts < 3 && !isRunning) {
-      console.log(`🔄 No new leads found, expanding search (attempt ${searchAttempts + 1}/3)`);
+      console.log(`🔄 WILL EXPAND SEARCH (attempt ${searchAttempts + 1}/3) for user: ${user?.email}`);
       // Add delay to prevent rapid loops
       const timer = setTimeout(() => {
         expandSearch();
@@ -441,19 +457,32 @@ const GoogleMapsScraper = () => {
       return () => clearTimeout(timer);
     } else if (filteredResults.length > 0 && autoSearching) {
       // Found new leads! Stop auto searching
-      console.log(`✅ Found ${filteredResults.length} new leads! Stopping auto search.`);
+      console.log(`✅ Found ${filteredResults.length} new leads! Stopping auto search for user: ${user?.email}`);
       setAutoSearching(false);
       toast.success(`🎯 Busca automática bem-sucedida! Encontrados ${filteredResults.length} leads novos!`);
     } else if (searchAttempts >= 3 && autoSearching && filteredResults.length === 0) {
       // Stop after 3 attempts with no results
-      console.log('⏹️ Stopping auto-search after 3 attempts with no new leads');
+      console.log(`⏹️ STOPPING auto-search after 3 attempts with no new leads for user: ${user?.email}`);
       setAutoSearching(false);
       toast.info('🔍 Busca automática finalizada. Todos os leads já existem na sua base ou nenhum foi encontrado.');
+    } else {
+      console.log('🔄 AUTO-EXPAND CONDITIONS NOT MET');
     }
   }, [filteredResults, results, debugMode, autoSearching, searchAttempts, isRunning]);
 
   const expandSearch = async () => {
-    if (autoSearching || !formData.searchTerms || !formData.locationQuery) return;
+    console.log('🚀 EXPAND SEARCH CALLED:', {
+      autoSearching,
+      hasSearchTerms: !!formData.searchTerms,
+      hasLocationQuery: !!formData.locationQuery,
+      searchAttempts,
+      userEmail: user?.email || 'no email'
+    });
+    
+    if (autoSearching || !formData.searchTerms || !formData.locationQuery) {
+      console.log('🚫 EXPAND SEARCH BLOCKED - conditions not met');
+      return;
+    }
     
     setAutoSearching(true);
     setSearchAttempts(prev => prev + 1);
@@ -638,8 +667,10 @@ const GoogleMapsScraper = () => {
       return;
     }
 
-    // Reset auto search when manually starting new search
-    if (!autoSearching) {
+    // Reset auto search when manually starting new search (not from expandSearch)
+    // Only reset if this is a manual search (searchAttempts = 0)
+    if (!autoSearching && searchAttempts === 0) {
+      console.log('🔄 Manual search detected, resetting auto search');
       resetAutoSearch();
     }
 
