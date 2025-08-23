@@ -865,9 +865,10 @@ app.get('/api/crm/funil', async (req, res) => {
       try {
         decodedToken = jwt.verify(token, JWT_SECRET);
         userId = decodedToken.id;
+        console.log(`GET /api/crm/funil: Using authenticated user ${userId}`);
       } catch (error) {
         console.log('GET /api/crm/funil: Invalid token, using smart fallback');
-        userId = await getSmartUserId(decodedToken);
+        userId = await getSmartUserId(null);
       }
     } else {
       console.log('GET /api/crm/funil: No token provided, using smart fallback');

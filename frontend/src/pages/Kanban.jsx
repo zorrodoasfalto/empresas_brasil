@@ -205,7 +205,16 @@ const Kanban = () => {
 
   const fetchFunnelData = async () => {
     try {
-      const response = await fetch('/api/crm/funil');
+      const token = localStorage.getItem('token');
+      const headers = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/crm/funil', {
+        headers
+      });
       
       const data = await response.json();
       if (data.success) {
