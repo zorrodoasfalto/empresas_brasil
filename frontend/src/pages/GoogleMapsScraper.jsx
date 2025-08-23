@@ -652,20 +652,10 @@ const GoogleMapsScraper = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          includeWebResults: false,
-          language: "pt-BR",
           locationQuery: formData.locationQuery,
-          maxCrawledPlacesPerSearch: parseInt(formData.maxResults),
-          maxImages: 0,
-          maximumLeadsEnrichmentRecords: 0,
-          scrapeContacts: false,
-          scrapeDirectories: false,
-          scrapeImageAuthors: false,
-          scrapePlaceDetailPage: false,
-          scrapeReviewsPersonalData: true,
-          scrapeTableReservationProvider: false,
           searchStringsArray: [formData.searchTerms],
-          skipClosedPlaces: false
+          maxCrawledPlacesPerSearch: parseInt(formData.maxResults),
+          language: "pt-BR"
         })
       });
       
