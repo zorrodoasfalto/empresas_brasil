@@ -319,6 +319,8 @@ const GoogleMapsScraper = () => {
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
   const [debugMode, setDebugMode] = useState(false);
+  const [autoSearching, setAutoSearching] = useState(false);
+  const [searchAttempts, setSearchAttempts] = useState(0);
   const { user } = useAuth();
 
   // Remove internal duplicates from scraping results
@@ -427,6 +429,91 @@ const GoogleMapsScraper = () => {
       filterExistingLeads(results);
     }
   }, [results, debugMode]);
+
+  // Auto-expand search when no new leads found
+  React.useEffect(() => {
+    if (results.length > 0 && filteredResults.length === 0 && !debugMode && !autoSearching && searchAttempts < 3) {
+      console.log(`🔄 No new leads found, expanding search (attempt ${searchAttempts + 1}/3)`);
+      expandSearch();
+    } else if (filteredResults.length > 0 && autoSearching) {
+      // Found new leads! Stop auto searching
+      console.log(`✅ Found ${filteredResults.length} new leads! Stopping auto search.`);
+      setAutoSearching(false);
+      toast.success(`🎯 Busca automática bem-sucedida! Encontrados ${filteredResults.length} leads novos!`);
+    }
+  }, [filteredResults, results, debugMode, autoSearching, searchAttempts]);
+
+  const expandSearch = async () => {
+    if (autoSearching || !formData.searchTerms || !formData.locationQuery) return;
+    
+    setAutoSearching(true);
+    setSearchAttempts(prev => prev + 1);
+    
+    const strategies = [
+      // Strategy 1: Increase results limit
+      {
+        ...formData,
+        maxResults: Math.min(formData.maxResults * 2, 200)
+      },
+      // Strategy 2: Expand location
+      {
+        ...formData,
+        locationQuery: expandLocationQuery(formData.locationQuery),
+        maxResults: Math.min(formData.maxResults * 1.5, 150)
+      },
+      // Strategy 3: Add related keywords
+      {
+        ...formData,
+        searchTerms: expandSearchTerms(formData.searchTerms),
+        maxResults: Math.min(formData.maxResults * 2, 200)
+      }
+    ];
+
+    const strategy = strategies[searchAttempts - 1] || strategies[0];
+    setFormData(strategy);
+    
+    toast.info(`🔄 Buscando mais leads... Estratégia ${searchAttempts}: ${getStrategyDescription(searchAttempts)}`);
+    
+    // Wait a moment then run new search
+    setTimeout(() => {
+      runScraper();
+    }, 1000);
+  };
+
+  const expandLocationQuery = (location) => {
+    const expansions = {
+      'São Paulo, SP': 'Grande São Paulo, SP',
+      'Rio de Janeiro, RJ': 'Grande Rio de Janeiro, RJ', 
+      'Belo Horizonte, MG': 'Região Metropolitana de Belo Horizonte, MG'
+    };
+    
+    return expansions[location] || `${location.split(',')[0]}, Brasil`;
+  };
+
+  const expandSearchTerms = (terms) => {
+    const variations = {
+      'restaurantes': 'restaurantes OR lanchonetes OR food',
+      'padarias': 'padarias OR confeitarias OR panificadoras',
+      'farmácias': 'farmácias OR drogarias',
+      'supermercados': 'supermercados OR mercados OR mercadinhos'
+    };
+    
+    return variations[terms.toLowerCase()] || `${terms} OR empresas`;
+  };
+
+  const getStrategyDescription = (attempt) => {
+    switch(attempt) {
+      case 1: return 'Aumentando limite de resultados';
+      case 2: return 'Expandindo área geográfica';
+      case 3: return 'Variando termos de busca';
+      default: return 'Otimizando busca';
+    }
+  };
+
+  const resetAutoSearch = () => {
+    setAutoSearching(false);
+    setSearchAttempts(0);
+  };
 
 
   const businessKeywords = {
@@ -542,6 +629,11 @@ const GoogleMapsScraper = () => {
       return;
     }
 
+    // Reset auto search when manually starting new search
+    if (!autoSearching) {
+      resetAutoSearch();
+    }
+
     // Limpar resultados anteriores automaticamente antes de nova busca
     setResults([]);
     setCurrentRun(null);
@@ -620,12 +712,21 @@ const GoogleMapsScraper = () => {
           setResults(uniqueResults);
           
           const removedCount = data.results.length - uniqueResults.length;
-          const message = removedCount > 0 
+          let message = removedCount > 0 
             ? `✅ Scraping concluído! ${uniqueResults.length} empresas únicas (${removedCount} duplicatas removidas)`
             : `✅ Scraping concluído! ${uniqueResults.length} empresas encontradas`;
           
+          if (autoSearching) {
+            message += ` (Busca automática ${searchAttempts}/3)`;
+          }
+          
           toast.success(message);
           setIsRunning(false);
+          
+          // If auto-searching and found results, we'll let the useEffect handle filtering and potential expansion
+          if (!autoSearching) {
+            setAutoSearching(false);
+          }
         } else if (data.status === 'FAILED') {
           toast.error('❌ Scraping falhou');
           setIsRunning(false);
@@ -942,7 +1043,12 @@ const GoogleMapsScraper = () => {
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
                 📊 {debugMode ? `${filteredResults.length} Leads (Modo Debug)` : `${filteredResults.length} Leads Novos Encontrados`}
-                {!debugMode && (
+                {autoSearching && (
+                  <span style={{ color: '#ff8800', fontSize: '0.8rem', display: 'block', marginTop: '0.25rem', fontWeight: 'bold' }}>
+                    🔄 Busca automática ativa - procurando mais leads... ({searchAttempts}/3)
+                  </span>
+                )}
+                {!debugMode && !autoSearching && (
                   <span style={{ color: '#00ccff', fontSize: '0.8rem', display: 'block', marginTop: '0.25rem', opacity: 0.8 }}>
                     Leads que já existem na sua base foram automaticamente filtrados
                   </span>
@@ -1002,17 +1108,27 @@ const GoogleMapsScraper = () => {
             <div style={{ textAlign: 'center', padding: '2rem', color: '#00ccff' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
               <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-                Todos os {results.length} leads já estão na sua base
+                {autoSearching 
+                  ? `Expandindo busca automaticamente... (${searchAttempts}/3)`
+                  : `Todos os ${results.length} leads já estão na sua base`
+                }
               </div>
               <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>
-                Tente uma nova busca com termos diferentes ou em outra localização
+                {autoSearching
+                  ? 'O sistema está automaticamente procurando por mais leads novos'
+                  : searchAttempts >= 3
+                  ? 'Busca automática finalizada. Tente termos ou localização diferentes.'
+                  : 'O sistema tentará automaticamente encontrar mais leads expandindo a busca'
+                }
               </div>
-              <ExportButton 
-                onClick={() => setDebugMode(true)}
-                style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)', color: '#fff', margin: '0 auto', display: 'block' }}
-              >
-                🔧 Modo Debug: Ver Todos os Leads
-              </ExportButton>
+              {!autoSearching && searchAttempts < 3 && (
+                <ExportButton 
+                  onClick={() => setDebugMode(true)}
+                  style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)', color: '#fff', margin: '0 auto', display: 'block' }}
+                >
+                  🔧 Ver Todos os Leads (Debug)
+                </ExportButton>
+              )}
             </div>
           )}
 
