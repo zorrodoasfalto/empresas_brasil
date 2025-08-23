@@ -754,6 +754,12 @@ const GoogleMapsScraper = () => {
           </h3>
           
           <ExportButtonsContainer>
+            <ExportButton 
+              onClick={addTestResults} 
+              style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
+            >
+              🧪 Dados de Teste
+            </ExportButton>
             <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
               💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
