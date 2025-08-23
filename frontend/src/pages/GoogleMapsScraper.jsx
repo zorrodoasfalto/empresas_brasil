@@ -695,67 +695,31 @@ const GoogleMapsScraper = () => {
         </Subtitle>
       </Header>
 
-      <MainGrid>
-        <Card>
-          <CardTitle>🔍 Palavras-Chave por Categoria</CardTitle>
-          <KeywordsGrid>
-            {Object.entries(businessKeywords).map(([category, keywords]) => (
-              <KeywordCategory key={category}>
-                <CategoryTitle>{category}</CategoryTitle>
-                <KeywordList>
-                  {keywords.map((keyword) => (
-                    <KeywordTag
-                      key={keyword}
-                      onClick={() => setKeyword(keyword)}
-                    >
-                      {keyword}
-                    </KeywordTag>
-                  ))}
-                </KeywordList>
-              </KeywordCategory>
-            ))}
-          </KeywordsGrid>
-        </Card>
-
-        <Card>
-          <CardTitle>📍 Principais Cidades</CardTitle>
-          <LocationsGrid>
-            {popularLocations.map((location) => (
-              <LocationTag
-                key={location}
-                onClick={() => setLocation(location)}
-              >
-                {location}
-              </LocationTag>
-            ))}
-          </LocationsGrid>
-        </Card>
-      </MainGrid>
 
       <Card>
         <CardTitle>⚙️ Configuração do Scraping</CardTitle>
         
         <FormGrid>
           <FormGroup>
-            <Label>Palavra-Chave Selecionada</Label>
+            <Label>Palavra-Chave</Label>
             <Input
               type="text"
               name="searchTerms"
               value={formData.searchTerms}
               onChange={handleInputChange}
-              placeholder="Clique em uma palavra-chave acima ou digite"
+              placeholder="Ex: restaurantes, dentistas, academias..."
               required
             />
           </FormGroup>
 
           <FormGroup>
-            <Label>Localização Selecionada</Label>
+            <Label>Localização</Label>
             <Input
               type="text"
               name="locationQuery"
               value={formData.locationQuery}
               onChange={handleInputChange}
-              placeholder="Clique em uma cidade acima ou digite"
+              placeholder="Ex: São Paulo, SP ou Rio de Janeiro, RJ"
               required
             />
           </FormGroup>
@@ -771,22 +735,8 @@ const GoogleMapsScraper = () => {
             <>🚀 Iniciar Google Maps Scraping</>
           )}
         </RunButton>
-        
-        <RunButton
-          onClick={addTestResults}
-          style={{
-            background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', 
-            marginTop: '0.5rem',
-            fontSize: '1.1rem',
-            fontWeight: 'bold',
-            border: '3px solid #ffd700',
-            boxShadow: '0 0 20px rgba(255, 107, 107, 0.5)'
-          }}
-        >
-          🧪 CLIQUE AQUI: Adicionar Dados de Teste para Ver os Botões
-        </RunButton>
 
-        {/* BOTÕES PRINCIPAIS */}
+        {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
         <div style={{ 
           marginTop: '2rem', 
           borderTop: '1px solid rgba(0, 255, 170, 0.3)', 
@@ -798,17 +748,10 @@ const GoogleMapsScraper = () => {
           
           <ExportButtonsContainer>
             <ExportButton onClick={saveAllLeads} disabled={!results || results.length === 0}>
-              💾 Salvar Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
+              💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
             <ExportButton onClick={exportToExcel} disabled={!results || results.length === 0}>
               📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
-            </ExportButton>
-            <ExportButton 
-              onClick={clearResults} 
-              disabled={!results || results.length === 0}
-              style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%)', color: 'white' }}
-            >
-              🗑️ Limpar {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
           </ExportButtonsContainer>
         </div>
