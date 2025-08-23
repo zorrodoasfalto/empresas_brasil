@@ -347,9 +347,66 @@ const GoogleMapsScraper = () => {
     return uniqueResults;
   };
 
-  // Simply show all results - no database duplicate filtering
+  // Filter leads that already exist in user's database
+  const filterExistingLeads = async (resultsToFilter) => {
+    if (!resultsToFilter || resultsToFilter.length === 0) {
+      setFilteredResults([]);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setFilteredResults(resultsToFilter);
+      return;
+    }
+
+    try {
+      const leadsToCheck = resultsToFilter.map(place => ({
+        nome: place.title || place.name || 'Empresa sem nome',
+        empresa: place.title || place.name || 'Empresa sem nome', 
+        telefone: place.phone || '',
+        email: place.email || ''
+      }));
+
+      const response = await fetch('/api/crm/leads/check-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ leads: leadsToCheck })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        const existingIds = new Set(data.existingLeads);
+        
+        const newLeads = resultsToFilter.filter((place, index) => {
+          const lead = leadsToCheck[index];
+          const leadId = `${lead.nome}_${lead.empresa}_${lead.telefone}_${lead.email}`;
+          return !existingIds.has(leadId);
+        });
+
+        const filteredCount = resultsToFilter.length - newLeads.length;
+        setFilteredResults(newLeads);
+        
+        console.log(`🔍 Filtered out ${filteredCount} existing leads from database`);
+        
+        if (filteredCount > 0) {
+          toast.info(`🔄 ${filteredCount} leads já existentes foram filtrados`);
+        }
+      } else {
+        setFilteredResults(resultsToFilter);
+      }
+    } catch (error) {
+      console.error('Error filtering existing leads:', error);
+      setFilteredResults(resultsToFilter);
+    }
+  };
+
+  // Filter existing leads whenever results change
   React.useEffect(() => {
-    setFilteredResults(results);
+    filterExistingLeads(results);
   }, [results]);
 
 
@@ -567,8 +624,8 @@ const GoogleMapsScraper = () => {
     console.log('🔍 saveAllLeads called');
     console.log('🔍 Results length:', results?.length);
     
-    // Use all results - no pre-filtering
-    let dataToSave = results;
+    // Use filtered results (only new leads)
+    let dataToSave = filteredResults;
     if (!dataToSave || dataToSave.length === 0) {
       toast.error('❌ Nenhum resultado encontrado para salvar. Execute uma busca primeiro.');
       return;
@@ -865,7 +922,10 @@ const GoogleMapsScraper = () => {
           {filteredResults.length > 0 && (
             <div>
               <h3 style={{ color: '#00ffaa', marginBottom: '1rem' }}>
-                📊 {filteredResults.length} Leads Encontrados
+                📊 {filteredResults.length} Leads Novos Encontrados
+                <span style={{ color: '#00ccff', fontSize: '0.8rem', display: 'block', marginTop: '0.25rem', opacity: 0.8 }}>
+                  Leads que já existem na sua base foram automaticamente filtrados
+                </span>
               </h3>
               
               <ExportButtonsContainer style={{ marginBottom: '1rem' }}>
@@ -913,6 +973,19 @@ const GoogleMapsScraper = () => {
                   ... e mais {filteredResults.length - 20} novos leads encontrados
                 </div>
               )}
+            </div>
+          )}
+          
+          {/* Mostrar quando todos os leads já existem na base */}
+          {results.length > 0 && filteredResults.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#00ccff' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
+              <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+                Todos os {results.length} leads já estão na sua base
+              </div>
+              <div style={{ fontSize: '0.9rem', opacity: 0.8, marginBottom: '1.5rem' }}>
+                Tente uma nova busca com termos diferentes ou em outra localização
+              </div>
             </div>
           )}
           
