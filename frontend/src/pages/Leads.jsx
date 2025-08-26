@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
 import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
@@ -48,6 +49,32 @@ const StatLabel = styled.div`
   color: #e0e0e0;
   font-size: 0.9rem;
   margin-top: 0.25rem;
+`;
+
+const ExportButton = styled.button`
+  background: linear-gradient(135deg, #00ffaa 0%, #00cc88 100%);
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: linear-gradient(135deg, #00cc88 0%, #00aa66 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 255, 170, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 const SearchBar = styled.div`
@@ -290,6 +317,73 @@ const Leads = () => {
     setFilteredLeads(filtered);
   };
 
+  const exportToExcel = (data) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      toast.warning('❌ Nenhum lead para exportar');
+      return;
+    }
+
+    try {
+      const exportData = data.map((lead, index) => ({
+        'Nº': index + 1,
+        'Nome': lead.nome || '',
+        'Empresa': lead.empresa || '',
+        'Telefone': lead.telefone || '',
+        'Email': lead.email || '',
+        'Endereço': lead.endereco || '',
+        'Website': lead.website || '',
+        'Categoria': lead.categoria || '',
+        'Avaliação': lead.rating || '',
+        'Número de Avaliações': lead.reviews_count || 0,
+        'Fonte': lead.fonte || '',
+        'Fase Atual': lead.fase_atual || '',
+        'Cor da Fase': lead.fase_cor || '',
+        'Observações': lead.observacoes || '',
+        'Data de Criação': lead.created_at ? new Date(lead.created_at).toLocaleDateString('pt-BR') : '',
+        'Última Atualização': lead.updated_at ? new Date(lead.updated_at).toLocaleDateString('pt-BR') : '',
+        'Data da Exportação': new Date().toLocaleDateString('pt-BR'),
+        'Hora da Exportação': new Date().toLocaleTimeString('pt-BR')
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      
+      const columnWidths = [
+        { wch: 5 },   // Nº
+        { wch: 20 },  // Nome
+        { wch: 25 },  // Empresa
+        { wch: 15 },  // Telefone
+        { wch: 25 },  // Email
+        { wch: 35 },  // Endereço
+        { wch: 25 },  // Website
+        { wch: 20 },  // Categoria
+        { wch: 10 },  // Avaliação
+        { wch: 15 },  // Número de Avaliações
+        { wch: 15 },  // Fonte
+        { wch: 15 },  // Fase Atual
+        { wch: 12 },  // Cor da Fase
+        { wch: 30 },  // Observações
+        { wch: 12 },  // Data de Criação
+        { wch: 12 },  // Última Atualização
+        { wch: 12 },  // Data da Exportação
+        { wch: 12 }   // Hora da Exportação
+      ];
+      
+      worksheet['!cols'] = columnWidths;
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+
+      const fileName = `leads-exportados-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      XLSX.writeFile(workbook, fileName);
+      toast.success(`✅ ${data.length} leads exportados para ${fileName}`);
+
+    } catch (error) {
+      console.error('❌ Erro ao exportar leads:', error);
+      toast.error(`Erro ao exportar: ${error.message}`);
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
@@ -353,6 +447,12 @@ const Leads = () => {
             <StatNumber>{getUniqueValues('fase_atual').length}</StatNumber>
             <StatLabel>Fases</StatLabel>
           </StatCard>
+          <ExportButton 
+            onClick={() => exportToExcel(filteredLeads)} 
+            disabled={filteredLeads.length === 0}
+          >
+            📈 Exportar Excel ({filteredLeads.length})
+          </ExportButton>
         </Stats>
       </Header>
 
