@@ -895,17 +895,14 @@ const GoogleMapsScraper = () => {
     }
   };
 
-  const exportToExcel = (dataToExport = filteredResults) => {
-    console.log('🔍 exportToExcel called - results:', dataToExport?.length);
-    toast.info('📊 Iniciando exportação Excel...');
-    
-    if (!dataToExport || dataToExport.length === 0) {
-      toast.warning('❌ Nenhum resultado para exportar');
+  const exportToExcel = (data) => {
+    if (!data || data.length === 0) {
+      toast.warning('Nenhum resultado para exportar');
       return;
     }
 
     try {
-      const exportData = dataToExport.map((place, index) => ({
+      const exportData = data.map((place, index) => ({
         'Nº': index + 1,
         'Nome/Empresa': place.title || place.name || '',
         'Endereço': place.address || '',
