@@ -902,9 +902,10 @@ const GoogleMapsScraper = () => {
     console.log('🔍 EXPORT DEBUG - data type:', typeof data);
     console.log('🔍 EXPORT DEBUG - is array:', Array.isArray(data));
     
-    if (!data || data.length === 0) {
-      console.log('❌ EXPORT DEBUG - No data to export');
-      toast.warning('Nenhum resultado para exportar');
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      console.log('❌ EXPORT DEBUG - No data to export or not an array');
+      console.log('❌ EXPORT DEBUG - data is:', data);
+      toast.warning('❌ Nenhum resultado válido para exportar');
       return;
     }
 
@@ -1083,7 +1084,7 @@ const GoogleMapsScraper = () => {
             <ExportButton onClick={saveAllLeads}>
               💾 Salvar Todos os Leads {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
-            <ExportButton onClick={exportToExcel}>
+            <ExportButton onClick={() => exportToExcel(results)}>
               📊 Exportar Excel {results && results.length > 0 ? `(${results.length})` : '(0)'}
             </ExportButton>
           </ExportButtonsContainer>
