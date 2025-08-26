@@ -895,16 +895,16 @@ const GoogleMapsScraper = () => {
     }
   };
 
-  const exportToExcel = () => {
-    console.log('🔍 exportToExcel called - results:', results?.length);
-    toast.info('🔍 Botão Excel clicado! Iniciando exportação...');
-    if (!results || results.length === 0) {
-      toast.warning('Nenhum resultado para exportar');
+  const exportToExcel = (dataToExport = filteredResults) => {
+    console.log('🔍 exportToExcel called - results:', dataToExport?.length);
+    toast.info('📊 Iniciando exportação Excel...');
+    
+    if (!dataToExport || dataToExport.length === 0) {
+      toast.warning('❌ Nenhum resultado para exportar');
       return;
     }
 
     try {
-      const dataToExport = data || filteredResults || results || [];
       const exportData = dataToExport.map((place, index) => ({
         'Nº': index + 1,
         'Nome/Empresa': place.title || place.name || '',
