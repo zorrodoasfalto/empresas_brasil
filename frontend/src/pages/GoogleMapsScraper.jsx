@@ -896,11 +896,19 @@ const GoogleMapsScraper = () => {
   };
 
   const exportToExcel = (data) => {
+    console.log('🔍 EXPORT DEBUG v2.0 - TIMESTAMP:', Date.now());
+    console.log('🔍 EXPORT DEBUG - data received:', data);
+    console.log('🔍 EXPORT DEBUG - data length:', data?.length);
+    console.log('🔍 EXPORT DEBUG - data type:', typeof data);
+    console.log('🔍 EXPORT DEBUG - is array:', Array.isArray(data));
+    
     if (!data || data.length === 0) {
+      console.log('❌ EXPORT DEBUG - No data to export');
       toast.warning('Nenhum resultado para exportar');
       return;
     }
 
+    console.log('📊 EXPORT DEBUG - Starting export process...');
     try {
       const exportData = data.map((place, index) => ({
         'Nº': index + 1,
@@ -953,8 +961,11 @@ const GoogleMapsScraper = () => {
       toast.success(`✅ Dados exportados para ${fileName}`);
 
     } catch (error) {
-      console.error('Erro ao exportar:', error);
-      toast.error('Erro ao exportar dados para Excel');
+      console.error('❌ EXPORT ERROR - Full error:', error);
+      console.error('❌ EXPORT ERROR - Error message:', error.message);
+      console.error('❌ EXPORT ERROR - Error stack:', error.stack);
+      console.error('❌ EXPORT ERROR - XLSX available:', typeof XLSX);
+      toast.error(`Erro ao exportar: ${error.message}`);
     }
   };
 
