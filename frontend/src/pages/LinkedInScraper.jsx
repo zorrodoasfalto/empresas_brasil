@@ -494,6 +494,8 @@ const LinkedInScraper = () => {
     setCurrentRun(null);
 
     console.log('🚀 Iniciando LinkedIn scraping com Ghost Genius:', formData);
+    console.log(`📊 Usando endpoint: ${formData.bulk ? 'BULK (múltiplas páginas)' : 'SINGLE (1 página)'}`);
+    console.log(`📄 Páginas configuradas: ${formData.pages}`);
 
     setIsRunning(true);
     
@@ -525,8 +527,11 @@ const LinkedInScraper = () => {
       
       const data = await response.json();
       
+      console.log('📊 Resposta da API:', data);
+      console.log(`📈 Total de empresas retornadas: ${data.companies ? data.companies.length : 0}`);
+      
       if (data.success) {
-        toast.success('✅ LinkedIn scraping concluído!');
+        toast.success(`✅ LinkedIn scraping concluído! ${data.companies ? data.companies.length : 0} empresas encontradas`);
         setCurrentRun({
           id: 'ghost-genius-' + Date.now(),
           status: 'SUCCEEDED',
