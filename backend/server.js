@@ -1065,6 +1065,13 @@ app.post('/api/crm/leads', async (req, res) => {
       userId = await getSmartUserId(decodedToken);
     }
 
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para salvar leads.' 
+      });
+    }
+
     const {
       nome,
       empresa,
@@ -1189,6 +1196,13 @@ app.get('/api/crm/funil', async (req, res) => {
       userId = await getSmartUserId(null);
     }
 
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para acessar o funil.' 
+      });
+    }
+
     // Get phases - create default funnel if user doesn't have one
     let phases = await pool.query(`
       SELECT * FROM funil_fases 
@@ -1309,6 +1323,13 @@ app.post('/api/crm/leads/check-duplicates', async (req, res) => {
       userId = await getSmartUserId(null);
     }
 
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para verificar duplicatas.' 
+      });
+    }
+
     const { leads } = req.body;
     if (!Array.isArray(leads)) {
       return res.status(400).json({ success: false, message: 'Leads array required' });
@@ -1369,6 +1390,13 @@ app.get('/api/crm/kanban', async (req, res) => {
     } catch (error) {
       console.log('GET /api/crm/kanban: Invalid token, using smart fallback');
       userId = await getSmartUserId(decodedToken);
+    }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para acessar o kanban.' 
+      });
     }
 
     // Get phases - create default funnel if user doesn't have one
@@ -1454,6 +1482,14 @@ app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
       console.log('PUT /api/crm/leads/:leadId/fase: Invalid token, using smart fallback');
       userId = await getSmartUserId(decodedToken);
     }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para modificar leads.' 
+      });
+    }
+
     const { leadId } = req.params;
     const { faseId, notas } = req.body;
 
