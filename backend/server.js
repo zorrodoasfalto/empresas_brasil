@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { ApifyClient } = require('apify-client');
+const User = require('./models/User');
 require('dotenv').config();
 
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
@@ -44,7 +45,66 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
-// Smart fallback function to find the correct user_id
+// Middleware para verificar acesso do usuário (trial ou assinatura ativa)
+async function checkUserAccess(req, res, next) {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Token de autorização necessário', needsSubscription: true });
+    }
+
+    const decodedToken = jwt.verify(token, JWT_SECRET);
+    
+    if (!decodedToken || !decodedToken.email) {
+      return res.status(401).json({ error: 'Token inválido', needsSubscription: true });
+    }
+
+    // Encontrar usuário por email
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE email = $1 UNION SELECT id FROM simple_users WHERE email = $1',
+      [decodedToken.email]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuário não encontrado', needsSubscription: true });
+    }
+
+    const userId = userResult.rows[0].id;
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    const accessCheck = await User.checkUserAccess(userId);
+    
+    if (!accessCheck.hasAccess) {
+      if (accessCheck.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 30 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+
+    // Adicionar informações do usuário na request
+    req.userId = userId;
+    req.userEmail = decodedToken.email;
+    req.accessReason = accessCheck.reason;
+    
+    next();
+  } catch (error) {
+    console.error('Error checking user access:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Token inválido', needsSubscription: true });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expirado', needsSubscription: true });
+    }
+    return res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+}
+
+// Smart fallback function to find the correct user_id (DEPRECATED - usar checkUserAccess middleware)
 async function getSmartUserId(decodedToken, providedUserId = null) {
   if (providedUserId) {
     return providedUserId; // Use provided userId if valid token
@@ -70,7 +130,7 @@ async function getSmartUserId(decodedToken, providedUserId = null) {
     return null;
   } catch (error) {
     console.error('Smart fallback error:', error);
-    return 1;
+    return null; // SECURITY FIX: Never return fallback user ID
   }
 }
 
@@ -548,7 +608,7 @@ app.post('/api/auth/change-password', async (req, res) => {
 });
 
 // Helper function to analyze successful Apify run
-app.get('/api/instagram/analyze-run/:runId', async (req, res) => {
+app.get('/api/instagram/analyze-run/:runId', checkUserAccess, async (req, res) => {
   try {
     const { runId } = req.params;
     console.log(`🔍 Analyzing successful run: ${runId}`);
@@ -602,7 +662,7 @@ app.get('/api/instagram/analyze-run/:runId', async (req, res) => {
 });
 
 // Instagram email scraping usando Apify - OTIMIZADO para 25s/21 resultados
-app.post('/api/instagram/scrape', async (req, res) => {
+app.post('/api/instagram/scrape', checkUserAccess, async (req, res) => {
   try {
     const { keyword } = req.body;
     
@@ -674,7 +734,7 @@ app.post('/api/instagram/scrape', async (req, res) => {
 });
 
 // Instagram scraping progress endpoint
-app.get('/api/instagram/progress/:runId', async (req, res) => {
+app.get('/api/instagram/progress/:runId', checkUserAccess, async (req, res) => {
   try {
     const { runId } = req.params;
 
@@ -928,30 +988,10 @@ app.post('/api/debug/reset-password', async (req, res) => {
 });
 
 // Get leads - simple version that works
-app.get('/api/crm/leads', async (req, res) => {
+app.get('/api/crm/leads', checkUserAccess, async (req, res) => {
   try {
-    // Require valid JWT token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
-    }
-
-    let userId;
-    let decodedToken = null;
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET);
-      userId = decodedToken.id;
-    } catch (error) {
-      console.log('GET /api/crm/leads: Invalid token, using smart fallback');
-      userId = await getSmartUserId(decodedToken);
-    }
-
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token inválido. Faça login novamente para acessar seus leads.' 
-      });
-    }
+    // userId already validated by checkUserAccess middleware
+    const userId = req.userId;
 
     const result = await pool.query(`
       SELECT 
@@ -1045,7 +1085,7 @@ app.get('/api/debug/users', async (req, res) => {
 });
 
 // Save lead - simple version that works  
-app.post('/api/crm/leads', async (req, res) => {
+app.post('/api/crm/leads', checkUserAccess, async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
@@ -1175,7 +1215,7 @@ app.post('/api/crm/leads', async (req, res) => {
 
 
 // Get funnel data
-app.get('/api/crm/funil', async (req, res) => {
+app.get('/api/crm/funil', checkUserAccess, async (req, res) => {
   try {
     // Use smart fallback for user ID without requiring token
     let userId;
@@ -1308,7 +1348,7 @@ app.get('/api/debug/user/:email', async (req, res) => {
 });
 
 // Check for existing leads to filter duplicates before scraping
-app.post('/api/crm/leads/check-duplicates', async (req, res) => {
+app.post('/api/crm/leads/check-duplicates', checkUserAccess, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -1374,7 +1414,7 @@ app.post('/api/crm/leads/check-duplicates', async (req, res) => {
 });
 
 // GET /api/crm/kanban - Same as funil but for Kanban page
-app.get('/api/crm/kanban', async (req, res) => {
+app.get('/api/crm/kanban', checkUserAccess, async (req, res) => {
   try {
     // Require valid JWT token
     const token = req.headers.authorization?.split(' ')[1];
@@ -1466,7 +1506,7 @@ app.get('/api/crm/kanban', async (req, res) => {
 });
 
 // Move lead between phases
-app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
+app.put('/api/crm/leads/:leadId/fase', checkUserAccess, async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -1764,7 +1804,7 @@ function updateProgress(sessionId, data) {
 }
 
 // LinkedIn search using Ghost Genius API (multiple pages)
-app.post('/api/linkedin/search-bulk', async (req, res) => {
+app.post('/api/linkedin/search-bulk', checkUserAccess, async (req, res) => {
   try {
     const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
     
@@ -2011,7 +2051,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
 });
 
 // LinkedIn search using Ghost Genius API (single page)
-app.post('/api/linkedin/search', async (req, res) => {
+app.post('/api/linkedin/search', checkUserAccess, async (req, res) => {
   try {
     const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
     
@@ -2506,7 +2546,7 @@ app.get('/api/filters/options', async (req, res) => {
   }
 });
 
-app.post('/api/companies/filtered', async (req, res) => {
+app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
   console.log('🔍 Starting company search...');
   const startTime = Date.now();
   
@@ -2968,7 +3008,7 @@ app.post('/api/companies/filtered', async (req, res) => {
 });
 
 // Get total company count with filters (without returning data)
-app.post('/api/companies/count', async (req, res) => {
+app.post('/api/companies/count', checkUserAccess, async (req, res) => {
   const startTime = Date.now();
   
   try {
@@ -3192,6 +3232,44 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
 });
 
 // Generate tokens for all users in database
+// Check user trial status
+app.get('/api/debug/trial-status/:email', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const result = await pool.query(`
+      SELECT id, email, trial_start_date, trial_expires_at, 
+             subscription_active, subscription_expires_at, created_at
+      FROM users WHERE email = $1
+    `, [email]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ success: false, message: 'Usuário não encontrado' });
+    }
+    
+    const user = result.rows[0];
+    const accessCheck = await User.checkUserAccess(user.id);
+    
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        trial_start_date: user.trial_start_date,
+        trial_expires_at: user.trial_expires_at,
+        subscription_active: user.subscription_active,
+        subscription_expires_at: user.subscription_expires_at
+      },
+      access: accessCheck
+    });
+    
+  } catch (error) {
+    console.error('❌ Trial status error:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
 app.get('/api/admin/generate-tokens', async (req, res) => {
   try {
     // Get all users from both tables

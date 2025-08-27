@@ -24,6 +24,7 @@ import SecurityPolicy from './pages/SecurityPolicy';
 import Checkout from './pages/Checkout';
 import CheckoutSimple from './pages/CheckoutSimple';
 import VerifyEmail from './pages/VerifyEmail';
+import SubscriptionPage from './pages/SubscriptionPage';
 import GlobalStyles from './styles/GlobalStyles';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
+            <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/about" element={<AboutUs />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfUse />} />

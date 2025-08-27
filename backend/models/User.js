@@ -24,6 +24,10 @@ class User {
           id SERIAL PRIMARY KEY,
           email VARCHAR(255) UNIQUE NOT NULL,
           password VARCHAR(255) NOT NULL,
+          trial_start_date TIMESTAMP DEFAULT NOW(),
+          trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          subscription_active BOOLEAN DEFAULT FALSE,
+          subscription_expires_at TIMESTAMP NULL,
           created_at TIMESTAMP DEFAULT NOW(),
           updated_at TIMESTAMP DEFAULT NOW()
         )
@@ -31,6 +35,48 @@ class User {
       
       // Create indexes
       await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
+      
+      // Add trial fields to existing users who don't have them - BOTH TABLES
+      try {
+        // Update users table
+        await this.pool.query(`
+          ALTER TABLE users 
+          ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
+          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
+        `);
+        
+        // Update simple_users table
+        await this.pool.query(`
+          ALTER TABLE simple_users 
+          ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
+          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
+        `);
+        
+        // Update existing users to have 30 day trial from their creation date
+        await this.pool.query(`
+          UPDATE users 
+          SET 
+            trial_start_date = COALESCE(trial_start_date, created_at),
+            trial_expires_at = COALESCE(trial_expires_at, created_at + INTERVAL '30 days')
+          WHERE trial_start_date IS NULL OR trial_expires_at IS NULL
+        `);
+        
+        await this.pool.query(`
+          UPDATE simple_users 
+          SET 
+            trial_start_date = COALESCE(trial_start_date, created_at),
+            trial_expires_at = COALESCE(trial_expires_at, created_at + INTERVAL '30 days')
+          WHERE trial_start_date IS NULL OR trial_expires_at IS NULL
+        `);
+        
+        console.log('✅ Trial fields added/updated for existing users in BOTH tables');
+      } catch (error) {
+        console.log('ℹ️ Trial fields already exist or error adding them:', error.message);
+      }
       
       console.log('✅ Users table initialized in PostgreSQL');
     } catch (error) {
@@ -45,7 +91,7 @@ class User {
       const result = await this.pool.query(`
         INSERT INTO users (email, password)
         VALUES ($1, $2)
-        RETURNING id, email, created_at
+        RETURNING id, email, trial_start_date, trial_expires_at, subscription_active, created_at
       `, [email, hashedPassword]);
       
       return result.rows[0];
@@ -60,7 +106,8 @@ class User {
   async findByEmail(email) {
     try {
       const result = await this.pool.query(`
-        SELECT id, email, password, created_at
+        SELECT id, email, password, trial_start_date, trial_expires_at, 
+               subscription_active, subscription_expires_at, created_at
         FROM users
         WHERE email = $1
       `, [email]);
@@ -75,7 +122,8 @@ class User {
   async findById(id) {
     try {
       const result = await this.pool.query(`
-        SELECT id, email, created_at
+        SELECT id, email, trial_start_date, trial_expires_at, 
+               subscription_active, subscription_expires_at, created_at
         FROM users
         WHERE id = $1
       `, [id]);
@@ -136,6 +184,47 @@ class User {
     } catch (error) {
       console.error('Error getting all users:', error);
       return [];
+    }
+  }
+
+  async checkUserAccess(userId) {
+    try {
+      // Check both tables for user
+      let result = await this.pool.query(`
+        SELECT id, email, trial_expires_at, subscription_active, subscription_expires_at
+        FROM users
+        WHERE id = $1
+        UNION
+        SELECT id, email, trial_expires_at, subscription_active, subscription_expires_at
+        FROM simple_users
+        WHERE id = $1
+      `, [userId]);
+      
+      if (!result.rows[0]) {
+        return { hasAccess: false, reason: 'user_not_found' };
+      }
+
+      const user = result.rows[0];
+      const now = new Date();
+      
+      // Check if subscription is active and not expired
+      if (user.subscription_active) {
+        if (!user.subscription_expires_at || new Date(user.subscription_expires_at) > now) {
+          return { hasAccess: true, reason: 'subscription_active', user };
+        }
+      }
+      
+      // Check if trial is still valid
+      if (new Date(user.trial_expires_at) > now) {
+        return { hasAccess: true, reason: 'trial_active', user };
+      }
+      
+      // Access expired
+      return { hasAccess: false, reason: 'trial_expired', user };
+      
+    } catch (error) {
+      console.error('Error checking user access:', error);
+      return { hasAccess: false, reason: 'error' };
     }
   }
 
