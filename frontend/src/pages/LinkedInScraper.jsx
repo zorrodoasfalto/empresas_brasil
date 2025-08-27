@@ -331,7 +331,7 @@ const LinkedInScraper = () => {
     detailed: true,
     bulk: true,
     pages: 20,
-    companyLimit: 200
+    companyLimit: 100
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -501,34 +501,89 @@ const LinkedInScraper = () => {
 
     setIsRunning(true);
     
-    // Iniciar simulação de progresso
+    // Progresso realista em duas fases: busca de páginas + dados detalhados
     const totalPages = formData.bulk ? formData.pages : 1;
-    const estimatedTimeMs = totalPages * 1200; // ~1.2s por página (com delay de 100ms + request)
-    const updateInterval = Math.max(100, estimatedTimeMs / 50); // 50 updates no total
+    const estimatedCompanies = Math.min(formData.companyLimit, totalPages * 10);
+    const estimatedDetailedCompanies = estimatedCompanies; // TODAS as empresas terão dados detalhados
     
-    setProgress({ current: 0, total: totalPages, message: 'Iniciando busca...' });
+    // Fase 1: Busca de páginas (15% do progresso) + Fase 2: Dados detalhados (85% do progresso)
+    // Como dados detalhados levam muito mais tempo, dar mais peso para essa fase
+    const pagesPhaseWeight = 0.15;
+    const detailsPhaseWeight = 0.85;
+    const estimatedTotalTime = (totalPages * 1.1) + (estimatedDetailedCompanies * 0.8); // segundos
+    
+    setProgress({ 
+      current: 0, 
+      total: 100, 
+      message: `Iniciando busca (~${Math.ceil(estimatedTotalTime)}s estimado)...`, 
+      phase: 'pages',
+      pagesFound: 0,
+      detailsFound: 0,
+      totalEstimated: estimatedCompanies,
+      detailedEstimated: estimatedDetailedCompanies
+    });
     
     let progressValue = 0;
+    let currentPhase = 'pages';
     const progressInterval = setInterval(() => {
       progressValue += 1;
-      const percentage = Math.min(95, (progressValue / 50) * 100); // Max 95% até completar
-      const currentPage = Math.floor((percentage / 100) * totalPages) + 1;
       
-      setProgress({
-        current: currentPage,
-        total: totalPages,
-        message: `Buscando página ${currentPage} de ${totalPages}...`
-      });
-      
-      if (percentage >= 95) {
-        clearInterval(progressInterval);
+      if (currentPhase === 'pages') {
+        // Fase 1: Progresso das páginas (0-15%)
+        const pagesProgress = Math.min(15, (progressValue / 15) * 15);
+        const currentPage = Math.floor((pagesProgress / 15) * totalPages) + 1;
+        
         setProgress({
-          current: totalPages,
-          total: totalPages,
-          message: 'Processando dados detalhados...'
+          current: pagesProgress,
+          total: 100,
+          message: `🔍 Buscando página ${Math.min(currentPage, totalPages)} de ${totalPages}...`,
+          phase: 'pages',
+          pagesFound: Math.min(currentPage * 10, estimatedCompanies),
+          detailsFound: 0,
+          totalEstimated: estimatedCompanies,
+          detailedEstimated: estimatedDetailedCompanies
         });
+        
+        // Transição para fase de detalhes após 15%
+        if (pagesProgress >= 15) {
+          currentPhase = 'details';
+          progressValue = 0; // Reset para fase de detalhes
+        }
+      } else {
+        // Fase 2: Progresso dos dados detalhados (15-95%) - 80% do progresso total
+        // Progresso mais lento e realista baseado no tempo real estimado
+        const maxDetailProgress = 80; // 15% + 80% = 95% máximo
+        const detailsProgress = Math.min(maxDetailProgress, (progressValue / (estimatedDetailedCompanies * 1.2)) * maxDetailProgress);
+        const totalProgress = 15 + detailsProgress;
+        const detailsProcessed = Math.floor((detailsProgress / maxDetailProgress) * estimatedDetailedCompanies);
+        
+        setProgress({
+          current: totalProgress,
+          total: 100,
+          message: `✨ Buscando dados detalhados (${detailsProcessed}/${estimatedDetailedCompanies})...`,
+          phase: 'details',
+          pagesFound: estimatedCompanies,
+          detailsFound: detailsProcessed,
+          totalEstimated: estimatedCompanies,
+          detailedEstimated: estimatedDetailedCompanies
+        });
+        
+        // Para no 95% para evitar completar antes da API
+        if (totalProgress >= 95) {
+          clearInterval(progressInterval);
+          setProgress({
+            current: 95,
+            total: 100,
+            message: `🔄 Finalizando dados detalhados (${estimatedDetailedCompanies}/${estimatedDetailedCompanies})...`,
+            phase: 'finalizing',
+            pagesFound: estimatedCompanies,
+            detailsFound: estimatedDetailedCompanies,
+            totalEstimated: estimatedCompanies,
+            detailedEstimated: estimatedDetailedCompanies
+          });
+        }
       }
-    }, updateInterval);
+    }, 200); // Update a cada 200ms
     
     try {
       const endpoint = formData.bulk ? '/api/linkedin/search-bulk' : '/api/linkedin/search';
@@ -589,16 +644,24 @@ const LinkedInScraper = () => {
         
         // Completar progresso
         clearInterval(progressInterval);
+        const companiesFound = data.data ? data.data.length : 0;
+        const detailedCompanies = data.data ? data.data.filter(c => c.detailed).length : 0;
+        
         setProgress({
-          current: totalPages,
-          total: totalPages,
-          message: `✅ Concluído! ${data.data ? data.data.length : 0} empresas encontradas`
+          current: 100,
+          total: 100,
+          message: `✅ Concluído! ${companiesFound} empresas (TODAS com dados detalhados)`,
+          phase: 'completed',
+          pagesFound: companiesFound,
+          detailsFound: detailedCompanies,
+          totalEstimated: companiesFound,
+          detailedEstimated: detailedCompanies
         });
         
-        // Limpar progresso após 3 segundos
+        // Limpar progresso após 5 segundos
         setTimeout(() => {
-          setProgress({ current: 0, total: 0, message: '' });
-        }, 3000);
+          setProgress({ current: 0, total: 0, message: '', phase: '', pagesFound: 0, detailsFound: 0 });
+        }, 5000);
         
         setIsRunning(false);
         
@@ -1120,7 +1183,7 @@ const LinkedInScraper = () => {
             <FormGroup>
               <Label>Quantidade de Empresas</Label>
               <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '0.5rem' }}>
-                💡 Máximo de 200 empresas por busca
+                💡 Máximo de 100 empresas por busca (~1-2 minutos com dados detalhados)
               </div>
               <Select
                 name="companyLimit"
@@ -1129,9 +1192,7 @@ const LinkedInScraper = () => {
               >
                 <option value={20}>20 empresas</option>
                 <option value={50}>50 empresas</option>
-                <option value={100}>100 empresas</option>
-                <option value={150}>150 empresas</option>
-                <option value={200}>200 empresas (máximo)</option>
+                <option value={100}>100 empresas (máximo)</option>
               </Select>
             </FormGroup>
           </FormGrid>
@@ -1163,8 +1224,9 @@ const LinkedInScraper = () => {
             color: '#00ffaa',
             marginTop: '1rem'
           }}>
-            🚀 <strong>Busca em Massa Ativada:</strong> Busca até 200 empresas automaticamente
-            <br />✨ <strong>Dados Detalhados Ativados:</strong> Inclui website, funcionários, especialidades, etc.
+            🚀 <strong>Busca em Massa Ativada:</strong> Busca até 100 empresas automaticamente
+            <br />✨ <strong>Dados Detalhados para TODAS:</strong> Inclui website, funcionários, especialidades, etc.
+            <br />⏱️ <strong>Tempo Estimado:</strong> ~1-2 minutos para busca completa com dados detalhados
             <br />ℹ️ <strong>Observação:</strong> Dados detalhados aparecem apenas para empresas que preencheram essas informações no LinkedIn
           </div>
 
@@ -1198,24 +1260,55 @@ const LinkedInScraper = () => {
                   {progress.message}
                 </span>
                 <span style={{ color: '#0077b5', fontSize: '0.9rem' }}>
-                  {progress.current}/{progress.total} páginas
+                  {Math.round(progress.current)}%
                 </span>
               </div>
               
+              {/* Informações detalhadas das fases */}
+              {(progress.pagesFound > 0 || progress.detailsFound > 0) && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '0.5rem',
+                  fontSize: '0.8rem',
+                  color: '#0077b5',
+                  opacity: 0.8
+                }}>
+                  <span>📄 Empresas encontradas: {progress.pagesFound}</span>
+                  <span>✨ Com dados detalhados: {progress.detailsFound}</span>
+                </div>
+              )}
+              
               <div style={{
                 width: '100%',
-                height: '8px',
+                height: '10px',
                 background: 'rgba(0, 0, 0, 0.2)',
-                borderRadius: '4px',
+                borderRadius: '5px',
                 overflow: 'hidden'
               }}>
                 <div style={{
-                  width: `${Math.max(2, (progress.current / progress.total) * 100)}%`,
+                  width: `${Math.max(2, progress.current)}%`,
                   height: '100%',
-                  background: 'linear-gradient(90deg, #0077b5, #00ffaa)',
-                  borderRadius: '4px',
-                  transition: 'width 0.3s ease'
+                  background: progress.phase === 'details' || progress.phase === 'finalizing' 
+                    ? 'linear-gradient(90deg, #0077b5, #00ffaa)' 
+                    : 'linear-gradient(90deg, #0077b5, #4da6d9)',
+                  borderRadius: '5px',
+                  transition: 'width 0.5s ease'
                 }} />
+              </div>
+              
+              {/* Indicador de fase */}
+              <div style={{
+                marginTop: '0.5rem',
+                fontSize: '0.75rem',
+                color: '#0077b5',
+                opacity: 0.7,
+                textAlign: 'center'
+              }}>
+                {progress.phase === 'pages' && '🔍 Fase 1: Buscando páginas do LinkedIn'}
+                {progress.phase === 'details' && '✨ Fase 2: Buscando dados detalhados das empresas'}
+                {progress.phase === 'finalizing' && '🔄 Finalizando processamento'}
+                {progress.phase === 'completed' && '✅ Busca concluída com sucesso'}
               </div>
             </div>
           )}

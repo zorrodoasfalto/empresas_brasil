@@ -1418,10 +1418,45 @@ app.get('/api/apify/test', async (req, res) => {
   }
 });
 
+// LinkedIn search progress endpoint (Server-Sent Events)
+const progressClients = new Map();
+
+app.get('/api/linkedin/progress/:sessionId', (req, res) => {
+  const { sessionId } = req.params;
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+
+  progressClients.set(sessionId, res);
+  
+  // Keep connection alive
+  const keepAlive = setInterval(() => {
+    res.write('data: {"type": "ping"}\n\n');
+  }, 30000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    progressClients.delete(sessionId);
+  });
+});
+
+// Function to send progress updates
+function sendProgress(sessionId, data) {
+  const client = progressClients.get(sessionId);
+  if (client) {
+    client.write(`data: ${JSON.stringify(data)}\n\n`);
+  }
+}
+
 // LinkedIn search using Ghost Genius API (multiple pages)
 app.post('/api/linkedin/search-bulk', async (req, res) => {
   try {
-    const { keywords, location, industries, company_size, pages = 5, companyLimit = 200 } = req.body;
+    const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
     
     // Calculate optimal pages needed based on company limit (10 companies per page)
     const optimalPages = Math.min(pages, Math.ceil(companyLimit / 10));
@@ -1487,9 +1522,9 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
         
         results.push(pageResult);
         
-        // Small delay to avoid rate limiting
+        // Ghost Genius rate limiting: 1 request per second maximum
         if (page < pages) {
-          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+          await new Promise(resolve => setTimeout(resolve, 1100)); // 1.1s delay per official docs
         }
         
       } catch (error) {
@@ -1534,12 +1569,20 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     let enrichedData = uniqueCompanies;
     
     if (detailed && uniqueCompanies.length > 0) {
-      console.log('🔍 Fetching detailed information for all companies...');
+      console.log('🔍 Fetching detailed information with optimized rate limiting...');
       
-      const detailedPromises = uniqueCompanies.map(async (company, index) => {
+      // Get detailed data for ALL companies - user requested complete data even if >1 minute
+      // With 800ms delay, 100 companies = ~80 seconds total
+      const companiesForDetail = uniqueCompanies; // ALL companies
+      
+      console.log(`📊 Getting detailed info for ALL ${companiesForDetail.length} companies (~${Math.ceil(companiesForDetail.length * 0.8)}s estimated)`);
+      
+      const detailedResults = [];
+      for (let i = 0; i < companiesForDetail.length; i++) {
+        const company = companiesForDetail[i];
         try {
-          if (index % 10 === 0) {
-            console.log(`📋 Progress: ${index + 1}/${uniqueCompanies.length} companies`);
+          if (i % 10 === 0) {
+            console.log(`📋 Progress: ${i + 1}/${companiesForDetail.length} detailed companies`);
           }
           
           const detailResponse = await axios.get(`${GHOST_GENIUS_BASE_URL}/company`, {
@@ -1547,22 +1590,30 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
             headers: {
               'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
               'Content-Type': 'application/json'
-            }
+            },
+            timeout: 15000
           });
           
-          return {
+          detailedResults.push({
             ...company,
             detailed: detailResponse.data
-          };
+          });
+          
+          // Aggressive rate limiting for more data: 800ms (slightly faster than 1 req/sec)
+          if (i < companiesForDetail.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
           
         } catch (error) {
           console.log(`⚠️ Error getting details for ${company.full_name}:`, error.message);
-          return company;
+          detailedResults.push(company);
         }
-      });
+      }
       
-      enrichedData = await Promise.all(detailedPromises);
-      console.log(`✅ Enhanced ${enrichedData.length} companies with detailed info`);
+      // All companies now have detailed data
+      enrichedData = detailedResults;
+      
+      console.log(`✅ Enhanced ${detailedResults.length} companies with detailed info of ${enrichedData.length} total`);
     }
 
     res.json({
@@ -1668,39 +1719,46 @@ app.post('/api/linkedin/search', async (req, res) => {
     if (detailed && enrichedData.length > 0) {
       console.log('🔍 Fetching detailed company information...');
       
-      // Get detailed info for up to 10 companies to avoid rate limiting
-      const companiesForDetail = enrichedData.slice(0, 10);
+      // Get detailed info for more companies with optimized rate limiting
+      // Get detailed data for ALL companies - user requested complete data even if >1 minute
+      // With 800ms delay, 100 companies = ~80 seconds total
+      const companiesForDetail = enrichedData; // ALL companies
+      console.log(`📊 Will get detailed info for ALL ${companiesForDetail.length} companies (~${Math.ceil(companiesForDetail.length * 0.8)}s estimated)`);
       
-      const detailedPromises = companiesForDetail.map(async (company, index) => {
+      // Fetch detailed data sequentially to respect 1 req/sec limit
+      const detailedResults = [];
+      for (let i = 0; i < companiesForDetail.length; i++) {
+        const company = companiesForDetail[i];
         try {
-          console.log(`📋 Getting details for: ${company.full_name} (${index + 1}/${companiesForDetail.length})`);
+          console.log(`📋 Getting details for: ${company.full_name} (${i + 1}/${companiesForDetail.length})`);
           
           const detailResponse = await axios.get(`${GHOST_GENIUS_BASE_URL}/company`, {
             params: { url: company.url },
             headers: {
               'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
               'Content-Type': 'application/json'
-            }
+            },
+            timeout: 15000
           });
           
-          return {
+          detailedResults.push({
             ...company,
             detailed: detailResponse.data
-          };
+          });
+          
+          // Aggressive rate limiting for more data: 800ms (slightly faster than 1 req/sec)
+          if (i < companiesForDetail.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
           
         } catch (error) {
           console.log(`⚠️ Error getting details for ${company.full_name}:`, error.message);
-          return company; // Return original if detail fails
+          detailedResults.push(company); // Return original if detail fails
         }
-      });
+      }
       
-      const detailedResults = await Promise.all(detailedPromises);
-      
-      // Replace the first companies with detailed versions, keep the rest as basic
-      enrichedData = [
-        ...detailedResults,
-        ...enrichedData.slice(10)
-      ];
+      // All companies now have detailed data
+      enrichedData = detailedResults;
       
       console.log(`✅ Enhanced ${detailedResults.length} companies with detailed info`);
     }
