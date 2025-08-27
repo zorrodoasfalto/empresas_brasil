@@ -1012,7 +1012,7 @@ const InstagramEmailScraper = () => {
                       </div>
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-                      {profile.username && <div>📝 @{profile.username}</div>}
+                      {profile.username && <div>📝 {profile.username}</div>}
                       {profile.email && <div>📧 {profile.email}</div>}
                       {profile.url && (
                         <div>🔗 <a href={profile.url} target="_blank" rel="noopener noreferrer" style={{ color: '#e6683c' }}>{profile.url}</a></div>
