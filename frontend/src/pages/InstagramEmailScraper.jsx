@@ -502,10 +502,10 @@ const InstagramEmailScraper = () => {
           keyword: formData.keyword
         });
         
-        // Start monitoring progress immediately
-        setProgress(5); // Show initial progress
-        setProgressMessage('🔍 Conectando ao Instagram...');
-        monitorProgress(data.runId);
+        // Start time-based progress estimation
+        setProgress(0);
+        setProgressMessage('🔍 Iniciando busca no Instagram...');
+        startProgressEstimation(data.runId);
         
       } else {
         toast.error('Erro ao iniciar scraping: ' + data.message);
@@ -518,66 +518,81 @@ const InstagramEmailScraper = () => {
     }
   };
 
-  const monitorProgress = async (runId) => {
-    const checkProgress = async () => {
-      try {
-        const response = await fetch(`/api/instagram/progress/${runId}`);
-        const data = await response.json();
-        
-        console.log('📊 Progress update:', data);
-        
-        if (data.success) {
-          setProgress(data.progress || 0);
-          setProgressMessage(data.message || '');
-          
-          if (data.status === 'SUCCEEDED') {
-            // Scraping completed successfully
-            toast.success(`✅ Instagram scraping concluído! ${data.total || 0} perfis com emails encontrados`);
-            setCurrentRun(prev => ({
-              ...prev,
-              status: 'SUCCEEDED',
-              finishedAt: new Date()
-            }));
-            
-            const rawResults = data.results || [];
-            console.log('Raw Instagram email data:', rawResults);
-            
-            setResults(rawResults);
-            setIsRunning(false);
-            setProgress(100);
-            setProgressMessage('✅ Concluído com sucesso!');
-            
-          } else if (data.status === 'FAILED') {
-            // Scraping failed
-            toast.error('❌ Instagram scraping falhou: ' + data.message);
-            setCurrentRun(prev => ({
-              ...prev,
-              status: 'FAILED',
-              finishedAt: new Date()
-            }));
-            setIsRunning(false);
-            setProgress(0);
-            setProgressMessage('❌ Falhou');
-            
-          } else {
-            // Still running, check again in 1 second for better progress visibility
-            setTimeout(checkProgress, 1000);
-          }
-        } else {
-          // Error checking progress
-          toast.error('Erro ao verificar progresso: ' + data.message);
-          setIsRunning(false);
-        }
-        
-      } catch (error) {
-        console.error('❌ Progress check error:', error);
-        toast.error('Erro ao verificar progresso');
-        setIsRunning(false);
+  const startProgressEstimation = async (runId) => {
+    const startTime = Date.now();
+    const estimatedDuration = 25000; // 25 seconds estimated duration
+    
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      const progressPercent = Math.min((elapsed / estimatedDuration) * 100, 95);
+      
+      // Update progress message based on time
+      let message = '🔍 Conectando ao Instagram...';
+      if (elapsed > 3000) message = '📱 Analisando perfis do Instagram...';
+      if (elapsed > 8000) message = '📧 Extraindo emails dos perfis...';
+      if (elapsed > 15000) message = '⏳ Finalizando coleta de dados...';
+      if (elapsed > 22000) message = '🔄 Processando resultados finais...';
+      
+      setProgress(Math.round(progressPercent));
+      setProgressMessage(message);
+      
+      // If still running and under 95%, continue updating
+      if (progressPercent < 95) {
+        setTimeout(updateProgress, 500); // Update every 500ms for smooth progress
+      } else {
+        // After 95%, start checking for completion
+        checkCompletion(runId);
       }
     };
     
-    // Start checking progress after a brief delay to let the run initialize
-    setTimeout(checkProgress, 500);
+    // Start the progress estimation
+    updateProgress();
+  };
+
+  const checkCompletion = async (runId) => {
+    try {
+      const response = await fetch(`/api/instagram/progress/${runId}`);
+      const data = await response.json();
+      
+      if (data.success && data.status === 'SUCCEEDED') {
+        // Completed successfully
+        toast.success(`✅ Instagram scraping concluído! ${data.total || 0} perfis com emails encontrados`);
+        setCurrentRun(prev => ({
+          ...prev,
+          status: 'SUCCEEDED',
+          finishedAt: new Date()
+        }));
+        
+        const rawResults = data.results || [];
+        console.log('Raw Instagram email data:', rawResults);
+        
+        setResults(rawResults);
+        setIsRunning(false);
+        setProgress(100);
+        setProgressMessage('✅ Concluído com sucesso!');
+        
+      } else if (data.success && data.status === 'FAILED') {
+        // Failed
+        toast.error('❌ Instagram scraping falhou');
+        setCurrentRun(prev => ({
+          ...prev,
+          status: 'FAILED',
+          finishedAt: new Date()
+        }));
+        setIsRunning(false);
+        setProgress(0);
+        setProgressMessage('❌ Falhou');
+        
+      } else {
+        // Still running, check again in 3 seconds
+        setTimeout(() => checkCompletion(runId), 3000);
+      }
+      
+    } catch (error) {
+      console.error('❌ Completion check error:', error);
+      // Keep trying in case of network issues
+      setTimeout(() => checkCompletion(runId), 5000);
+    }
   };
 
   const saveAllLeads = async () => {
