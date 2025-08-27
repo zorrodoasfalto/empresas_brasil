@@ -285,9 +285,11 @@ const ExportButton = styled.button`
 
 const LinkedInScraper = () => {
   const [formData, setFormData] = useState({
-    keyword: '',
-    pageNumber: 1,
-    limit: 50
+    keywords: '',
+    location: '',
+    industries: '',
+    company_size: '',
+    page: 1
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -349,7 +351,7 @@ const LinkedInScraper = () => {
     toast.info('🗑️ Resultados anteriores limpos');
   };
 
-  // Remove duplicates from scraping results
+  // Remove duplicates from scraping results (Ghost Genius format)
   const removeDuplicatesFromResults = (results) => {
     if (!results || results.length === 0) return [];
     
@@ -357,13 +359,13 @@ const LinkedInScraper = () => {
     const uniqueResults = [];
     
     for (const company of results) {
-      const identifier = `${company.company_name || ''}_${company.company_id || ''}_${company.linkedin_url || ''}`.toLowerCase();
+      const identifier = `${company.full_name || ''}_${company.id || ''}_${company.url || ''}`.toLowerCase();
       
       if (!seen.has(identifier)) {
         seen.add(identifier);
         uniqueResults.push(company);
       } else {
-        console.log(`🔄 Duplicate removed: ${company.company_name}`);
+        console.log(`🔄 Duplicate removed: ${company.full_name}`);
       }
     }
     
@@ -390,11 +392,11 @@ const LinkedInScraper = () => {
 
     try {
       const leadsToCheck = resultsToFilter.map(company => ({
-        nome: company.company_name || 'Empresa sem nome',
-        empresa: company.company_name || 'Empresa sem nome',
+        nome: company.full_name || 'Empresa sem nome',
+        empresa: company.full_name || 'Empresa sem nome',
         telefone: company.phone || '',
         email: company.email || '',
-        website: company.website || company.linkedin_url || ''
+        website: company.url || ''
       }));
 
       const response = await fetch('/api/crm/leads/check-duplicates', {
@@ -437,8 +439,8 @@ const LinkedInScraper = () => {
   }, [results]);
 
   const runScraper = async () => {
-    if (!formData.keyword) {
-      toast.error('❌ Por favor, digite uma palavra-chave');
+    if (!formData.keywords) {
+      toast.error('❌ Por favor, preencha a palavra-chave');
       return;
     }
 
@@ -446,37 +448,49 @@ const LinkedInScraper = () => {
     setResults([]);
     setCurrentRun(null);
 
-    console.log('🚀 Iniciando LinkedIn scraping com:', formData);
+    console.log('🚀 Iniciando LinkedIn scraping com Ghost Genius:', formData);
 
     setIsRunning(true);
     
     try {
-      const response = await fetch('/api/apify/run/QwLfX9hYQXhA84LY3', {
+      const response = await fetch('/api/linkedin/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          keyword: formData.keyword,
-          page_number: parseInt(formData.pageNumber),
-          limit: parseInt(formData.limit)
+          keywords: formData.keywords,
+          location: formData.location,
+          industries: formData.industries,
+          company_size: formData.company_size,
+          page: parseInt(formData.page)
         })
       });
       
       const data = await response.json();
       
       if (data.success) {
-        toast.success('🚀 LinkedIn scraping iniciado!');
+        toast.success('✅ LinkedIn scraping concluído!');
         setCurrentRun({
-          id: data.runId,
-          status: 'RUNNING',
+          id: 'ghost-genius-' + Date.now(),
+          status: 'SUCCEEDED',
           startedAt: new Date(),
-          keyword: formData.keyword
+          finishedAt: new Date(),
+          keywords: formData.keywords,
+          location: formData.location,
+          industries: formData.industries,
+          company_size: formData.company_size
         });
         
-        pollResults(data.runId);
+        // Use raw Ghost Genius data - no transformation
+        const rawResults = data.data || [];
+        console.log('Raw Ghost Genius data:', rawResults);
+        
+        setResults(rawResults);
+        setIsRunning(false);
+        
       } else {
-        toast.error('Erro ao iniciar scraper: ' + data.message);
+        toast.error('Erro ao buscar no LinkedIn: ' + data.message);
         setIsRunning(false);
       }
     } catch (error) {
@@ -486,49 +500,11 @@ const LinkedInScraper = () => {
     }
   };
 
+  // Polling não é mais necessário com Ghost Genius API (resposta imediata)
+  // Função mantida para compatibilidade
   const pollResults = async (runId) => {
-    try {
-      const response = await fetch(`/api/apify/runs/${runId}`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setCurrentRun(prev => ({
-          ...prev,
-          status: data.status,
-          finishedAt: data.finishedAt
-        }));
-        
-        if (data.status === 'RUNNING') {
-          setTimeout(() => pollResults(runId), 5000);
-        } else if (data.status === 'SUCCEEDED') {
-          setIsRunning(false);
-          
-          if (data.results && data.results.length > 0) {
-            const uniqueResults = removeDuplicatesFromResults(data.results);
-            setResults(uniqueResults);
-            
-            const removedCount = data.results.length - uniqueResults.length;
-            let message = removedCount > 0 
-              ? `✅ Scraping concluído! ${uniqueResults.length} empresas únicas (${removedCount} duplicatas removidas)`
-              : `✅ Scraping concluído! ${uniqueResults.length} empresas encontradas`;
-            
-            toast.success(message);
-          } else {
-            console.log('⚠️ Scraping concluído mas sem resultados');
-            toast.warning('⚠️ Scraping concluído, mas nenhum resultado foi encontrado. Tente com termos diferentes.');
-          }
-        } else if (data.status === 'FAILED') {
-          toast.error('❌ Scraping falhou');
-          setIsRunning(false);
-        } else {
-          setIsRunning(false);
-        }
-      }
-    } catch (error) {
-      console.error('Polling error:', error);
-      setIsRunning(false);
-      toast.error('❌ Erro ao verificar status do scraping');
-    }
+    // Ghost Genius API returns immediate results, no polling needed
+    console.log('Ghost Genius API - No polling required for:', runId);
   };
 
   const saveAllLeads = async () => {
@@ -547,16 +523,16 @@ const LinkedInScraper = () => {
 
     try {
       const leadsToProcess = dataToSave.map(company => ({
-        nome: company.company_name || 'Empresa sem nome',
-        empresa: company.company_name || 'Empresa sem nome',
+        nome: company.full_name || 'Empresa sem nome',
+        empresa: company.full_name || 'Empresa sem nome',
         telefone: company.phone || '',
         email: company.email || '',
-        endereco: company.address || company.location || '',
-        website: company.website || company.linkedin_url || '',
-        categoria: company.industry || 'LinkedIn Lead',
-        fonte: 'LinkedIn Scraping',
+        endereco: company.location || '',
+        website: company.url || '',
+        categoria: 'LinkedIn Lead',
+        fonte: 'LinkedIn Ghost Genius API',
         dados_originais: company,
-        notas: `Busca LinkedIn: ${formData.keyword} | Funcionários: ${company.employees_count || 'N/A'} | Seguidores: ${company.followers_count || 'N/A'}`
+        notas: `Busca LinkedIn: ${formData.keywords} | Localização: ${formData.location} | ID: ${company.id} | Headline: ${company.headline || 'N/A'}`
       }));
 
       console.log('🔍 Leads to save:', leadsToProcess.length);
@@ -615,20 +591,16 @@ const LinkedInScraper = () => {
     try {
       const exportData = data.map((company, index) => ({
         'Nº': index + 1,
-        'Nome da Empresa': company.company_name || '',
-        'ID da Empresa': company.company_id || '',
-        'URL LinkedIn': company.linkedin_url || '',
-        'Website': company.website || '',
-        'Indústria': company.industry || '',
-        'Localização': company.location || company.address || '',
-        'Tamanho da Empresa': company.company_size || '',
-        'Número de Funcionários': company.employees_count || '',
-        'Número de Seguidores': company.followers_count || '',
-        'Especialidades': company.specialties || '',
-        'Descrição': company.description || '',
-        'Telefone': company.phone || '',
-        'Email': company.email || '',
-        'Palavra-chave Pesquisada': formData.keyword,
+        'Nome da Empresa': company.full_name || '',
+        'ID LinkedIn': company.id || '',
+        'Tipo': company.type || '',
+        'URL LinkedIn': company.url || '',
+        'Headline': company.headline || '',
+        'Logo URL': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].url : '',
+        'Logo Width': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].width : '',
+        'Logo Height': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].height : '',
+        'Palavra-chave Pesquisada': formData.keywords,
+        'Localização Pesquisada': formData.location,
         'Data da Exportação': new Date().toLocaleDateString('pt-BR'),
         'Hora da Exportação': new Date().toLocaleTimeString('pt-BR')
       }));
@@ -796,53 +768,102 @@ const LinkedInScraper = () => {
         <Card>
           <CardTitle>⚙️ Configuração do Scraping</CardTitle>
           
-          <FormGroup style={{ marginBottom: '1.5rem' }}>
-            <Label>Palavra-Chave</Label>
-            <Input
-              type="text"
-              name="keyword"
-              value={formData.keyword}
-              onChange={handleInputChange}
-              placeholder="Ex: tech, marketing, finance..."
-              required
-            />
-          </FormGroup>
-
           <FormGrid>
             <FormGroup>
-              <Label>Página</Label>
-              <Select
-                name="pageNumber"
-                value={formData.pageNumber}
+              <Label>Palavra-Chave</Label>
+              <Input
+                type="text"
+                name="keywords"
+                value={formData.keywords}
                 onChange={handleInputChange}
-              >
-                <option value={1}>Página 1</option>
-                <option value={2}>Página 2</option>
-                <option value={3}>Página 3</option>
-                <option value={4}>Página 4</option>
-                <option value={5}>Página 5</option>
-              </Select>
+                placeholder="Ex: tech, marketing, finance..."
+                required
+              />
             </FormGroup>
 
             <FormGroup>
-              <Label>Limite de Empresas</Label>
+              <Label>Localização</Label>
               <Select
-                name="limit"
-                value={formData.limit}
+                name="location"
+                value={formData.location}
                 onChange={handleInputChange}
               >
-                <option value={10}>10 empresas</option>
-                <option value={25}>25 empresas</option>
-                <option value={50}>50 empresas (padrão)</option>
-                <option value={100}>100 empresas</option>
-                <option value={200}>200 empresas</option>
+                <option value="">Todas as localizações</option>
+                <option value="brasil">Brasil</option>
+                <option value="são paulo">São Paulo, SP</option>
+                <option value="rio de janeiro">Rio de Janeiro, RJ</option>
+                <option value="belo horizonte">Belo Horizonte, MG</option>
+                <option value="salvador">Salvador, BA</option>
+                <option value="brasília">Brasília, DF</option>
+                <option value="fortaleza">Fortaleza, CE</option>
+                <option value="curitiba">Curitiba, PR</option>
+                <option value="recife">Recife, PE</option>
+                <option value="porto alegre">Porto Alegre, RS</option>
+                <option value="manaus">Manaus, AM</option>
               </Select>
             </FormGroup>
           </FormGrid>
 
+          <FormGrid>
+            <FormGroup>
+              <Label>Indústrias</Label>
+              <Select
+                name="industries"
+                value={formData.industries}
+                onChange={handleInputChange}
+              >
+                <option value="">Todas as indústrias</option>
+                <option value="4">Tecnologia</option>
+                <option value="6">Software</option>
+                <option value="96">Marketing e Publicidade</option>
+                <option value="43">Consultoria</option>
+                <option value="25">E-commerce</option>
+                <option value="12">Educação</option>
+                <option value="14">Saúde</option>
+                <option value="8">Finanças</option>
+                <option value="18">Varejo</option>
+                <option value="54">Imóveis</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Tamanho da Empresa</Label>
+              <Select
+                name="company_size"
+                value={formData.company_size}
+                onChange={handleInputChange}
+              >
+                <option value="">Todos os tamanhos</option>
+                <option value="B">1-10 funcionários</option>
+                <option value="C">11-50 funcionários</option>
+                <option value="D">51-200 funcionários</option>
+                <option value="E">201-500 funcionários</option>
+                <option value="F">501-1000 funcionários</option>
+                <option value="G">1001-5000 funcionários</option>
+                <option value="H">5001-10,000 funcionários</option>
+                <option value="I">10,001+ funcionários</option>
+              </Select>
+            </FormGroup>
+          </FormGrid>
+
+          <FormGroup style={{ marginTop: '1rem' }}>
+            <Label>Página</Label>
+            <Select
+              name="page"
+              value={formData.page}
+              onChange={handleInputChange}
+            >
+              <option value={1}>Página 1</option>
+              <option value={2}>Página 2</option>
+              <option value={3}>Página 3</option>
+              <option value={4}>Página 4</option>
+              <option value={5}>Página 5</option>
+            </Select>
+          </FormGroup>
+
           <RunButton
             onClick={runScraper}
-            disabled={isRunning || !formData.keyword}
+            disabled={isRunning || !formData.keywords}
           >
             {isRunning ? (
               <>🔄 Executando Scraping...</>
@@ -883,7 +904,10 @@ const LinkedInScraper = () => {
           </StatusBadge>
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>
-            <div><strong>Palavra-chave:</strong> {currentRun.keyword}</div>
+            <div><strong>Palavra-chave:</strong> {currentRun.keywords}</div>
+            {currentRun.location && <div><strong>Localização:</strong> {currentRun.location}</div>}
+            {currentRun.industries && <div><strong>Indústrias:</strong> {currentRun.industries}</div>}
+            {currentRun.company_size && <div><strong>Tamanho:</strong> {currentRun.company_size}</div>}
             <div><strong>Iniciado:</strong> {new Date(currentRun.startedAt).toLocaleString()}</div>
             {currentRun.finishedAt && (
               <div><strong>Finalizado:</strong> {new Date(currentRun.finishedAt).toLocaleString()}</div>
@@ -924,14 +948,20 @@ const LinkedInScraper = () => {
                     marginBottom: '0.5rem'
                   }}>
                     <div style={{ color: '#0077b5', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {company.company_name}
+                      {company.full_name}
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-                      {company.industry && <div>🏢 {company.industry}</div>}
-                      {company.location && <div>📍 {company.location}</div>}
-                      {company.linkedin_url && <div>🔗 {company.linkedin_url}</div>}
-                      {company.employees_count && <div>👥 {company.employees_count} funcionários</div>}
-                      {company.followers_count && <div>👥 {company.followers_count} seguidores</div>}
+                      {company.headline && <div>📝 {company.headline}</div>}
+                      {company.url && (
+                        <div>🔗 <a href={company.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0077b5' }}>{company.url}</a></div>
+                      )}
+                      {company.id && <div>🆔 ID: {company.id}</div>}
+                      {company.type && <div>🏢 Type: {company.type}</div>}
+                      {company.profile_picture && company.profile_picture.length > 0 && (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <img src={company.profile_picture[0].url} alt={company.full_name} style={{ width: '40px', height: '40px', borderRadius: '4px' }} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -944,19 +974,21 @@ const LinkedInScraper = () => {
               )}
             </div>
           )}
-
-          {/* Mostrar quando todos os leads já existem na base */}
-          {results.length > 0 && filteredResults.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#0077b5' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
-              <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
-                Todas as {results.length} empresas já estão na sua base
-              </div>
-              <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
-                Tente com palavras-chave diferentes ou altere a página de busca
-              </div>
+        </ResultsCard>
+      )}
+      
+      {/* Mostrar quando todos os leads já existem na base */}
+      {results.length > 0 && filteredResults.length === 0 && (
+        <ResultsCard>
+          <div style={{ textAlign: 'center', padding: '2rem', color: '#0077b5' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔄</div>
+            <div style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+              Todas as {results.length} empresas já estão na sua base
             </div>
-          )}
+            <div style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+              Tente com palavras-chave diferentes ou altere a página de busca
+            </div>
+          </div>
         </ResultsCard>
       )}
     </Container>

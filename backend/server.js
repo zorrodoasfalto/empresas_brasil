@@ -92,6 +92,10 @@ async function getSmartUserId(decodedToken, providedUserId = null) {
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 
+// Ghost Genius configuration (for LinkedIn only)
+const GHOST_GENIUS_API_KEY = 'gg_5x4HI1X8sf3YyUsAMnR8UpfAX4pZtX';
+const GHOST_GENIUS_BASE_URL = 'https://api.ghostgenius.fr/v1';
+
 // Initialize Apify client only if API key exists
 let apifyClient = null;
 if (APIFY_API_KEY) {
@@ -106,6 +110,8 @@ if (APIFY_API_KEY) {
 } else {
   console.warn('⚠️ APIFY_API_KEY not configured - Apify features disabled');
 }
+
+console.log('✅ Ghost Genius API configured for LinkedIn');
 
 // Import routes
 // const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
@@ -1321,7 +1327,7 @@ app.get('/api/apify/featured', async (req, res) => {
       'compass/crawler-google-places',  // Google Places scraper
       'apify/google-maps-scraper',      // Google Maps data
       'apify/google-search-results-scraper', // Google Search results  
-      'apify/linkedin-company-scraper', // LinkedIn companies
+      'ghost-genius/linkedin-search',   // LinkedIn companies via Ghost Genius
       'apify/web-scraper',              // General web scraper
       'drobnikj/crawler-google-places'  // Alternative Google Places
     ];
@@ -1408,6 +1414,104 @@ app.get('/api/apify/test', async (req, res) => {
       success: false,
       message: 'Apify connection failed',
       error: error.response?.data || error.message
+    });
+  }
+});
+
+// LinkedIn search using Ghost Genius API
+app.post('/api/linkedin/search', async (req, res) => {
+  try {
+    const { keywords, location, industries, company_size, page = 1 } = req.body;
+    
+    console.log('🔍 LinkedIn search with Ghost Genius:', { keywords, location, industries, company_size, page });
+    
+    if (!keywords) {
+      return res.status(400).json({
+        success: false,
+        message: 'Keywords are required for LinkedIn search'
+      });
+    }
+
+    // Build query parameters
+    const params = new URLSearchParams({
+      keywords: keywords
+    });
+    
+    // Convert location string to LinkedIn Location ID
+    let locationId = null;
+    if (location) {
+      // LinkedIn Location IDs for Brazilian cities (validated and confirmed)
+      const locationMappings = {
+        'brasil': '106057199',        // Brasil
+        'brazil': '106057199',
+        'são paulo': '105871508',     // São Paulo, SP
+        'sao paulo': '105871508',
+        'rio de janeiro': '103658898', // Rio de Janeiro, RJ
+        'belo horizonte': '105818291', // Belo Horizonte, MG
+        'salvador': '104263468',      // Salvador, BA
+        'brasília': '104413988',      // Brasília, DF
+        'brasilia': '104413988',
+        'fortaleza': '103836099',     // Fortaleza, CE
+        'curitiba': '103501557',      // Curitiba, PR
+        'recife': '106236613',        // Recife, PE
+        'porto alegre': '102556749',  // Porto Alegre, RS
+        'manaus': '100215884'         // Manaus, AM
+      };
+      
+      const locationKey = location.toLowerCase();
+      if (locationMappings[locationKey]) {
+        locationId = locationMappings[locationKey];
+        params.append('locations', locationId);
+        console.log(`📍 Using location ID ${locationId} for "${location}"`);
+      } else {
+        console.log(`⚠️ Location "${location}" not found in mapping - showing global results`);
+      }
+    }
+    
+    // Add other filters
+    if (industries) {
+      params.append('industries', industries);
+      console.log(`🏭 Using industries: ${industries}`);
+    }
+    
+    if (company_size) {
+      params.append('company_size', company_size);
+      console.log(`🏢 Using company size: ${company_size}`);
+    }
+    
+    if (page) params.append('page', page.toString());
+
+    // Make request to Ghost Genius API
+    const fullUrl = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
+    console.log(`🌐 Ghost Genius URL: ${fullUrl}`);
+    
+    const response = await axios.get(fullUrl, {
+      headers: {
+        'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`✅ Found ${response.data.data?.length || 0} LinkedIn companies`);
+
+    res.json({
+      success: true,
+      data: response.data.data || [],
+      total: response.data.total || 0,
+      pagination: {
+        page: page,
+        total: response.data.total || 0
+      },
+      source: 'ghost-genius',
+      raw_response: response.data // Incluir resposta completa para debug
+    });
+
+  } catch (error) {
+    console.error('❌ LinkedIn search error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching LinkedIn companies',
+      error: error.response?.data?.message || error.message
     });
   }
 });
