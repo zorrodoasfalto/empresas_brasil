@@ -988,6 +988,7 @@ const LinkedInScraper = () => {
           }}>
             🚀 <strong>Busca em Massa Ativada:</strong> Busca até 200 empresas automaticamente
             <br />✨ <strong>Dados Detalhados Ativados:</strong> Inclui website, funcionários, especialidades, etc.
+            <br />ℹ️ <strong>Observação:</strong> Dados detalhados aparecem apenas para empresas que preencheram essas informações no LinkedIn
           </div>
 
           <RunButton
