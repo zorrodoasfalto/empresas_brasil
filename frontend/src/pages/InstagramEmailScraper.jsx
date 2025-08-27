@@ -28,9 +28,7 @@ const Title = styled.h1`
 
 const InstagramIcon = styled.div`
   font-size: 3rem;
-  background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 10px rgba(240, 148, 51, 0.6));
 `;
 
 const Subtitle = styled.p`
