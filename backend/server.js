@@ -736,13 +736,28 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         const url = item.url || item.link || item.profileUrl || item.profile_url;
         let extractedUsername = '';
         
-        // Extract username from Instagram URL
+        // Extract username from Instagram URL (after last /)
         if (url) {
-          const instagramMatch = url.match(/instagram\.com\/([^\/\?]+)/);
-          if (instagramMatch && instagramMatch[1] && !instagramMatch[1].includes('p/')) {
-            const rawUsername = instagramMatch[1];
-            // Clean username and add @ if not already there
-            if (rawUsername && rawUsername !== 'p' && !rawUsername.includes('reel')) {
+          // Try to extract username from various Instagram URL formats
+          let rawUsername = '';
+          
+          // Direct profile: instagram.com/username
+          const directMatch = url.match(/instagram\.com\/([^\/\?\#]+)$/);
+          if (directMatch && directMatch[1] && !directMatch[1].includes('p') && !directMatch[1].includes('reel')) {
+            rawUsername = directMatch[1];
+          } else {
+            // Get the last part of the path that's not a post/reel ID
+            const pathMatch = url.match(/instagram\.com\/([^\/\?\#]+)/);
+            if (pathMatch && pathMatch[1] && !pathMatch[1].includes('p') && !pathMatch[1].includes('reel')) {
+              rawUsername = pathMatch[1];
+            }
+          }
+          
+          // Clean and format username
+          if (rawUsername && rawUsername.length > 0) {
+            // Remove trailing slashes, parameters, etc
+            rawUsername = rawUsername.replace(/[\?\#\/].*$/, '');
+            if (rawUsername && rawUsername !== 'p' && rawUsername !== 'reel' && rawUsername !== 'popular') {
               extractedUsername = rawUsername.startsWith('@') ? rawUsername : '@' + rawUsername;
             }
           }
