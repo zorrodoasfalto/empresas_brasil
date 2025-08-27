@@ -1459,7 +1459,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     if (company_size) baseParams.company_size = company_size;
 
     // Fetch multiple pages in parallel
-    console.log(`🔄 Fetching ${pages} pages in parallel...`);
+    console.log(`🔄 Fetching ${pages} pages in parallel with params:`, baseParams);
     const pagePromises = [];
     
     for (let page = 1; page <= pages; page++) {
@@ -1489,7 +1489,8 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     let allCompanies = [];
     let totalFound = 0;
     
-    results.forEach(result => {
+    results.forEach((result, index) => {
+      console.log(`📄 Page ${result.page}: ${result.data.length} companies, total available: ${result.total}`);
       if (result.data.length > 0) {
         allCompanies = allCompanies.concat(result.data);
         totalFound = Math.max(totalFound, result.total);
@@ -1507,7 +1508,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
       }
     });
     
-    console.log(`✅ Found ${uniqueCompanies.length} unique companies from ${pages} pages`);
+    console.log(`✅ Found ${allCompanies.length} total companies, ${uniqueCompanies.length} unique companies from ${pages} pages`);
     
     // Get detailed info for all companies if requested
     const detailed = req.body.detailed === true;
