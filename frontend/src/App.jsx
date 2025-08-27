@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
 import GoogleMapsScraper from './pages/GoogleMapsScraper';
 import LinkedInScraper from './pages/LinkedInScraper';
+import InstagramEmailScraper from './pages/InstagramEmailScraper';
 import TestPage from './pages/TestPage';
 import Leads from './pages/Leads';
 import Funil from './pages/Funil';
@@ -79,6 +80,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <LinkedInScraper />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/instagram" 
+              element={
+                <ProtectedRoute>
+                  <InstagramEmailScraper />
                 </ProtectedRoute>
               } 
             />

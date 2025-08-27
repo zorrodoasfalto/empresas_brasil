@@ -560,6 +560,94 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
+// Instagram email scraping using Apify
+app.post('/api/instagram/scrape', async (req, res) => {
+  try {
+    const { keyword, scrapeGmail = true, scrapeOutlook = true, scrapeYahoo = true } = req.body;
+    
+    if (!keyword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Palavra-chave é obrigatória'
+      });
+    }
+
+    if (!apifyClient) {
+      return res.status(500).json({
+        success: false,
+        message: 'Apify client não configurado. Configure APIFY_API_KEY.'
+      });
+    }
+
+    console.log('🔍 Instagram email scraping with Apify:', { keyword, scrapeGmail, scrapeOutlook, scrapeYahoo });
+
+    // Prepare Actor input for Instagram Email Scraper
+    const input = {
+      keyword: keyword.trim(),
+      pagesToScrape: 20,
+      scrapeGmail,
+      scrapeYahoo,
+      scrapeOutlook
+    };
+
+    console.log('📤 Sending to Apify Instagram Email Scraper:', input);
+
+    // Run the Instagram Email Scraper Actor
+    const run = await apifyClient.actor("Snxs770Onv5Vh0P1P").call(input);
+
+    console.log('🏃 Apify run started:', run.id);
+
+    // Fetch results from the run's dataset
+    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
+
+    console.log(`📊 Instagram scraping completed. Found ${items.length} profiles with emails.`);
+
+    // Filter and structure the results
+    const processedResults = items.filter(item => item.email).map(item => ({
+      username: item.username,
+      fullName: item.fullName,
+      email: item.email,
+      url: item.url,
+      biography: item.biography,
+      externalUrl: item.externalUrl,
+      followersCount: item.followersCount,
+      followingCount: item.followingCount,
+      postsCount: item.postsCount,
+      isVerified: item.isVerified,
+      isPrivate: item.isPrivate,
+      businessCategoryName: item.businessCategoryName,
+      profilePicUrl: item.profilePicUrl
+    }));
+
+    res.json({
+      success: true,
+      results: processedResults,
+      total: processedResults.length,
+      runId: run.id,
+      keyword: keyword,
+      source: 'apify-instagram-email-scraper'
+    });
+
+  } catch (error) {
+    console.error('❌ Instagram scraping error:', error);
+    
+    let errorMessage = 'Erro interno do servidor';
+    if (error.message?.includes('not enough usage')) {
+      errorMessage = 'Limite de uso do Apify atingido. Tente novamente mais tarde.';
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'Timeout na busca. Tente com uma palavra-chave mais específica.';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    res.status(500).json({
+      success: false,
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // CRM API ENDPOINTS
 
 // DEBUG: Direct user registration (temporary - bypasses rate limiting)
