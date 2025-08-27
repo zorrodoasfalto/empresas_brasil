@@ -1023,7 +1023,6 @@ const LinkedInScraper = () => {
               <br />⚡ {formData.bulk ? 'Aplica-se a TODAS as empresas (mais lento)' : 'Aplica-se às primeiras 10 empresas'}
             </div>
           </FormGroup>
-          </FormGrid>
 
           <RunButton
             onClick={runScraper}
