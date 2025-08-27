@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
 import GoogleMapsScraper from './pages/GoogleMapsScraper';
+import LinkedInScraper from './pages/LinkedInScraper';
 import TestPage from './pages/TestPage';
 import Leads from './pages/Leads';
 import Funil from './pages/Funil';
@@ -70,6 +71,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <GoogleMapsScraper />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/linkedin-scraper" 
+              element={
+                <ProtectedRoute>
+                  <LinkedInScraper />
                 </ProtectedRoute>
               } 
             />

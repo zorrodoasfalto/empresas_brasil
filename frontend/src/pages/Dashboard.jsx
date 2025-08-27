@@ -1266,6 +1266,13 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/linkedin-scraper'}
+          >
+            <span className="icon">🔵</span>
+            <span className="text">LinkedIn</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/leads'}
           >
             <span className="icon">🗃️</span>
