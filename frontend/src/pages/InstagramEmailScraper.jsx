@@ -957,9 +957,10 @@ const InstagramEmailScraper = () => {
       {currentRun && (
         <ResultsCard>
           <StatusBadge status={currentRun.status}>
-            {currentRun.status === 'RUNNING' && '🔄 Processando...'}
-            {currentRun.status === 'SUCCEEDED' && '✅ Concluído com sucesso'}
-            {currentRun.status === 'FAILED' && '❌ Falhou'}
+            {currentRun.status === 'RUNNING' ? '🔄 Processando...' : 
+             currentRun.status === 'SUCCEEDED' ? '✅ Concluído com sucesso' : 
+             currentRun.status === 'FAILED' ? '❌ Falhou' : 
+             '✅ Concluído com sucesso'}
           </StatusBadge>
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>
