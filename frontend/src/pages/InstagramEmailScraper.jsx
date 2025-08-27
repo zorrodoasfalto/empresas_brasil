@@ -502,7 +502,9 @@ const InstagramEmailScraper = () => {
           keyword: formData.keyword
         });
         
-        // Monitor progress
+        // Start monitoring progress immediately
+        setProgress(5); // Show initial progress
+        setProgressMessage('🔍 Conectando ao Instagram...');
         monitorProgress(data.runId);
         
       } else {
@@ -558,8 +560,8 @@ const InstagramEmailScraper = () => {
             setProgressMessage('❌ Falhou');
             
           } else {
-            // Still running, check again in 2 seconds
-            setTimeout(checkProgress, 2000);
+            // Still running, check again in 1 second for better progress visibility
+            setTimeout(checkProgress, 1000);
           }
         } else {
           // Error checking progress
@@ -574,8 +576,8 @@ const InstagramEmailScraper = () => {
       }
     };
     
-    // Start checking progress
-    checkProgress();
+    // Start checking progress after a brief delay to let the run initialize
+    setTimeout(checkProgress, 500);
   };
 
   const saveAllLeads = async () => {
