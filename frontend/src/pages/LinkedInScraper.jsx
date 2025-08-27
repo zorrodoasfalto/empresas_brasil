@@ -1209,32 +1209,65 @@ const LinkedInScraper = () => {
                 padding: '1rem',
                 borderRadius: '8px'
               }}>
-                {filteredResults.slice(0, 20).map((company, index) => (
-                  <div key={index} style={{
-                    background: selectedLeads.has(index) ? 'rgba(0,255,170,0.15)' : 'rgba(0,119,181,0.1)',
-                    border: selectedLeads.has(index) ? '2px solid #00ffaa' : '1px solid rgba(0,119,181,0.2)',
-                    borderRadius: '6px',
-                    padding: '1rem',
-                    marginBottom: '0.5rem',
-                    position: 'relative'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedLeads.has(index)}
-                        onChange={() => toggleLeadSelection(index)}
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          cursor: 'pointer',
-                          accentColor: '#00ffaa'
-                        }}
-                      />
+                {filteredResults.map((company, index) => (
+                  <div 
+                    key={index} 
+                    onClick={() => toggleLeadSelection(index)}
+                    style={{
+                      background: selectedLeads.has(index) ? 'rgba(0,255,170,0.15)' : 'rgba(0,119,181,0.1)',
+                      border: selectedLeads.has(index) ? '2px solid #00ffaa' : '1px solid rgba(0,119,181,0.2)',
+                      borderRadius: '6px',
+                      padding: '1rem',
+                      marginBottom: '0.5rem',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      transform: selectedLeads.has(index) ? 'scale(1.02)' : 'scale(1)',
+                      boxShadow: selectedLeads.has(index) ? '0 4px 12px rgba(0,255,170,0.3)' : 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedLeads.has(index)) {
+                        e.target.style.background = 'rgba(0,119,181,0.2)';
+                        e.target.style.transform = 'scale(1.01)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedLeads.has(index)) {
+                        e.target.style.background = 'rgba(0,119,181,0.1)';
+                        e.target.style.transform = 'scale(1)';
+                      }
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem', pointerEvents: 'none' }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        border: selectedLeads.has(index) ? '2px solid #00ffaa' : '2px solid #0077b5',
+                        borderRadius: '4px',
+                        background: selectedLeads.has(index) ? '#00ffaa' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {selectedLeads.has(index) && (
+                          <span style={{ color: '#000', fontSize: '12px', fontWeight: 'bold' }}>✓</span>
+                        )}
+                      </div>
                       <div style={{ color: '#0077b5', fontWeight: 'bold', flex: 1 }}>
                         {company.full_name}
                       </div>
                       {selectedLeads.has(index) && (
-                        <span style={{ color: '#00ffaa', fontSize: '0.8rem' }}>✓ Selecionado</span>
+                        <span style={{ 
+                          color: '#00ffaa', 
+                          fontSize: '0.8rem', 
+                          background: 'rgba(0,255,170,0.2)', 
+                          padding: '0.2rem 0.5rem', 
+                          borderRadius: '12px',
+                          border: '1px solid #00ffaa'
+                        }}>
+                          ✓ SELECIONADO
+                        </span>
                       )}
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
@@ -1295,12 +1328,6 @@ const LinkedInScraper = () => {
                   </div>
                 ))}
               </div>
-              
-              {filteredResults.length > 20 && (
-                <div style={{ color: '#0077b5', textAlign: 'center', marginTop: '1rem' }}>
-                  ... e mais {filteredResults.length - 20} empresas encontradas
-                </div>
-              )}
             </div>
           )}
         </ResultsCard>
