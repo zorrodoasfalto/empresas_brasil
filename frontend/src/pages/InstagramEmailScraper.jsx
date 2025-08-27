@@ -900,7 +900,7 @@ const InstagramEmailScraper = () => {
           {isRunning && (
             <ProgressContainer>
               <div style={{ color: '#e6683c', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
-                📸 Instagram Email Scraping em Progresso
+                📸 Instagram Email Scraper
               </div>
               
               <ProgressBarContainer>
