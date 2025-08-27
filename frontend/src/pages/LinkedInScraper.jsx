@@ -1280,7 +1280,7 @@ const LinkedInScraper = () => {
         <ResultsCard>
           <StatusBadge status={currentRun.status}>
             {currentRun.status === 'RUNNING' && '🔄 Processando...'}
-            {currentRun.status === 'SUCCEEDED' && '✅ Concluído'}
+            {currentRun.status === 'SUCCEEDED' && '✅ Concluído com sucesso'}
             {currentRun.status === 'FAILED' && '❌ Falhou'}
             {currentRun.status}
           </StatusBadge>
