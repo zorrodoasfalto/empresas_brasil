@@ -910,8 +910,8 @@ const InstagramEmailScraper = () => {
               </ProgressBarContainer>
               
               <ProgressText>
-                <span className="spinner">🔄</span>
-                {progressMessage || `Processando... ${progress}% concluído`}
+                <span className="spinner">{progress >= 100 ? '✅' : '🔄'}</span>
+                {progress >= 100 ? '✅ Concluído com sucesso!' : (progressMessage || `Processando... ${progress}% concluído`)}
               </ProgressText>
               
               {progress < 30 && (
@@ -960,7 +960,6 @@ const InstagramEmailScraper = () => {
             {currentRun.status === 'RUNNING' && '🔄 Processando...'}
             {currentRun.status === 'SUCCEEDED' && '✅ Concluído com sucesso'}
             {currentRun.status === 'FAILED' && '❌ Falhou'}
-            {currentRun.status}
           </StatusBadge>
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>

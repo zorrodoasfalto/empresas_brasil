@@ -734,19 +734,36 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
       // Filter and structure the results - extract username from URL when available
       const processedResults = items.filter(item => item.email || item.Email).map(item => {
         const url = item.url || item.link || item.profileUrl || item.profile_url;
-        let extractedUsername = 'N/A';
+        let extractedUsername = '';
         
         // Extract username from Instagram URL
         if (url) {
           const instagramMatch = url.match(/instagram\.com\/([^\/\?]+)/);
           if (instagramMatch && instagramMatch[1] && !instagramMatch[1].includes('p/')) {
-            extractedUsername = '@' + instagramMatch[1];
+            const rawUsername = instagramMatch[1];
+            // Clean username and add @ if not already there
+            if (rawUsername && rawUsername !== 'p' && !rawUsername.includes('reel')) {
+              extractedUsername = rawUsername.startsWith('@') ? rawUsername : '@' + rawUsername;
+            }
+          }
+        }
+        
+        // Use existing username or extracted username, or email prefix as fallback
+        let finalUsername = item.username || item.Username || extractedUsername;
+        if (!finalUsername || finalUsername === 'N/A' || finalUsername === '') {
+          // Extract username from email as fallback
+          const email = item.email || item.Email;
+          if (email) {
+            const emailPrefix = email.split('@')[0].toLowerCase();
+            // Clean email prefix (remove dots, numbers at end, etc)
+            const cleanPrefix = emailPrefix.replace(/[\.0-9]+$/, '').substring(0, 15);
+            finalUsername = '@' + cleanPrefix;
           }
         }
         
         return {
-          username: item.username || item.Username || extractedUsername,
-          fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
+          username: finalUsername || 'N/A',
+          fullName: item.fullName || item.full_name || item.name || item.Name || '',
           email: item.email || item.Email,
           url: url,
           biography: item.biography || item.bio || item.description,
