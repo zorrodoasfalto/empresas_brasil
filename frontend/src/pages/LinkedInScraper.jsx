@@ -328,9 +328,9 @@ const LinkedInScraper = () => {
     industries: '',
     company_size: '',
     page: 1,
-    detailed: false,
-    bulk: false,
-    pages: 5
+    detailed: true,
+    bulk: true,
+    pages: 20
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -972,57 +972,20 @@ const LinkedInScraper = () => {
               </Select>
             </FormGroup>
 
-            <FormGroup>
-              <Label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                <input
-                  type="checkbox"
-                  name="bulk"
-                  checked={formData.bulk}
-                  onChange={(e) => setFormData(prev => ({...prev, bulk: e.target.checked}))}
-                  style={{ marginRight: '0.5rem' }}
-                />
-                Busca em Massa
-              </Label>
-              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.3rem' }}>
-                🚀 Busca múltiplas páginas simultaneamente
-                <br />📊 Traz até {formData.pages * 10} empresas únicas
-              </div>
-              
-              {formData.bulk && (
-                <div style={{ marginTop: '0.8rem' }}>
-                  <Label style={{ fontSize: '0.9rem' }}>Número de páginas:</Label>
-                  <Select
-                    name="pages"
-                    value={formData.pages}
-                    onChange={(e) => setFormData(prev => ({...prev, pages: parseInt(e.target.value)}))}
-                    style={{ marginTop: '0.3rem' }}
-                  >
-                    <option value={3}>3 páginas (até 30 empresas)</option>
-                    <option value={5}>5 páginas (até 50 empresas)</option>
-                    <option value={10}>10 páginas (até 100 empresas)</option>
-                    <option value={20}>20 páginas (até 200 empresas)</option>
-                  </Select>
-                </div>
-              )}
-            </FormGroup>
           </FormGrid>
           
-          <FormGroup style={{ marginTop: '1rem' }}>
-            <Label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input
-                type="checkbox"
-                name="detailed"
-                checked={formData.detailed}
-                onChange={(e) => setFormData(prev => ({...prev, detailed: e.target.checked}))}
-                style={{ marginRight: '0.5rem' }}
-              />
-              Buscar Dados Detalhados
-            </Label>
-            <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.3rem' }}>
-              ✨ Inclui website, endereço, funcionários, especialidades, etc.
-              <br />⚡ {formData.bulk ? 'Aplica-se a TODAS as empresas (mais lento)' : 'Aplica-se às primeiras 10 empresas'}
-            </div>
-          </FormGroup>
+          <div style={{ 
+            padding: '1rem', 
+            background: 'rgba(0, 255, 170, 0.1)', 
+            border: '1px solid rgba(0, 255, 170, 0.3)', 
+            borderRadius: '8px',
+            fontSize: '0.9rem',
+            color: '#00ffaa',
+            marginTop: '1rem'
+          }}>
+            🚀 <strong>Busca em Massa Ativada:</strong> Busca até 200 empresas automaticamente
+            <br />✨ <strong>Dados Detalhados Ativados:</strong> Inclui website, funcionários, especialidades, etc.
+          </div>
 
           <RunButton
             onClick={runScraper}
