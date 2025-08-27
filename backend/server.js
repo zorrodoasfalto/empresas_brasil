@@ -138,7 +138,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
+app.use(express.json({ charset: 'utf-8' }));
+app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
 // JWT Authentication Middleware (strict)
 const authenticateToken = (req, res, next) => {
@@ -560,6 +561,60 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
+// Helper function to analyze successful Apify run
+app.get('/api/instagram/analyze-run/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    console.log(`🔍 Analyzing successful run: ${runId}`);
+
+    const runDetails = await apifyClient.run(runId).get();
+    console.log('📋 Run details:', JSON.stringify({
+      status: runDetails.status,
+      input: runDetails.input,
+      startedAt: runDetails.startedAt,
+      finishedAt: runDetails.finishedAt,
+      stats: runDetails.stats,
+      options: runDetails.options
+    }, null, 2));
+
+    // Get the dataset results
+    if (runDetails.defaultDatasetId) {
+      const { items } = await apifyClient.dataset(runDetails.defaultDatasetId).listItems();
+      console.log(`📊 Dataset results: ${items.length} items`);
+      
+      res.json({
+        success: true,
+        runDetails: {
+          status: runDetails.status,
+          input: runDetails.input,
+          startedAt: runDetails.startedAt,
+          finishedAt: runDetails.finishedAt,
+          stats: runDetails.stats,
+          options: runDetails.options
+        },
+        resultCount: items.length,
+        firstResult: items[0] || null
+      });
+    } else {
+      res.json({
+        success: true,
+        runDetails: {
+          status: runDetails.status,
+          input: runDetails.input,
+          startedAt: runDetails.startedAt,
+          finishedAt: runDetails.finishedAt,
+          stats: runDetails.stats,
+          options: runDetails.options
+        },
+        resultCount: 0
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error analyzing run:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Instagram email scraping usando Apify - OTIMIZADO para 25s/21 resultados
 app.post('/api/instagram/scrape', async (req, res) => {
   try {
@@ -579,16 +634,22 @@ app.post('/api/instagram/scrape', async (req, res) => {
       });
     }
 
-    console.log('🔍 Instagram email scraping OTIMIZADO with Apify:', { keyword });
+    // Fix UTF-8 encoding issues
+    const cleanKeyword = Buffer.from(keyword, 'utf8').toString('utf8').trim();
+    console.log('🔍 Instagram email scraping OTIMIZADO with Apify:', { 
+      original: keyword,
+      cleaned: cleanKeyword,
+      originalBytes: Buffer.from(keyword).toString('hex'),
+      cleanedBytes: Buffer.from(cleanKeyword).toString('hex')
+    });
 
-    // Input OTIMIZADO para mesma performance da Apify mas TODOS os resultados
+    // Input exatamente como no exemplo oficial de fábrica
     const input = {
-      keyword: keyword.trim(),
-      pagesToScrape: 10, // Páginas suficientes para capturar todos os perfis
-      // SEM limite maxProfiles para trazer TODOS os resultados disponíveis
+      keyword: cleanKeyword,
+      pagesToScrape: 20,
       scrapeGmail: true,
-      scrapeOutlook: true,  
-      scrapeYahoo: true
+      scrapeYahoo: true,
+      scrapeOutlook: true
     };
 
     console.log('📤 Sending OPTIMIZED input to Apify Instagram Email Scraper:', input);
@@ -654,21 +715,37 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
       // Fetch final results
       const { items } = await apifyClient.dataset(runDetails.defaultDatasetId).listItems();
       
-      // Filter and structure the results
-      const processedResults = items.filter(item => item.email).map(item => ({
-        username: item.username,
-        fullName: item.fullName,
-        email: item.email,
-        url: item.url,
-        biography: item.biography,
-        externalUrl: item.externalUrl,
-        followersCount: item.followersCount,
-        followingCount: item.followingCount,
-        postsCount: item.postsCount,
-        isVerified: item.isVerified,
-        isPrivate: item.isPrivate,
-        businessCategoryName: item.businessCategoryName,
-        profilePicUrl: item.profilePicUrl
+      console.log(`🔍 DEBUG: Total items from Apify dataset: ${items.length}`);
+      console.log('🔍 DEBUG: First few items structure:', JSON.stringify(items.slice(0, 3), null, 2));
+      
+      // Log items with emails specifically
+      const itemsWithEmail = items.filter(item => item.email);
+      console.log(`🔍 DEBUG: Items with email field: ${itemsWithEmail.length}`);
+      
+      // Log all unique field names in the items
+      if (items.length > 0) {
+        const allFields = new Set();
+        items.forEach(item => {
+          Object.keys(item).forEach(key => allFields.add(key));
+        });
+        console.log('🔍 DEBUG: All available fields in items:', Array.from(allFields).sort());
+      }
+      
+      // Filter and structure the results - try to be more flexible with field names
+      const processedResults = items.filter(item => item.email || item.Email).map(item => ({
+        username: item.username || item.Username || 'N/A',
+        fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
+        email: item.email || item.Email,
+        url: item.url || item.link || item.profileUrl || item.profile_url,
+        biography: item.biography || item.bio || item.description,
+        externalUrl: item.externalUrl || item.external_url || item.website,
+        followersCount: item.followersCount || item.followers_count || item.followers,
+        followingCount: item.followingCount || item.following_count || item.following,
+        postsCount: item.postsCount || item.posts_count || item.posts,
+        isVerified: item.isVerified || item.is_verified || false,
+        isPrivate: item.isPrivate || item.is_private || false,
+        businessCategoryName: item.businessCategoryName || item.business_category,
+        profilePicUrl: item.profilePicUrl || item.profile_pic_url || item.avatar
       }));
 
       res.json({
