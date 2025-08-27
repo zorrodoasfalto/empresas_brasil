@@ -339,6 +339,7 @@ const LinkedInScraper = () => {
   const [filteredResults, setFilteredResults] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedLeads, setSelectedLeads] = useState(new Set());
   const { user } = useAuth();
 
   const businessKeywords = {
@@ -615,6 +616,108 @@ const LinkedInScraper = () => {
     // Ghost Genius API returns immediate results, no polling needed
     console.log('Ghost Genius API - No polling required for:', runId);
   };
+
+  // Funções de seleção de leads
+  const toggleLeadSelection = (index) => {
+    setSelectedLeads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllLeads = () => {
+    const allIndices = new Set(filteredResults.map((_, index) => index));
+    setSelectedLeads(allIndices);
+  };
+
+  const deselectAllLeads = () => {
+    setSelectedLeads(new Set());
+  };
+
+  const saveSelectedLeads = async () => {
+    if (selectedLeads.size === 0) {
+      toast.error('❌ Nenhum lead selecionado. Selecione os leads que deseja salvar.');
+      return;
+    }
+
+    const selectedData = Array.from(selectedLeads).map(index => filteredResults[index]);
+    
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      toast.error('Você precisa estar logado para salvar leads');
+      return;
+    }
+
+    try {
+      const leadsToProcess = selectedData.map(company => ({
+        nome: company.full_name || 'Empresa sem nome',
+        empresa: company.full_name || 'Empresa sem nome',
+        telefone: company.phone || '',
+        email: company.email || '',
+        endereco: company.location || '',
+        website: company.url || '',
+        categoria: 'LinkedIn Lead',
+        fonte: 'LinkedIn Ghost Genius API',
+        dados_originais: company,
+        notas: `Busca LinkedIn: ${formData.keywords} | Localização: ${formData.location} | ID: ${company.id} | Headline: ${company.headline || 'N/A'}`
+      }));
+
+      console.log('🔍 Selected leads to save:', leadsToProcess.length);
+      
+      let savedCount = 0;
+      let errorCount = 0;
+      
+      for (let i = 0; i < leadsToProcess.length; i++) {
+        const lead = leadsToProcess[i];
+        
+        try {
+          const response = await fetch('/api/crm/leads', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(lead)
+          });
+
+          const data = await response.json();
+          
+          if (data.success) {
+            savedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          console.error(`❌ Network error for lead ${i + 1}:`, error);
+        }
+      }
+      
+      // Show results
+      if (savedCount > 0) {
+        const message = errorCount > 0 
+          ? `✅ ${savedCount} leads salvos | ❌ ${errorCount} erros`
+          : `✅ ${savedCount} leads selecionados salvos com sucesso!`;
+        toast.success(message);
+        
+        // Limpar seleção após salvar
+        setSelectedLeads(new Set());
+      } else {
+        toast.error('❌ Nenhum lead foi salvo. Verifique se você está logado.');
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar leads:', error);
+      toast.error('Erro ao salvar leads selecionados');
+    }
+  };
+
 
   const saveAllLeads = async () => {
     let dataToSave = filteredResults;
@@ -1057,10 +1160,47 @@ const LinkedInScraper = () => {
                 <ExportButton onClick={() => exportToExcel(filteredResults)}>
                   📈 Exportar Excel
                 </ExportButton>
-                <ExportButton onClick={saveAllLeads} style={{ background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100)', color: '#000' }}>
-                  💾 Salvar Leads
+                <ExportButton onClick={saveSelectedLeads}>
+                  💾 Salvar Selecionados ({selectedLeads.size})
+                </ExportButton>
+                <ExportButton onClick={saveAllLeads}>
+                  💾 Salvar Todos
                 </ExportButton>
               </ExportButtonsContainer>
+
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button 
+                  onClick={selectAllLeads}
+                  style={{
+                    background: 'rgba(0, 119, 181, 0.2)',
+                    border: '1px solid #0077b5',
+                    color: '#0077b5',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ✅ Selecionar Todos
+                </button>
+                <button 
+                  onClick={deselectAllLeads}
+                  style={{
+                    background: 'rgba(119, 0, 0, 0.2)',
+                    border: '1px solid #b50000',
+                    color: '#ff4444',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ❌ Desselecionar Todos
+                </button>
+                <span style={{ color: '#0077b5', fontSize: '0.9rem' }}>
+                  {selectedLeads.size} de {filteredResults.length} selecionados
+                </span>
+              </div>
               
               <div style={{ 
                 maxHeight: '400px', 
@@ -1071,14 +1211,31 @@ const LinkedInScraper = () => {
               }}>
                 {filteredResults.slice(0, 20).map((company, index) => (
                   <div key={index} style={{
-                    background: 'rgba(0,119,181,0.1)',
-                    border: '1px solid rgba(0,119,181,0.2)',
+                    background: selectedLeads.has(index) ? 'rgba(0,255,170,0.15)' : 'rgba(0,119,181,0.1)',
+                    border: selectedLeads.has(index) ? '2px solid #00ffaa' : '1px solid rgba(0,119,181,0.2)',
                     borderRadius: '6px',
                     padding: '1rem',
-                    marginBottom: '0.5rem'
+                    marginBottom: '0.5rem',
+                    position: 'relative'
                   }}>
-                    <div style={{ color: '#0077b5', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {company.full_name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLeads.has(index)}
+                        onChange={() => toggleLeadSelection(index)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          accentColor: '#00ffaa'
+                        }}
+                      />
+                      <div style={{ color: '#0077b5', fontWeight: 'bold', flex: 1 }}>
+                        {company.full_name}
+                      </div>
+                      {selectedLeads.has(index) && (
+                        <span style={{ color: '#00ffaa', fontSize: '0.8rem' }}>✓ Selecionado</span>
+                      )}
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
                       {company.headline && <div>📝 {company.headline}</div>}
