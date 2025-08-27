@@ -1275,7 +1275,7 @@ const Dashboard = () => {
             $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/instagram'}
           >
-            <span className="icon">📷</span>
+            <span className="icon">📸</span>
             <span className="text">Instagram</span>
           </SidebarItem>
           <SidebarItem 
