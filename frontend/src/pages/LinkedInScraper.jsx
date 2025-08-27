@@ -1018,7 +1018,7 @@ const LinkedInScraper = () => {
 
       <Header>
         <Title>
-          <LinkedInIcon>💼</LinkedInIcon>
+          <LinkedInIcon>🔵</LinkedInIcon>
           LinkedIn Scraper
         </Title>
         <Subtitle>
