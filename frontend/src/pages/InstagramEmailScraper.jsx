@@ -474,6 +474,44 @@ const InstagramEmailScraper = () => {
 
     setIsRunning(true);
     
+    // Start progress bar IMMEDIATELY when user clicks
+    setProgress(0);
+    setProgressMessage('🔍 Iniciando conexão...');
+    
+    // Start progress estimation immediately (we'll get runId later)
+    let runId = null;
+    const progressStartTime = Date.now();
+    
+    // Start immediate progress animation
+    const immediateProgress = () => {
+      const elapsed = Date.now() - progressStartTime;
+      let progressPercent = 0;
+      let message = '🔍 Iniciando conexão...';
+      
+      if (elapsed < 2000) {
+        progressPercent = (elapsed / 2000) * 10; // 0-10% in first 2 seconds
+        message = '🔍 Conectando ao servidor...';
+      } else if (runId) {
+        // Once we have runId, start the full progress estimation
+        startProgressEstimation(runId);
+        return;
+      } else {
+        progressPercent = 10 + ((elapsed - 2000) / 3000) * 10; // 10-20% while waiting for runId
+        message = '⏳ Aguardando resposta do servidor...';
+        progressPercent = Math.min(progressPercent, 20);
+      }
+      
+      setProgress(Math.round(progressPercent));
+      setProgressMessage(message);
+      
+      if (progressPercent < 20 || !runId) {
+        setTimeout(immediateProgress, 500);
+      }
+    };
+    
+    // Start immediate progress
+    immediateProgress();
+    
     try {
       const requestBody = {
         keyword: formData.keyword
@@ -492,18 +530,14 @@ const InstagramEmailScraper = () => {
       console.log('📊 Resposta da API:', data);
       
       if (data.success && data.runId) {
-        // Start progress monitoring
+        // Now we have the runId, set it and let the progress continue
+        runId = data.runId;
         setCurrentRun({
           id: data.runId,
           status: 'RUNNING',
           startedAt: new Date(),
           keyword: formData.keyword
         });
-        
-        // Start time-based progress estimation
-        setProgress(0);
-        setProgressMessage('🔍 Iniciando busca no Instagram...');
-        startProgressEstimation(data.runId);
         
       } else {
         toast.error('Erro ao iniciar scraping: ' + data.message);
