@@ -283,6 +283,44 @@ const ExportButton = styled.button`
   }
 `;
 
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(0, 119, 181, 0.1);
+  border-radius: 8px;
+`;
+
+const PaginationButton = styled.button`
+  background: ${props => props.active ? '#0077b5' : 'transparent'};
+  color: ${props => props.active ? 'white' : '#0077b5'};
+  border: 1px solid #0077b5;
+  padding: 0.5rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  transition: all 0.3s ease;
+  
+  &:hover:not(:disabled) {
+    background: #0077b5;
+    color: white;
+  }
+  
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+`;
+
+const PaginationInfo = styled.div`
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  margin: 0 1rem;
+`;
+
 const LinkedInScraper = () => {
   const [formData, setFormData] = useState({
     keywords: '',
@@ -290,13 +328,17 @@ const LinkedInScraper = () => {
     industries: '',
     company_size: '',
     page: 1,
-    detailed: false
+    detailed: false,
+    bulk: false,
+    pages: 5
   });
   
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, total: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
   const { user } = useAuth();
 
   const businessKeywords = {
@@ -455,19 +497,29 @@ const LinkedInScraper = () => {
     setIsRunning(true);
     
     try {
-      const response = await fetch('/api/linkedin/search', {
+      const endpoint = formData.bulk ? '/api/linkedin/search-bulk' : '/api/linkedin/search';
+      const requestBody = formData.bulk ? {
+        keywords: formData.keywords,
+        location: formData.location,
+        industries: formData.industries,
+        company_size: formData.company_size,
+        pages: formData.pages,
+        detailed: formData.detailed
+      } : {
+        keywords: formData.keywords,
+        location: formData.location,
+        industries: formData.industries,
+        company_size: formData.company_size,
+        page: currentPage,
+        detailed: formData.detailed
+      };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          keywords: formData.keywords,
-          location: formData.location,
-          industries: formData.industries,
-          company_size: formData.company_size,
-          page: parseInt(formData.page),
-          detailed: formData.detailed
-        })
+        body: JSON.stringify(requestBody)
       });
       
       const data = await response.json();
@@ -490,6 +542,11 @@ const LinkedInScraper = () => {
         console.log('Raw Ghost Genius data:', rawResults);
         
         setResults(rawResults);
+        setPagination({
+          page: currentPage,
+          total: data.total || 0,
+          totalPages: Math.ceil((data.total || 0) / 10) // Ghost Genius returns 10 per page
+        });
         setIsRunning(false);
         
       } else {
@@ -499,6 +556,55 @@ const LinkedInScraper = () => {
     } catch (error) {
       console.error('❌ Erro completo:', error);
       toast.error(`❌ Erro ao conectar: ${error.message}`);
+      setIsRunning(false);
+    }
+  };
+
+  // Função para navegar para página específica
+  const goToPage = async (pageNumber) => {
+    if (pageNumber < 1 || pageNumber > pagination.totalPages || pageNumber === currentPage || isRunning) {
+      return;
+    }
+    
+    setCurrentPage(pageNumber);
+    setIsRunning(true);
+    
+    try {
+      const response = await fetch('/api/linkedin/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          keywords: formData.keywords,
+          location: formData.location,
+          industries: formData.industries,
+          company_size: formData.company_size,
+          page: pageNumber,
+          detailed: formData.detailed
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const rawResults = data.data || [];
+        setResults(rawResults);
+        setPagination(prev => ({ ...prev, page: pageNumber }));
+        
+        // Scroll to top of results
+        const resultsElement = document.querySelector('[data-testid="results-container"]');
+        if (resultsElement) {
+          resultsElement.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+      } else {
+        toast.error('Erro ao carregar página: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Erro ao navegar:', error);
+      toast.error('❌ Erro ao carregar página');
+    } finally {
       setIsRunning(false);
     }
   };
@@ -599,11 +705,30 @@ const LinkedInScraper = () => {
         'Tipo': company.type || '',
         'URL LinkedIn': company.url || '',
         'Headline': company.headline || '',
+        
+        // Dados detalhados quando disponíveis
+        'Website': company.detailed?.website || '',
+        'Funcionários': company.detailed?.staff_count || '',
+        'Seguidores': company.detailed?.followers_count || '',
+        'Fundada em': company.detailed?.founded_on || '',
+        'Sede - Cidade': company.detailed?.headquarter?.city || '',
+        'Sede - País': company.detailed?.headquarter?.country || '',
+        'Sede - Estado': company.detailed?.headquarter?.geographic_area || '',
+        'Indústrias': company.detailed?.industries ? company.detailed.industries.join('; ') : '',
+        'Especialidades': company.detailed?.specialities ? company.detailed.specialities.join('; ') : '',
+        'Tipo de Empresa': company.detailed?.type || '',
+        
+        // Dados básicos
         'Logo URL': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].url : '',
         'Logo Width': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].width : '',
         'Logo Height': company.profile_picture && company.profile_picture.length > 0 ? company.profile_picture[0].height : '',
+        
+        // Dados da busca
         'Palavra-chave Pesquisada': formData.keywords,
         'Localização Pesquisada': formData.location,
+        'Indústria Pesquisada': formData.industries,
+        'Tamanho Pesquisado': formData.company_size,
+        'Dados Detalhados': company.detailed ? 'Sim' : 'Não',
         'Data da Exportação': new Date().toLocaleDateString('pt-BR'),
         'Hora da Exportação': new Date().toLocaleTimeString('pt-BR')
       }));
@@ -758,8 +883,12 @@ const LinkedInScraper = () => {
                 name="keywords"
                 value={formData.keywords}
                 onChange={handleInputChange}
-                placeholder="Ex: tech, marketing, finance... (deixe vazio para buscar por filtros)"
+                placeholder='Ex: varejo, tecnologia, logística... (se vazio, usará "empresa")'
               />
+              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.4rem' }}>
+                💡 <strong>Dica:</strong> Preencha este campo para resultados mais específicos. 
+                <br />Se deixar vazio, será usado "empresa" como termo padrão.
+              </div>
             </FormGroup>
 
             <FormGroup>
@@ -847,18 +976,53 @@ const LinkedInScraper = () => {
               <Label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input
                   type="checkbox"
-                  name="detailed"
-                  checked={formData.detailed}
-                  onChange={(e) => setFormData(prev => ({...prev, detailed: e.target.checked}))}
+                  name="bulk"
+                  checked={formData.bulk}
+                  onChange={(e) => setFormData(prev => ({...prev, bulk: e.target.checked}))}
                   style={{ marginRight: '0.5rem' }}
                 />
-                Buscar Dados Detalhados
+                Busca em Massa
               </Label>
               <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.3rem' }}>
-                ✨ Inclui website, endereço, funcionários, especialidades, etc.
-                <br />⚡ Aplica-se às primeiras 10 empresas (mais lento)
+                🚀 Busca múltiplas páginas simultaneamente
+                <br />📊 Traz até {formData.pages * 10} empresas únicas
               </div>
+              
+              {formData.bulk && (
+                <div style={{ marginTop: '0.8rem' }}>
+                  <Label style={{ fontSize: '0.9rem' }}>Número de páginas:</Label>
+                  <Select
+                    name="pages"
+                    value={formData.pages}
+                    onChange={(e) => setFormData(prev => ({...prev, pages: parseInt(e.target.value)}))}
+                    style={{ marginTop: '0.3rem' }}
+                  >
+                    <option value={3}>3 páginas (até 30 empresas)</option>
+                    <option value={5}>5 páginas (até 50 empresas)</option>
+                    <option value={10}>10 páginas (até 100 empresas)</option>
+                    <option value={20}>20 páginas (até 200 empresas)</option>
+                  </Select>
+                </div>
+              )}
             </FormGroup>
+          </FormGrid>
+          
+          <FormGroup style={{ marginTop: '1rem' }}>
+            <Label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <input
+                type="checkbox"
+                name="detailed"
+                checked={formData.detailed}
+                onChange={(e) => setFormData(prev => ({...prev, detailed: e.target.checked}))}
+                style={{ marginRight: '0.5rem' }}
+              />
+              Buscar Dados Detalhados
+            </Label>
+            <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.3rem' }}>
+              ✨ Inclui website, endereço, funcionários, especialidades, etc.
+              <br />⚡ {formData.bulk ? 'Aplica-se a TODAS as empresas (mais lento)' : 'Aplica-se às primeiras 10 empresas'}
+            </div>
+          </FormGroup>
           </FormGrid>
 
           <RunButton
@@ -957,6 +1121,48 @@ const LinkedInScraper = () => {
                       )}
                       {company.id && <div>🆔 ID: {company.id}</div>}
                       {company.type && <div>🏢 Type: {company.type}</div>}
+                      
+                      {/* Dados detalhados quando disponíveis */}
+                      {company.detailed && (
+                        <div style={{ 
+                          marginTop: '0.8rem', 
+                          padding: '0.8rem', 
+                          background: 'rgba(0, 119, 181, 0.1)', 
+                          borderRadius: '8px',
+                          borderLeft: '3px solid #0077b5'
+                        }}>
+                          <div style={{ color: '#0077b5', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                            ✨ Dados Detalhados:
+                          </div>
+                          {company.detailed.website && (
+                            <div>🌐 <a href={company.detailed.website} target="_blank" rel="noopener noreferrer" style={{ color: '#0077b5' }}>
+                              {company.detailed.website}
+                            </a></div>
+                          )}
+                          {company.detailed.staff_count && (
+                            <div>👥 {company.detailed.staff_count} funcionários</div>
+                          )}
+                          {company.detailed.followers_count && (
+                            <div>📊 {company.detailed.followers_count.toLocaleString()} seguidores</div>
+                          )}
+                          {company.detailed.founded_on && (
+                            <div>📅 Fundada em {company.detailed.founded_on}</div>
+                          )}
+                          {company.detailed.headquarter && (
+                            <div>🏢 {company.detailed.headquarter.city && company.detailed.headquarter.city + ', '}{company.detailed.headquarter.country}</div>
+                          )}
+                          {company.detailed.industries && company.detailed.industries.length > 0 && (
+                            <div>🏭 {company.detailed.industries.join(', ')}</div>
+                          )}
+                          {company.detailed.specialities && company.detailed.specialities.length > 0 && (
+                            <div>⭐ {company.detailed.specialities.join(', ')}</div>
+                          )}
+                          {company.detailed.type && (
+                            <div>🏛️ {company.detailed.type}</div>
+                          )}
+                        </div>
+                      )}
+                      
                       {company.profile_picture && company.profile_picture.length > 0 && (
                         <div style={{ marginTop: '0.5rem' }}>
                           <img src={company.profile_picture[0].url} alt={company.full_name} style={{ width: '40px', height: '40px', borderRadius: '4px' }} />

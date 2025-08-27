@@ -1418,7 +1418,154 @@ app.get('/api/apify/test', async (req, res) => {
   }
 });
 
-// LinkedIn search using Ghost Genius API
+// LinkedIn search using Ghost Genius API (multiple pages)
+app.post('/api/linkedin/search-bulk', async (req, res) => {
+  try {
+    const { keywords, location, industries, company_size, pages = 5 } = req.body;
+    
+    console.log('🔍 LinkedIn bulk search with Ghost Genius:', { keywords, location, industries, company_size, pages });
+    
+    // If no keywords provided, use generic terms
+    let searchKeywords = keywords;
+    if (!searchKeywords || searchKeywords.trim() === '') {
+      searchKeywords = 'empresa';
+      console.log('📝 No keywords provided, using generic term: "empresa"');
+    }
+
+    // Build query parameters base
+    const baseParams = {
+      keywords: searchKeywords.trim()
+    };
+    
+    // Location mapping
+    if (location) {
+      const locationMappings = {
+        'brasil': '106057199', 'brazil': '106057199',
+        'são paulo': '105871508', 'sao paulo': '105871508',
+        'rio de janeiro': '103658898', 'belo horizonte': '105818291',
+        'salvador': '104263468', 'brasília': '104413988', 'brasilia': '104413988',
+        'fortaleza': '103836099', 'curitiba': '103501557', 'recife': '106236613',
+        'porto alegre': '102556749', 'manaus': '100215884'
+      };
+      
+      const locationId = locationMappings[location.toLowerCase()];
+      if (locationId) {
+        baseParams.locations = locationId;
+        console.log(`📍 Using location ID ${locationId} for "${location}"`);
+      }
+    }
+    
+    if (industries) baseParams.industries = industries;
+    if (company_size) baseParams.company_size = company_size;
+
+    // Fetch multiple pages in parallel
+    console.log(`🔄 Fetching ${pages} pages in parallel...`);
+    const pagePromises = [];
+    
+    for (let page = 1; page <= pages; page++) {
+      const params = new URLSearchParams({ ...baseParams, page: page.toString() });
+      const url = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
+      
+      pagePromises.push(
+        axios.get(url, {
+          headers: {
+            'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }).then(response => ({
+          page,
+          data: response.data.data || [],
+          total: response.data.total || 0
+        })).catch(error => {
+          console.log(`⚠️ Error fetching page ${page}:`, error.message);
+          return { page, data: [], total: 0 };
+        })
+      );
+    }
+    
+    const results = await Promise.all(pagePromises);
+    
+    // Combine all results
+    let allCompanies = [];
+    let totalFound = 0;
+    
+    results.forEach(result => {
+      if (result.data.length > 0) {
+        allCompanies = allCompanies.concat(result.data);
+        totalFound = Math.max(totalFound, result.total);
+      }
+    });
+    
+    // Remove duplicates by ID
+    const uniqueCompanies = [];
+    const seenIds = new Set();
+    
+    allCompanies.forEach(company => {
+      if (!seenIds.has(company.id)) {
+        seenIds.add(company.id);
+        uniqueCompanies.push(company);
+      }
+    });
+    
+    console.log(`✅ Found ${uniqueCompanies.length} unique companies from ${pages} pages`);
+    
+    // Get detailed info for all companies if requested
+    const detailed = req.body.detailed === true;
+    let enrichedData = uniqueCompanies;
+    
+    if (detailed && uniqueCompanies.length > 0) {
+      console.log('🔍 Fetching detailed information for all companies...');
+      
+      const detailedPromises = uniqueCompanies.map(async (company, index) => {
+        try {
+          if (index % 10 === 0) {
+            console.log(`📋 Progress: ${index + 1}/${uniqueCompanies.length} companies`);
+          }
+          
+          const detailResponse = await axios.get(`${GHOST_GENIUS_BASE_URL}/company`, {
+            params: { url: company.url },
+            headers: {
+              'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          return {
+            ...company,
+            detailed: detailResponse.data
+          };
+          
+        } catch (error) {
+          console.log(`⚠️ Error getting details for ${company.full_name}:`, error.message);
+          return company;
+        }
+      });
+      
+      enrichedData = await Promise.all(detailedPromises);
+      console.log(`✅ Enhanced ${enrichedData.length} companies with detailed info`);
+    }
+
+    res.json({
+      success: true,
+      data: enrichedData,
+      total: totalFound,
+      pages_fetched: pages,
+      unique_companies: uniqueCompanies.length,
+      source: 'ghost-genius-bulk',
+      detailed: detailed
+    });
+
+  } catch (error) {
+    console.error('❌ LinkedIn bulk search error:', error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Error in bulk LinkedIn search',
+      error: error.response?.data?.message || error.message
+    });
+  }
+});
+
+// LinkedIn search using Ghost Genius API (single page)
 app.post('/api/linkedin/search', async (req, res) => {
   try {
     const { keywords, location, industries, company_size, page = 1 } = req.body;
