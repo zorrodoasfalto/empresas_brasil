@@ -1526,12 +1526,16 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     let enrichedData = uniqueCompanies;
     
     if (detailed && uniqueCompanies.length > 0) {
-      console.log('🔍 Fetching detailed information for all companies...');
+      console.log(`🔍 Fetching detailed information for ALL ${uniqueCompanies.length} companies...`);
       
-      const detailedPromises = uniqueCompanies.map(async (company, index) => {
+      enrichedData = [];
+      
+      for (let i = 0; i < uniqueCompanies.length; i++) {
+        const company = uniqueCompanies[i];
+        
         try {
-          if (index % 10 === 0) {
-            console.log(`📋 Progress: ${index + 1}/${uniqueCompanies.length} companies`);
+          if (i % 20 === 0 && i > 0) {
+            console.log(`📋 Progress: ${i}/${uniqueCompanies.length} companies detailed`);
           }
           
           const detailResponse = await axios.get(`${GHOST_GENIUS_BASE_URL}/company`, {
@@ -1539,21 +1543,33 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
             headers: {
               'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
               'Content-Type': 'application/json'
-            }
+            },
+            timeout: 8000
           });
           
-          return {
+          enrichedData.push({
             ...company,
             detailed: detailResponse.data
-          };
+          });
+          
+          // Delay menor para evitar rate limiting (200ms entre cada requisição)
+          if (i < uniqueCompanies.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
           
         } catch (error) {
-          console.log(`⚠️ Error getting details for ${company.full_name}:`, error.message);
-          return company;
+          console.log(`⚠️ Error getting details for ${company.full_name}:`, error.response?.status, error.message);
+          // Adicionar empresa sem detalhes em caso de erro
+          enrichedData.push(company);
+          
+          // Em caso de erro 429, aumentar delay
+          if (error.response?.status === 429) {
+            console.log(`⏸️ Rate limit hit, waiting 2 seconds...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
         }
-      });
+      }
       
-      enrichedData = await Promise.all(detailedPromises);
       console.log(`✅ Enhanced ${enrichedData.length} companies with detailed info`);
     }
 
