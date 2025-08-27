@@ -340,6 +340,7 @@ const LinkedInScraper = () => {
   const [pagination, setPagination] = useState({ page: 1, total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLeads, setSelectedLeads] = useState(new Set());
+  const [progress, setProgress] = useState({ current: 0, total: 0, message: '' });
   const { user } = useAuth();
 
   const businessKeywords = {
@@ -499,6 +500,35 @@ const LinkedInScraper = () => {
 
     setIsRunning(true);
     
+    // Iniciar simulação de progresso
+    const totalPages = formData.bulk ? formData.pages : 1;
+    const estimatedTimeMs = totalPages * 1200; // ~1.2s por página (com delay de 100ms + request)
+    const updateInterval = Math.max(100, estimatedTimeMs / 50); // 50 updates no total
+    
+    setProgress({ current: 0, total: totalPages, message: 'Iniciando busca...' });
+    
+    let progressValue = 0;
+    const progressInterval = setInterval(() => {
+      progressValue += 1;
+      const percentage = Math.min(95, (progressValue / 50) * 100); // Max 95% até completar
+      const currentPage = Math.floor((percentage / 100) * totalPages) + 1;
+      
+      setProgress({
+        current: currentPage,
+        total: totalPages,
+        message: `Buscando página ${currentPage} de ${totalPages}...`
+      });
+      
+      if (percentage >= 95) {
+        clearInterval(progressInterval);
+        setProgress({
+          current: totalPages,
+          total: totalPages,
+          message: 'Processando dados detalhados...'
+        });
+      }
+    }, updateInterval);
+    
     try {
       const endpoint = formData.bulk ? '/api/linkedin/search-bulk' : '/api/linkedin/search';
       const requestBody = formData.bulk ? {
@@ -528,10 +558,10 @@ const LinkedInScraper = () => {
       const data = await response.json();
       
       console.log('📊 Resposta da API:', data);
-      console.log(`📈 Total de empresas retornadas: ${data.companies ? data.companies.length : 0}`);
+      console.log(`📈 Total de empresas retornadas: ${data.data ? data.data.length : 0}`);
       
       if (data.success) {
-        toast.success(`✅ LinkedIn scraping concluído! ${data.companies ? data.companies.length : 0} empresas encontradas`);
+        toast.success(`✅ LinkedIn scraping concluído! ${data.data ? data.data.length : 0} empresas encontradas`);
         setCurrentRun({
           id: 'ghost-genius-' + Date.now(),
           status: 'SUCCEEDED',
@@ -553,13 +583,31 @@ const LinkedInScraper = () => {
           total: data.total || 0,
           totalPages: Math.ceil((data.total || 0) / 10) // Ghost Genius returns 10 per page
         });
+        
+        // Completar progresso
+        clearInterval(progressInterval);
+        setProgress({
+          current: totalPages,
+          total: totalPages,
+          message: `✅ Concluído! ${data.data ? data.data.length : 0} empresas encontradas`
+        });
+        
+        // Limpar progresso após 3 segundos
+        setTimeout(() => {
+          setProgress({ current: 0, total: 0, message: '' });
+        }, 3000);
+        
         setIsRunning(false);
         
       } else {
+        clearInterval(progressInterval);
+        setProgress({ current: 0, total: 0, message: '' });
         toast.error('Erro ao buscar no LinkedIn: ' + data.message);
         setIsRunning(false);
       }
     } catch (error) {
+      clearInterval(progressInterval);
+      setProgress({ current: 0, total: 0, message: '' });
       console.error('❌ Erro completo:', error);
       toast.error(`❌ Erro ao conectar: ${error.message}`);
       setIsRunning(false);
@@ -1109,6 +1157,47 @@ const LinkedInScraper = () => {
               <>🚀 Iniciar LinkedIn Scraping</>
             )}
           </RunButton>
+
+          {/* BARRA DE PROGRESSO */}
+          {isRunning && progress.total > 0 && (
+            <div style={{
+              marginTop: '1.5rem',
+              padding: '1rem',
+              background: 'rgba(0, 119, 181, 0.1)',
+              border: '1px solid rgba(0, 119, 181, 0.3)',
+              borderRadius: '8px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem'
+              }}>
+                <span style={{ color: '#0077b5', fontSize: '0.9rem' }}>
+                  {progress.message}
+                </span>
+                <span style={{ color: '#0077b5', fontSize: '0.9rem' }}>
+                  {progress.current}/{progress.total} páginas
+                </span>
+              </div>
+              
+              <div style={{
+                width: '100%',
+                height: '8px',
+                background: 'rgba(0, 0, 0, 0.2)',
+                borderRadius: '4px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${Math.max(2, (progress.current / progress.total) * 100)}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #0077b5, #00ffaa)',
+                  borderRadius: '4px',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+            </div>
+          )}
 
           {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
           <div style={{ 
