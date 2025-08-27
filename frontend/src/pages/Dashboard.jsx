@@ -1255,7 +1255,14 @@ const Dashboard = () => {
             onClick={() => setActiveModal(null)}
           >
             <span className="icon">🏢</span>
-            <span className="text">Dashboard</span>
+            <span className="text">Empresas Brasil</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/google-maps-scraper'}
+          >
+            <span className="icon">📍</span>
+            <span className="text">Google Maps</span>
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
@@ -1266,13 +1273,6 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
-            onClick={() => window.location.href = '/funil'}
-          >
-            <span className="icon">🌪️</span>
-            <span className="text">Funil</span>
-          </SidebarItem>
-          <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/kanban'}
           >
             <span className="icon">📋</span>
@@ -1280,17 +1280,17 @@ const Dashboard = () => {
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
+            onClick={() => window.location.href = '/funil'}
+          >
+            <span className="icon">🌪️</span>
+            <span className="text">Funil</span>
+          </SidebarItem>
+          <SidebarItem 
+            $sidebarOpen={sidebarOpen}
             onClick={() => setActiveModal('settings')}
           >
             <span className="icon">⚙️</span>
             <span className="text">Configurações</span>
-          </SidebarItem>
-          <SidebarItem 
-            $sidebarOpen={sidebarOpen}
-            onClick={() => window.location.href = '/google-maps-scraper'}
-          >
-            <span className="icon">📍</span>
-            <span className="text">Google Maps</span>
           </SidebarItem>
           <SidebarItem 
             $sidebarOpen={sidebarOpen}
