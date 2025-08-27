@@ -501,89 +501,27 @@ const LinkedInScraper = () => {
 
     setIsRunning(true);
     
-    // Progresso realista em duas fases: busca de páginas + dados detalhados
-    const totalPages = formData.bulk ? formData.pages : 1;
-    const estimatedCompanies = Math.min(formData.companyLimit, totalPages * 10);
-    const estimatedDetailedCompanies = estimatedCompanies; // TODAS as empresas terão dados detalhados
+    // Generate session ID for progress tracking
+    const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    console.log('🎯 Starting search with session ID:', sessionId);
     
-    // Fase 1: Busca de páginas (15% do progresso) + Fase 2: Dados detalhados (85% do progresso)
-    // Como dados detalhados levam muito mais tempo, dar mais peso para essa fase
-    const pagesPhaseWeight = 0.15;
-    const detailsPhaseWeight = 0.85;
-    const estimatedTotalTime = (totalPages * 1.1) + (estimatedDetailedCompanies * 0.8); // segundos
-    
-    setProgress({ 
-      current: 0, 
-      total: 100, 
-      message: `Iniciando busca (~${Math.ceil(estimatedTotalTime)}s estimado)...`, 
-      phase: 'pages',
-      pagesFound: 0,
-      detailsFound: 0,
-      totalEstimated: estimatedCompanies,
-      detailedEstimated: estimatedDetailedCompanies
-    });
-    
-    let progressValue = 0;
-    let currentPhase = 'pages';
-    const progressInterval = setInterval(() => {
-      progressValue += 1;
-      
-      if (currentPhase === 'pages') {
-        // Fase 1: Progresso das páginas (0-15%)
-        const pagesProgress = Math.min(15, (progressValue / 15) * 15);
-        const currentPage = Math.floor((pagesProgress / 15) * totalPages) + 1;
-        
-        setProgress({
-          current: pagesProgress,
-          total: 100,
-          message: `🔍 Buscando página ${Math.min(currentPage, totalPages)} de ${totalPages}...`,
-          phase: 'pages',
-          pagesFound: Math.min(currentPage * 10, estimatedCompanies),
-          detailsFound: 0,
-          totalEstimated: estimatedCompanies,
-          detailedEstimated: estimatedDetailedCompanies
-        });
-        
-        // Transição para fase de detalhes após 15%
-        if (pagesProgress >= 15) {
-          currentPhase = 'details';
-          progressValue = 0; // Reset para fase de detalhes
+    // Start real-time progress polling
+    const progressInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/linkedin/progress/${sessionId}`);
+        if (response.ok) {
+          const progressData = await response.json();
+          setProgress(progressData);
+          
+          // Stop polling when completed
+          if (progressData.completed) {
+            clearInterval(progressInterval);
+          }
         }
-      } else {
-        // Fase 2: Progresso dos dados detalhados (15-95%) - 80% do progresso total
-        // Progresso mais lento e realista baseado no tempo real estimado
-        const maxDetailProgress = 80; // 15% + 80% = 95% máximo
-        const detailsProgress = Math.min(maxDetailProgress, (progressValue / (estimatedDetailedCompanies * 1.2)) * maxDetailProgress);
-        const totalProgress = 15 + detailsProgress;
-        const detailsProcessed = Math.floor((detailsProgress / maxDetailProgress) * estimatedDetailedCompanies);
-        
-        setProgress({
-          current: totalProgress,
-          total: 100,
-          message: `✨ Buscando dados detalhados (${detailsProcessed}/${estimatedDetailedCompanies})...`,
-          phase: 'details',
-          pagesFound: estimatedCompanies,
-          detailsFound: detailsProcessed,
-          totalEstimated: estimatedCompanies,
-          detailedEstimated: estimatedDetailedCompanies
-        });
-        
-        // Para no 95% para evitar completar antes da API
-        if (totalProgress >= 95) {
-          clearInterval(progressInterval);
-          setProgress({
-            current: 95,
-            total: 100,
-            message: `🔄 Finalizando dados detalhados (${estimatedDetailedCompanies}/${estimatedDetailedCompanies})...`,
-            phase: 'finalizing',
-            pagesFound: estimatedCompanies,
-            detailsFound: estimatedDetailedCompanies,
-            totalEstimated: estimatedCompanies,
-            detailedEstimated: estimatedDetailedCompanies
-          });
-        }
+      } catch (error) {
+        console.log('Progress polling error:', error);
       }
-    }, 200); // Update a cada 200ms
+    }, 1000); // Poll every second
     
     try {
       const endpoint = formData.bulk ? '/api/linkedin/search-bulk' : '/api/linkedin/search';
@@ -594,7 +532,8 @@ const LinkedInScraper = () => {
         company_size: formData.company_size,
         pages: formData.pages,
         detailed: formData.detailed,
-        companyLimit: formData.companyLimit
+        companyLimit: formData.companyLimit,
+        sessionId: sessionId
       } : {
         keywords: formData.keywords,
         location: formData.location,
@@ -602,7 +541,8 @@ const LinkedInScraper = () => {
         company_size: formData.company_size,
         page: currentPage,
         detailed: formData.detailed,
-        companyLimit: formData.companyLimit
+        companyLimit: formData.companyLimit,
+        sessionId: sessionId
       };
 
       const response = await fetch(endpoint, {
@@ -619,6 +559,9 @@ const LinkedInScraper = () => {
       console.log(`📈 Total de empresas retornadas: ${data.data ? data.data.length : 0}`);
       
       if (data.success) {
+        // Stop progress polling
+        clearInterval(progressInterval);
+        
         toast.success(`✅ LinkedIn scraping concluído! ${data.data ? data.data.length : 0} empresas encontradas`);
         setCurrentRun({
           id: 'ghost-genius-' + Date.now(),
@@ -642,8 +585,7 @@ const LinkedInScraper = () => {
           totalPages: Math.ceil((data.total || 0) / 10) // Ghost Genius returns 10 per page
         });
         
-        // Completar progresso
-        clearInterval(progressInterval);
+        // Final progress update
         const companiesFound = data.data ? data.data.length : 0;
         const detailedCompanies = data.data ? data.data.filter(c => c.detailed).length : 0;
         
@@ -654,11 +596,10 @@ const LinkedInScraper = () => {
           phase: 'completed',
           pagesFound: companiesFound,
           detailsFound: detailedCompanies,
-          totalEstimated: companiesFound,
-          detailedEstimated: detailedCompanies
+          completed: true
         });
         
-        // Limpar progresso após 5 segundos
+        // Clear progress after 5 seconds
         setTimeout(() => {
           setProgress({ current: 0, total: 0, message: '', phase: '', pagesFound: 0, detailsFound: 0 });
         }, 5000);

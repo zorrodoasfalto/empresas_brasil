@@ -1418,45 +1418,49 @@ app.get('/api/apify/test', async (req, res) => {
   }
 });
 
-// LinkedIn search progress endpoint (Server-Sent Events)
-const progressClients = new Map();
+// LinkedIn search progress tracking
+const progressStore = new Map();
 
+// Progress endpoint - simple polling approach
 app.get('/api/linkedin/progress/:sessionId', (req, res) => {
   const { sessionId } = req.params;
+  const progress = progressStore.get(sessionId) || {
+    phase: 'idle',
+    current: 0,
+    total: 100,
+    message: '',
+    pagesFound: 0,
+    detailsFound: 0,
+    completed: false
+  };
   
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
-  });
-
-  progressClients.set(sessionId, res);
-  
-  // Keep connection alive
-  const keepAlive = setInterval(() => {
-    res.write('data: {"type": "ping"}\n\n');
-  }, 30000);
-
-  req.on('close', () => {
-    clearInterval(keepAlive);
-    progressClients.delete(sessionId);
-  });
+  res.json(progress);
 });
 
-// Function to send progress updates
-function sendProgress(sessionId, data) {
-  const client = progressClients.get(sessionId);
-  if (client) {
-    client.write(`data: ${JSON.stringify(data)}\n\n`);
-  }
+// Function to update progress
+function updateProgress(sessionId, data) {
+  const existing = progressStore.get(sessionId) || {};
+  progressStore.set(sessionId, { ...existing, ...data });
+  console.log(`📊 Progress Update [${sessionId}]: ${data.message || 'No message'}`);
 }
 
 // LinkedIn search using Ghost Genius API (multiple pages)
 app.post('/api/linkedin/search-bulk', async (req, res) => {
   try {
     const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
+    
+    // Initialize progress tracking
+    if (sessionId) {
+      updateProgress(sessionId, {
+        phase: 'pages',
+        current: 0,
+        total: 100,
+        message: 'Iniciando busca de páginas...',
+        pagesFound: 0,
+        detailsFound: 0,
+        completed: false
+      });
+    }
     
     // Calculate optimal pages needed based on company limit (10 companies per page)
     const optimalPages = Math.min(pages, Math.ceil(companyLimit / 10));
@@ -1505,6 +1509,19 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
         const url = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
         
         console.log(`📄 Fetching page ${page}/${optimalPages}...`);
+        
+        // Update progress for page fetch
+        if (sessionId) {
+          const pageProgress = Math.floor((page / optimalPages) * 15); // Pages = 15% of total progress
+          updateProgress(sessionId, {
+            phase: 'pages',
+            current: pageProgress,
+            total: 100,
+            message: `🔍 Buscando página ${page} de ${optimalPages}...`,
+            pagesFound: (page - 1) * 10,
+            detailsFound: 0
+          });
+        }
         
         const response = await axios.get(url, {
           headers: {
@@ -1578,9 +1595,34 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
       console.log(`📊 Getting detailed info for ALL ${companiesForDetail.length} companies (~${Math.ceil(companiesForDetail.length * 0.8)}s estimated)`);
       
       const detailedResults = [];
+      // Start details phase
+      if (sessionId) {
+        updateProgress(sessionId, {
+          phase: 'details',
+          current: 15,
+          total: 100,
+          message: 'Iniciando busca de dados detalhados...',
+          pagesFound: uniqueCompanies.length,
+          detailsFound: 0
+        });
+      }
+      
       for (let i = 0; i < companiesForDetail.length; i++) {
         const company = companiesForDetail[i];
         try {
+          // Update progress for each company detail fetch
+          if (sessionId && (i % 5 === 0 || i === companiesForDetail.length - 1)) {
+            const detailProgress = Math.floor((i / companiesForDetail.length) * 80); // Details = 80% of progress
+            updateProgress(sessionId, {
+              phase: 'details',
+              current: 15 + detailProgress,
+              total: 100,
+              message: `✨ Buscando dados detalhados (${i + 1}/${companiesForDetail.length})...`,
+              pagesFound: uniqueCompanies.length,
+              detailsFound: i
+            });
+          }
+          
           if (i % 10 === 0) {
             console.log(`📋 Progress: ${i + 1}/${companiesForDetail.length} detailed companies`);
           }
@@ -1599,9 +1641,9 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
             detailed: detailResponse.data
           });
           
-          // Aggressive rate limiting for more data: 800ms (slightly faster than 1 req/sec)
+          // Optimized rate limiting: 500ms for faster completion 
           if (i < companiesForDetail.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
           
         } catch (error) {
@@ -1614,6 +1656,19 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
       enrichedData = detailedResults;
       
       console.log(`✅ Enhanced ${detailedResults.length} companies with detailed info of ${enrichedData.length} total`);
+      
+      // Mark as completed
+      if (sessionId) {
+        updateProgress(sessionId, {
+          phase: 'completed',
+          current: 100,
+          total: 100,
+          message: `✅ Concluído! ${enrichedData.length} empresas (TODAS com dados detalhados)`,
+          pagesFound: enrichedData.length,
+          detailsFound: enrichedData.length,
+          completed: true
+        });
+      }
     }
 
     res.json({
@@ -1746,9 +1801,9 @@ app.post('/api/linkedin/search', async (req, res) => {
             detailed: detailResponse.data
           });
           
-          // Aggressive rate limiting for more data: 800ms (slightly faster than 1 req/sec)
+          // Optimized rate limiting: 500ms for faster completion 
           if (i < companiesForDetail.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
           
         } catch (error) {
