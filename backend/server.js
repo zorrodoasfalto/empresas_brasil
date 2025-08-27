@@ -64,24 +64,10 @@ async function getSmartUserId(decodedToken, providedUserId = null) {
       }
     }
     
-    // If no email match, try to find the most active user with leads
-    const activeUserResult = await pool.query(`
-      SELECT user_id, COUNT(*) as lead_count 
-      FROM leads 
-      GROUP BY user_id 
-      ORDER BY lead_count DESC, user_id ASC 
-      LIMIT 1
-    `);
-    
-    if (activeUserResult.rows.length > 0) {
-      const foundUserId = activeUserResult.rows[0].user_id;
-      console.log(`Smart fallback: Using most active user_id ${foundUserId} (${activeUserResult.rows[0].lead_count} leads)`);
-      return foundUserId;
-    }
-    
-    // Final fallback
-    console.log('Smart fallback: No users found, using user_id 1');
-    return 1;
+    // SECURITY FIX: Never fallback to another user's data
+    // If no valid token/email, return null to force proper authentication
+    console.log('⚠️ Smart fallback: No valid user found, returning null for security');
+    return null;
   } catch (error) {
     console.error('Smart fallback error:', error);
     return 1;
@@ -958,6 +944,13 @@ app.get('/api/crm/leads', async (req, res) => {
     } catch (error) {
       console.log('GET /api/crm/leads: Invalid token, using smart fallback');
       userId = await getSmartUserId(decodedToken);
+    }
+
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Token inválido. Faça login novamente para acessar seus leads.' 
+      });
     }
 
     const result = await pool.query(`
