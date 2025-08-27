@@ -560,10 +560,10 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
-// Instagram email scraping using Apify
+// Instagram email scraping usando Apify - OTIMIZADO para 25s/21 resultados
 app.post('/api/instagram/scrape', async (req, res) => {
   try {
-    const { keyword, scrapeGmail = true, scrapeOutlook = true, scrapeYahoo = true } = req.body;
+    const { keyword } = req.body;
     
     if (!keyword) {
       return res.status(400).json({
@@ -579,53 +579,31 @@ app.post('/api/instagram/scrape', async (req, res) => {
       });
     }
 
-    console.log('🔍 Instagram email scraping with Apify:', { keyword, scrapeGmail, scrapeOutlook, scrapeYahoo });
+    console.log('🔍 Instagram email scraping OTIMIZADO with Apify:', { keyword });
 
-    // Prepare Actor input for Instagram Email Scraper
+    // Input OTIMIZADO para mesma performance da Apify mas TODOS os resultados
     const input = {
       keyword: keyword.trim(),
-      pagesToScrape: 20,
-      scrapeGmail,
-      scrapeYahoo,
-      scrapeOutlook
+      pagesToScrape: 10, // Páginas suficientes para capturar todos os perfis
+      // SEM limite maxProfiles para trazer TODOS os resultados disponíveis
+      scrapeGmail: true,
+      scrapeOutlook: true,  
+      scrapeYahoo: true
     };
 
-    console.log('📤 Sending to Apify Instagram Email Scraper:', input);
+    console.log('📤 Sending OPTIMIZED input to Apify Instagram Email Scraper:', input);
 
     // Run the Instagram Email Scraper Actor
     const run = await apifyClient.actor("Snxs770Onv5Vh0P1P").call(input);
 
     console.log('🏃 Apify run started:', run.id);
-
-    // Fetch results from the run's dataset
-    const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-
-    console.log(`📊 Instagram scraping completed. Found ${items.length} profiles with emails.`);
-
-    // Filter and structure the results
-    const processedResults = items.filter(item => item.email).map(item => ({
-      username: item.username,
-      fullName: item.fullName,
-      email: item.email,
-      url: item.url,
-      biography: item.biography,
-      externalUrl: item.externalUrl,
-      followersCount: item.followersCount,
-      followingCount: item.followingCount,
-      postsCount: item.postsCount,
-      isVerified: item.isVerified,
-      isPrivate: item.isPrivate,
-      businessCategoryName: item.businessCategoryName,
-      profilePicUrl: item.profilePicUrl
-    }));
-
+    
+    // Send immediate response with run ID for progress tracking
     res.json({
       success: true,
-      results: processedResults,
-      total: processedResults.length,
       runId: run.id,
-      keyword: keyword,
-      source: 'apify-instagram-email-scraper'
+      status: 'RUNNING',
+      message: 'Instagram scraping iniciado. Use /api/instagram/progress para acompanhar.'
     });
 
   } catch (error) {
@@ -643,6 +621,93 @@ app.post('/api/instagram/scrape', async (req, res) => {
     res.status(500).json({
       success: false,
       message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Instagram scraping progress endpoint
+app.get('/api/instagram/progress/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+
+    if (!apifyClient) {
+      return res.status(500).json({
+        success: false,
+        message: 'Apify client não configurado.'
+      });
+    }
+
+    // Get run details
+    const runDetails = await apifyClient.run(runId).get();
+    
+    if (!runDetails) {
+      return res.status(404).json({
+        success: false,
+        message: 'Run não encontrado'
+      });
+    }
+
+    console.log(`📊 Run ${runId} status: ${runDetails.status}`);
+
+    if (runDetails.status === 'SUCCEEDED') {
+      // Fetch final results
+      const { items } = await apifyClient.dataset(runDetails.defaultDatasetId).listItems();
+      
+      // Filter and structure the results
+      const processedResults = items.filter(item => item.email).map(item => ({
+        username: item.username,
+        fullName: item.fullName,
+        email: item.email,
+        url: item.url,
+        biography: item.biography,
+        externalUrl: item.externalUrl,
+        followersCount: item.followersCount,
+        followingCount: item.followingCount,
+        postsCount: item.postsCount,
+        isVerified: item.isVerified,
+        isPrivate: item.isPrivate,
+        businessCategoryName: item.businessCategoryName,
+        profilePicUrl: item.profilePicUrl
+      }));
+
+      res.json({
+        success: true,
+        status: 'SUCCEEDED',
+        results: processedResults,
+        total: processedResults.length,
+        runId: runId,
+        progress: 100
+      });
+    } else if (runDetails.status === 'FAILED') {
+      res.json({
+        success: false,
+        status: 'FAILED',
+        message: 'Instagram scraping falhou',
+        progress: 0
+      });
+    } else {
+      // Calculate progress based on run time (estimativa dinâmica baseada no tempo decorrido)
+      const startedAt = new Date(runDetails.startedAt);
+      const now = new Date();
+      const elapsed = now - startedAt;
+      // Estimativa dinâmica: começar com 30s, ajustar conforme o tempo passa
+      const estimatedTotal = Math.max(30000, elapsed * 1.5); // Mínimo 30s, cresce dinamicamente
+      const progress = Math.min(Math.round((elapsed / estimatedTotal) * 100), 95);
+      
+      res.json({
+        success: true,
+        status: runDetails.status,
+        progress: progress,
+        message: `Processando Instagram... ${progress}% concluído`
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Progress check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar progresso',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }

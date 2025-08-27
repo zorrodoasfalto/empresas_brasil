@@ -284,18 +284,66 @@ const ExportButton = styled.button`
   }
 `;
 
+const ProgressContainer = styled.div`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(240, 148, 51, 0.3);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+`;
+
+const ProgressBarContainer = styled.div`
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  overflow: hidden;
+  height: 20px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(240, 148, 51, 0.2);
+`;
+
+const ProgressBar = styled.div`
+  height: 100%;
+  background: linear-gradient(135deg, #f09433, #e6683c);
+  transition: width 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: bold;
+  min-width: ${props => props.width > 15 ? 'auto' : '0'};
+`;
+
+const ProgressText = styled.div`
+  color: #e6683c;
+  font-weight: 500;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
 const InstagramEmailScraper = () => {
   const [formData, setFormData] = useState({
-    keyword: '',
-    scrapeGmail: true,
-    scrapeOutlook: true,
-    scrapeYahoo: true
+    keyword: ''
   });
   
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
   const [filteredResults, setFilteredResults] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
   const { user } = useAuth();
 
   const businessKeywords = {
@@ -418,25 +466,19 @@ const InstagramEmailScraper = () => {
       return;
     }
 
-    if (!formData.scrapeGmail && !formData.scrapeOutlook && !formData.scrapeYahoo) {
-      toast.error('❌ Selecione pelo menos um tipo de email para extrair');
-      return;
-    }
-
     // Clear previous results
     setResults([]);
     setCurrentRun(null);
+    setProgress(0);
+    setProgressMessage('');
 
-    console.log('🚀 Iniciando Instagram email scraping:', formData);
+    console.log('🚀 Iniciando Instagram email scraping OTIMIZADO:', formData);
 
     setIsRunning(true);
     
     try {
       const requestBody = {
-        keyword: formData.keyword,
-        scrapeGmail: formData.scrapeGmail,
-        scrapeOutlook: formData.scrapeOutlook,
-        scrapeYahoo: formData.scrapeYahoo
+        keyword: formData.keyword
       };
 
       const response = await fetch('/api/instagram/scrape', {
@@ -450,26 +492,21 @@ const InstagramEmailScraper = () => {
       const data = await response.json();
       
       console.log('📊 Resposta da API:', data);
-      console.log(`📈 Total de perfis retornados: ${data.results ? data.results.length : 0}`);
       
-      if (data.success) {
-        toast.success(`✅ Instagram scraping concluído! ${data.results ? data.results.length : 0} perfis com emails encontrados`);
+      if (data.success && data.runId) {
+        // Start progress monitoring
         setCurrentRun({
-          id: 'instagram-' + Date.now(),
-          status: 'SUCCEEDED',
+          id: data.runId,
+          status: 'RUNNING',
           startedAt: new Date(),
-          finishedAt: new Date(),
           keyword: formData.keyword
         });
         
-        const rawResults = data.results || [];
-        console.log('Raw Instagram email data:', rawResults);
-        
-        setResults(rawResults);
-        setIsRunning(false);
+        // Monitor progress
+        monitorProgress(data.runId);
         
       } else {
-        toast.error('Erro ao buscar emails no Instagram: ' + data.message);
+        toast.error('Erro ao iniciar scraping: ' + data.message);
         setIsRunning(false);
       }
     } catch (error) {
@@ -477,6 +514,68 @@ const InstagramEmailScraper = () => {
       toast.error(`❌ Erro ao conectar: ${error.message}`);
       setIsRunning(false);
     }
+  };
+
+  const monitorProgress = async (runId) => {
+    const checkProgress = async () => {
+      try {
+        const response = await fetch(`/api/instagram/progress/${runId}`);
+        const data = await response.json();
+        
+        console.log('📊 Progress update:', data);
+        
+        if (data.success) {
+          setProgress(data.progress || 0);
+          setProgressMessage(data.message || '');
+          
+          if (data.status === 'SUCCEEDED') {
+            // Scraping completed successfully
+            toast.success(`✅ Instagram scraping concluído! ${data.total || 0} perfis com emails encontrados`);
+            setCurrentRun(prev => ({
+              ...prev,
+              status: 'SUCCEEDED',
+              finishedAt: new Date()
+            }));
+            
+            const rawResults = data.results || [];
+            console.log('Raw Instagram email data:', rawResults);
+            
+            setResults(rawResults);
+            setIsRunning(false);
+            setProgress(100);
+            setProgressMessage('✅ Concluído com sucesso!');
+            
+          } else if (data.status === 'FAILED') {
+            // Scraping failed
+            toast.error('❌ Instagram scraping falhou: ' + data.message);
+            setCurrentRun(prev => ({
+              ...prev,
+              status: 'FAILED',
+              finishedAt: new Date()
+            }));
+            setIsRunning(false);
+            setProgress(0);
+            setProgressMessage('❌ Falhou');
+            
+          } else {
+            // Still running, check again in 2 seconds
+            setTimeout(checkProgress, 2000);
+          }
+        } else {
+          // Error checking progress
+          toast.error('Erro ao verificar progresso: ' + data.message);
+          setIsRunning(false);
+        }
+        
+      } catch (error) {
+        console.error('❌ Progress check error:', error);
+        toast.error('Erro ao verificar progresso');
+        setIsRunning(false);
+      }
+    };
+    
+    // Start checking progress
+    checkProgress();
   };
 
   const saveAllLeads = async () => {
@@ -706,7 +805,7 @@ const InstagramEmailScraper = () => {
 
       <Header>
         <Title>
-          <InstagramIcon>📷</InstagramIcon>
+          <InstagramIcon>📸</InstagramIcon>
           Instagram Email Scraper
         </Title>
         <Subtitle>
@@ -715,29 +814,8 @@ const InstagramEmailScraper = () => {
         </Subtitle>
       </Header>
 
-      <MainGrid>
-        <Card>
-          <CardTitle>🎯 Palavras-Chave Sugeridas</CardTitle>
-          <KeywordsGrid>
-            {Object.entries(businessKeywords).map(([category, keywords]) => (
-              <KeywordCategory key={category}>
-                <CategoryTitle>{category}</CategoryTitle>
-                <KeywordList>
-                  {keywords.map((keyword, index) => (
-                    <KeywordTag
-                      key={index}
-                      onClick={() => setKeyword(keyword)}
-                    >
-                      {keyword}
-                    </KeywordTag>
-                  ))}
-                </KeywordList>
-              </KeywordCategory>
-            ))}
-          </KeywordsGrid>
-        </Card>
-
-        <Card>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+        <Card style={{ maxWidth: '600px', width: '100%' }}>
           <CardTitle>⚙️ Configuração do Scraping</CardTitle>
           
           <FormGrid>
@@ -748,41 +826,13 @@ const InstagramEmailScraper = () => {
                 name="keyword"
                 value={formData.keyword}
                 onChange={handleInputChange}
-                placeholder='Ex: marketing, tecnologia, fitness...'
+                placeholder='Ex: clínica veterinária, marketing, tecnologia...'
               />
-            </FormGroup>
-
-            <FormGroup>
-              <Label>Tipos de Email para Extrair</Label>
-              <CheckboxGroup>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    name="scrapeGmail"
-                    checked={formData.scrapeGmail}
-                    onChange={handleInputChange}
-                  />
-                  Gmail (.gmail.com)
-                </CheckboxLabel>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    name="scrapeOutlook"
-                    checked={formData.scrapeOutlook}
-                    onChange={handleInputChange}
-                  />
-                  Outlook (.outlook.com / .hotmail.com)
-                </CheckboxLabel>
-                <CheckboxLabel>
-                  <Checkbox
-                    type="checkbox"
-                    name="scrapeYahoo"
-                    checked={formData.scrapeYahoo}
-                    onChange={handleInputChange}
-                  />
-                  Yahoo (.yahoo.com)
-                </CheckboxLabel>
-              </CheckboxGroup>
+              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.4rem' }}>
+                💡 <strong>Dica:</strong> Use termos específicos para melhores resultados.
+                <br />Ex: "clínica veterinária", "restaurante", "academia"
+                <br />⏱️ <strong>Exemplo:</strong> "clínica veterinária" = 21 resultados em ~25s
+              </div>
             </FormGroup>
           </FormGrid>
 
@@ -793,9 +843,45 @@ const InstagramEmailScraper = () => {
             {isRunning ? (
               <>🔄 Executando Scraping...</>
             ) : (
-              <>🚀 Iniciar Instagram Email Scraping</>
+              <>📸 Iniciar Instagram Email Scraping</>
             )}
           </RunButton>
+          
+          {/* BARRA DE PROGRESSO EM TEMPO REAL */}
+          {isRunning && (
+            <ProgressContainer>
+              <div style={{ color: '#e6683c', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
+                📸 Instagram Email Scraping em Progresso
+              </div>
+              
+              <ProgressBarContainer>
+                <ProgressBar width={progress} style={{ width: `${progress}%` }}>
+                  {progress > 15 && `${progress}%`}
+                </ProgressBar>
+              </ProgressBarContainer>
+              
+              <ProgressText>
+                <span className="spinner">🔄</span>
+                {progressMessage || `Processando... ${progress}% concluído`}
+              </ProgressText>
+              
+              {progress < 30 && (
+                <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center', marginTop: '0.5rem' }}>
+                  💡 Buscando perfis do Instagram...
+                </div>
+              )}
+              {progress >= 30 && progress < 70 && (
+                <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center', marginTop: '0.5rem' }}>
+                  🔍 Extraindo emails dos perfis encontrados...
+                </div>
+              )}
+              {progress >= 70 && progress < 100 && (
+                <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center', marginTop: '0.5rem' }}>
+                  ✨ Finalizando e organizando resultados...
+                </div>
+              )}
+            </ProgressContainer>
+          )}
 
           {/* BOTÕES PRINCIPAIS - SEMPRE VISÍVEIS */}
           <div style={{ 
@@ -817,7 +903,7 @@ const InstagramEmailScraper = () => {
             </ExportButtonsContainer>
           </div>
         </Card>
-      </MainGrid>
+      </div>
 
       {currentRun && (
         <ResultsCard>
