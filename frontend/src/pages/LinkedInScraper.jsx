@@ -289,7 +289,8 @@ const LinkedInScraper = () => {
     location: '',
     industries: '',
     company_size: '',
-    page: 1
+    page: 1,
+    detailed: false
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -439,8 +440,9 @@ const LinkedInScraper = () => {
   }, [results]);
 
   const runScraper = async () => {
-    if (!formData.keywords) {
-      toast.error('❌ Por favor, preencha a palavra-chave');
+    // Keywords are optional - will use generic term if empty
+    if (!formData.keywords && !formData.location && !formData.industries && !formData.company_size) {
+      toast.error('❌ Preencha pelo menos um filtro (palavra-chave, localização, indústria ou tamanho)');
       return;
     }
 
@@ -463,7 +465,8 @@ const LinkedInScraper = () => {
           location: formData.location,
           industries: formData.industries,
           company_size: formData.company_size,
-          page: parseInt(formData.page)
+          page: parseInt(formData.page),
+          detailed: formData.detailed
         })
       });
       
@@ -743,29 +746,8 @@ const LinkedInScraper = () => {
         </Subtitle>
       </Header>
 
-      <MainGrid>
-        <Card>
-          <CardTitle>🎯 Palavras-Chave Sugeridas</CardTitle>
-          <KeywordsGrid>
-            {Object.entries(businessKeywords).map(([category, keywords]) => (
-              <KeywordCategory key={category}>
-                <CategoryTitle>{category}</CategoryTitle>
-                <KeywordList>
-                  {keywords.map(keyword => (
-                    <KeywordTag
-                      key={keyword}
-                      onClick={() => setKeyword(keyword)}
-                    >
-                      {keyword}
-                    </KeywordTag>
-                  ))}
-                </KeywordList>
-              </KeywordCategory>
-            ))}
-          </KeywordsGrid>
-        </Card>
-
-        <Card>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+        <Card style={{ maxWidth: '600px', width: '100%' }}>
           <CardTitle>⚙️ Configuração do Scraping</CardTitle>
           
           <FormGrid>
@@ -776,8 +758,7 @@ const LinkedInScraper = () => {
                 name="keywords"
                 value={formData.keywords}
                 onChange={handleInputChange}
-                placeholder="Ex: tech, marketing, finance..."
-                required
+                placeholder="Ex: tech, marketing, finance... (deixe vazio para buscar por filtros)"
               />
             </FormGroup>
 
@@ -846,24 +827,43 @@ const LinkedInScraper = () => {
             </FormGroup>
           </FormGrid>
 
-          <FormGroup style={{ marginTop: '1rem' }}>
-            <Label>Página</Label>
-            <Select
-              name="page"
-              value={formData.page}
-              onChange={handleInputChange}
-            >
-              <option value={1}>Página 1</option>
-              <option value={2}>Página 2</option>
-              <option value={3}>Página 3</option>
-              <option value={4}>Página 4</option>
-              <option value={5}>Página 5</option>
-            </Select>
-          </FormGroup>
+          <FormGrid style={{ marginTop: '1rem' }}>
+            <FormGroup>
+              <Label>Página</Label>
+              <Select
+                name="page"
+                value={formData.page}
+                onChange={handleInputChange}
+              >
+                <option value={1}>Página 1</option>
+                <option value={2}>Página 2</option>
+                <option value={3}>Página 3</option>
+                <option value={4}>Página 4</option>
+                <option value={5}>Página 5</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  name="detailed"
+                  checked={formData.detailed}
+                  onChange={(e) => setFormData(prev => ({...prev, detailed: e.target.checked}))}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                Buscar Dados Detalhados
+              </Label>
+              <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.3rem' }}>
+                ✨ Inclui website, endereço, funcionários, especialidades, etc.
+                <br />⚡ Aplica-se às primeiras 10 empresas (mais lento)
+              </div>
+            </FormGroup>
+          </FormGrid>
 
           <RunButton
             onClick={runScraper}
-            disabled={isRunning || !formData.keywords}
+            disabled={isRunning}
           >
             {isRunning ? (
               <>🔄 Executando Scraping...</>
@@ -892,7 +892,7 @@ const LinkedInScraper = () => {
             </ExportButtonsContainer>
           </div>
         </Card>
-      </MainGrid>
+      </div>
 
       {currentRun && (
         <ResultsCard>

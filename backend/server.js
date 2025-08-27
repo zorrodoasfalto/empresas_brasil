@@ -1425,16 +1425,16 @@ app.post('/api/linkedin/search', async (req, res) => {
     
     console.log('🔍 LinkedIn search with Ghost Genius:', { keywords, location, industries, company_size, page });
     
-    if (!keywords) {
-      return res.status(400).json({
-        success: false,
-        message: 'Keywords are required for LinkedIn search'
-      });
+    // If no keywords provided, use generic terms to find companies with filters
+    let searchKeywords = keywords;
+    if (!searchKeywords || searchKeywords.trim() === '') {
+      searchKeywords = 'empresa'; // Generic Portuguese term for "company"
+      console.log('📝 No keywords provided, using generic term: "empresa"');
     }
 
     // Build query parameters
     const params = new URLSearchParams({
-      keywords: keywords
+      keywords: searchKeywords.trim()
     });
     
     // Convert location string to LinkedIn Location ID
@@ -1494,15 +1494,60 @@ app.post('/api/linkedin/search', async (req, res) => {
 
     console.log(`✅ Found ${response.data.data?.length || 0} LinkedIn companies`);
 
+    // Option to get detailed company info
+    const detailed = req.body.detailed === true;
+    let enrichedData = response.data.data || [];
+    
+    if (detailed && enrichedData.length > 0) {
+      console.log('🔍 Fetching detailed company information...');
+      
+      // Get detailed info for up to 10 companies to avoid rate limiting
+      const companiesForDetail = enrichedData.slice(0, 10);
+      
+      const detailedPromises = companiesForDetail.map(async (company, index) => {
+        try {
+          console.log(`📋 Getting details for: ${company.full_name} (${index + 1}/${companiesForDetail.length})`);
+          
+          const detailResponse = await axios.get(`${GHOST_GENIUS_BASE_URL}/company`, {
+            params: { url: company.url },
+            headers: {
+              'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          return {
+            ...company,
+            detailed: detailResponse.data
+          };
+          
+        } catch (error) {
+          console.log(`⚠️ Error getting details for ${company.full_name}:`, error.message);
+          return company; // Return original if detail fails
+        }
+      });
+      
+      const detailedResults = await Promise.all(detailedPromises);
+      
+      // Replace the first companies with detailed versions, keep the rest as basic
+      enrichedData = [
+        ...detailedResults,
+        ...enrichedData.slice(10)
+      ];
+      
+      console.log(`✅ Enhanced ${detailedResults.length} companies with detailed info`);
+    }
+
     res.json({
       success: true,
-      data: response.data.data || [],
+      data: enrichedData,
       total: response.data.total || 0,
       pagination: {
         page: page,
         total: response.data.total || 0
       },
       source: 'ghost-genius',
+      detailed: detailed,
       raw_response: response.data // Incluir resposta completa para debug
     });
 
