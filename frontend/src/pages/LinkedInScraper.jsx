@@ -330,7 +330,8 @@ const LinkedInScraper = () => {
     page: 1,
     detailed: true,
     bulk: true,
-    pages: 20
+    pages: 20,
+    companyLimit: 200
   });
   
   const [isRunning, setIsRunning] = useState(false);
@@ -537,14 +538,16 @@ const LinkedInScraper = () => {
         industries: formData.industries,
         company_size: formData.company_size,
         pages: formData.pages,
-        detailed: formData.detailed
+        detailed: formData.detailed,
+        companyLimit: formData.companyLimit
       } : {
         keywords: formData.keywords,
         location: formData.location,
         industries: formData.industries,
         company_size: formData.company_size,
         page: currentPage,
-        detailed: formData.detailed
+        detailed: formData.detailed,
+        companyLimit: formData.companyLimit
       };
 
       const response = await fetch(endpoint, {
@@ -1111,6 +1114,24 @@ const LinkedInScraper = () => {
                 <option value="G">1001-5000 funcionários</option>
                 <option value="H">5001-10,000 funcionários</option>
                 <option value="I">10,001+ funcionários</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Quantidade de Empresas</Label>
+              <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '0.5rem' }}>
+                💡 Máximo de 200 empresas por busca
+              </div>
+              <Select
+                name="companyLimit"
+                value={formData.companyLimit}
+                onChange={handleInputChange}
+              >
+                <option value={20}>20 empresas</option>
+                <option value={50}>50 empresas</option>
+                <option value={100}>100 empresas</option>
+                <option value={150}>150 empresas</option>
+                <option value={200}>200 empresas (máximo)</option>
               </Select>
             </FormGroup>
           </FormGrid>

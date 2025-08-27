@@ -1421,9 +1421,11 @@ app.get('/api/apify/test', async (req, res) => {
 // LinkedIn search using Ghost Genius API (multiple pages)
 app.post('/api/linkedin/search-bulk', async (req, res) => {
   try {
-    const { keywords, location, industries, company_size, pages = 5 } = req.body;
+    const { keywords, location, industries, company_size, pages = 5, companyLimit = 200 } = req.body;
     
-    console.log('🔍 LinkedIn bulk search with Ghost Genius:', { keywords, location, industries, company_size, pages });
+    // Calculate optimal pages needed based on company limit (10 companies per page)
+    const optimalPages = Math.min(pages, Math.ceil(companyLimit / 10));
+    console.log('🔍 LinkedIn bulk search with Ghost Genius:', { keywords, location, industries, company_size, pages: optimalPages, companyLimit });
     
     // If no keywords provided, use generic terms
     let searchKeywords = keywords;
@@ -1459,15 +1461,15 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     if (company_size) baseParams.company_size = company_size;
 
     // Fetch multiple pages sequentially with delay (avoid rate limiting)
-    console.log(`🔄 Fetching ${pages} pages sequentially with params:`, baseParams);
+    console.log(`🔄 Fetching ${optimalPages} pages sequentially with params:`, baseParams);
     const results = [];
     
-    for (let page = 1; page <= pages; page++) {
+    for (let page = 1; page <= optimalPages; page++) {
       try {
         const params = new URLSearchParams({ ...baseParams, page: page.toString() });
         const url = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
         
-        console.log(`📄 Fetching page ${page}/${pages}...`);
+        console.log(`📄 Fetching page ${page}/${optimalPages}...`);
         
         const response = await axios.get(url, {
           headers: {
@@ -1520,6 +1522,12 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     });
     
     console.log(`✅ Found ${allCompanies.length} total companies, ${uniqueCompanies.length} unique companies from ${pages} pages`);
+    
+    // Apply company limit if specified
+    if (companyLimit && uniqueCompanies.length > companyLimit) {
+      uniqueCompanies = uniqueCompanies.slice(0, companyLimit);
+      console.log(`🔢 Limited to first ${companyLimit} companies as requested`);
+    }
     
     // Get detailed info for all companies if requested
     const detailed = req.body.detailed === true;
@@ -1577,7 +1585,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
       success: true,
       data: enrichedData,
       total: totalFound,
-      pages_fetched: pages,
+      pages_fetched: optimalPages,
       unique_companies: uniqueCompanies.length,
       source: 'ghost-genius-bulk',
       detailed: detailed
@@ -1596,7 +1604,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
 // LinkedIn search using Ghost Genius API (single page)
 app.post('/api/linkedin/search', async (req, res) => {
   try {
-    const { keywords, location, industries, company_size, page = 1 } = req.body;
+    const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
     
     console.log('🔍 LinkedIn search with Ghost Genius:', { keywords, location, industries, company_size, page });
     
