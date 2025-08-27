@@ -1458,32 +1458,43 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     if (industries) baseParams.industries = industries;
     if (company_size) baseParams.company_size = company_size;
 
-    // Fetch multiple pages in parallel
-    console.log(`🔄 Fetching ${pages} pages in parallel with params:`, baseParams);
-    const pagePromises = [];
+    // Fetch multiple pages sequentially with delay (avoid rate limiting)
+    console.log(`🔄 Fetching ${pages} pages sequentially with params:`, baseParams);
+    const results = [];
     
     for (let page = 1; page <= pages; page++) {
-      const params = new URLSearchParams({ ...baseParams, page: page.toString() });
-      const url = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
-      
-      pagePromises.push(
-        axios.get(url, {
+      try {
+        const params = new URLSearchParams({ ...baseParams, page: page.toString() });
+        const url = `${GHOST_GENIUS_BASE_URL}/search/companies?${params}`;
+        
+        console.log(`📄 Fetching page ${page}/${pages}...`);
+        
+        const response = await axios.get(url, {
           headers: {
             'Authorization': `Bearer ${GHOST_GENIUS_API_KEY}`,
             'Content-Type': 'application/json'
-          }
-        }).then(response => ({
+          },
+          timeout: 10000 // 10 second timeout
+        });
+        
+        const pageResult = {
           page,
           data: response.data.data || [],
           total: response.data.total || 0
-        })).catch(error => {
-          console.log(`⚠️ Error fetching page ${page}:`, error.message);
-          return { page, data: [], total: 0 };
-        })
-      );
+        };
+        
+        results.push(pageResult);
+        
+        // Small delay to avoid rate limiting
+        if (page < pages) {
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
+        }
+        
+      } catch (error) {
+        console.log(`⚠️ Error fetching page ${page}:`, error.response?.status, error.message);
+        results.push({ page, data: [], total: 0 });
+      }
     }
-    
-    const results = await Promise.all(pagePromises);
     
     // Combine all results
     let allCompanies = [];
