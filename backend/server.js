@@ -731,22 +731,35 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         console.log('🔍 DEBUG: All available fields in items:', Array.from(allFields).sort());
       }
       
-      // Filter and structure the results - try to be more flexible with field names
-      const processedResults = items.filter(item => item.email || item.Email).map(item => ({
-        username: item.username || item.Username || 'N/A',
-        fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
-        email: item.email || item.Email,
-        url: item.url || item.link || item.profileUrl || item.profile_url,
-        biography: item.biography || item.bio || item.description,
-        externalUrl: item.externalUrl || item.external_url || item.website,
-        followersCount: item.followersCount || item.followers_count || item.followers,
-        followingCount: item.followingCount || item.following_count || item.following,
-        postsCount: item.postsCount || item.posts_count || item.posts,
-        isVerified: item.isVerified || item.is_verified || false,
-        isPrivate: item.isPrivate || item.is_private || false,
-        businessCategoryName: item.businessCategoryName || item.business_category,
-        profilePicUrl: item.profilePicUrl || item.profile_pic_url || item.avatar
-      }));
+      // Filter and structure the results - extract username from URL when available
+      const processedResults = items.filter(item => item.email || item.Email).map(item => {
+        const url = item.url || item.link || item.profileUrl || item.profile_url;
+        let extractedUsername = 'N/A';
+        
+        // Extract username from Instagram URL
+        if (url) {
+          const instagramMatch = url.match(/instagram\.com\/([^\/\?]+)/);
+          if (instagramMatch && instagramMatch[1] && !instagramMatch[1].includes('p/')) {
+            extractedUsername = '@' + instagramMatch[1];
+          }
+        }
+        
+        return {
+          username: item.username || item.Username || extractedUsername,
+          fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
+          email: item.email || item.Email,
+          url: url,
+          biography: item.biography || item.bio || item.description,
+          externalUrl: item.externalUrl || item.external_url || item.website,
+          followersCount: item.followersCount || item.followers_count || item.followers,
+          followingCount: item.followingCount || item.following_count || item.following,
+          postsCount: item.postsCount || item.posts_count || item.posts,
+          isVerified: item.isVerified || item.is_verified || false,
+          isPrivate: item.isPrivate || item.is_private || false,
+          businessCategoryName: item.businessCategoryName || item.business_category,
+          profilePicUrl: item.profilePicUrl || item.profile_pic_url || item.avatar
+        };
+      });
 
       res.json({
         success: true,
@@ -764,19 +777,34 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         progress: 0
       });
     } else {
-      // Calculate progress based on run time (estimativa dinâmica baseada no tempo decorrido)
+      // Calculate progress based on run time with better granularity
       const startedAt = new Date(runDetails.startedAt);
       const now = new Date();
       const elapsed = now - startedAt;
-      // Estimativa dinâmica: começar com 30s, ajustar conforme o tempo passa
-      const estimatedTotal = Math.max(30000, elapsed * 1.5); // Mínimo 30s, cresce dinamicamente
-      const progress = Math.min(Math.round((elapsed / estimatedTotal) * 100), 95);
+      
+      let progress = 0;
+      let message = 'Iniciando busca no Instagram...';
+      
+      if (elapsed < 5000) { // 0-5s
+        progress = Math.round((elapsed / 5000) * 15); // 0-15%
+        message = '🔍 Conectando ao Instagram...';
+      } else if (elapsed < 10000) { // 5-10s  
+        progress = 15 + Math.round(((elapsed - 5000) / 5000) * 25); // 15-40%
+        message = '📱 Analisando perfis do Instagram...';
+      } else if (elapsed < 20000) { // 10-20s
+        progress = 40 + Math.round(((elapsed - 10000) / 10000) * 35); // 40-75%
+        message = '📧 Extraindo emails dos perfis...';
+      } else { // 20s+
+        progress = 75 + Math.round(((elapsed - 20000) / 10000) * 20); // 75-95%
+        progress = Math.min(progress, 95);
+        message = '⏳ Finalizando coleta de dados...';
+      }
       
       res.json({
         success: true,
         status: runDetails.status,
         progress: progress,
-        message: `Processando Instagram... ${progress}% concluído`
+        message: message
       });
     }
 
