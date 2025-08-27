@@ -917,6 +917,9 @@ const LinkedInScraper = () => {
           <FormGrid>
             <FormGroup>
               <Label>Indústrias</Label>
+              <div style={{ fontSize: '0.8rem', color: '#999', marginBottom: '0.5rem' }}>
+                💡 Funciona melhor COMBINADO com palavra-chave
+              </div>
               <Select
                 name="industries"
                 value={formData.industries}
