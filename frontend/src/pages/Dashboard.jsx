@@ -36,10 +36,20 @@ const Sidebar = styled.div`
 
 
 const SidebarContent = styled.div`
-  padding: 80px 0 20px 0;
+  padding: 20px 0 20px 0;
   height: 100%;
   display: flex;
   flex-direction: column;
+`;
+
+const SidebarLogo = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 25px 20px;
+  border-bottom: 1px solid rgba(0, 255, 170, 0.2);
+  margin-bottom: 10px;
+  background: rgba(0, 255, 170, 0.05);
 `;
 
 const SidebarItem = styled.div`
@@ -151,12 +161,6 @@ const Header = styled.header`
   position: relative;
 `;
 
-const HeaderLeft = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-`;
 
 const Title = styled.h1`
   font-family: 'Orbitron', monospace;
@@ -176,14 +180,16 @@ const Title = styled.h1`
 `;
 
 const Logo = styled.img`
-  height: 50px;
+  height: 45px;
   width: auto;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 170, 0.3));
+  max-width: 200px;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 170, 0.4));
   transition: all 0.3s ease;
+  cursor: pointer;
   
   &:hover {
-    filter: drop-shadow(0 0 15px rgba(0, 255, 170, 0.5));
-    transform: scale(1.05);
+    filter: drop-shadow(0 0 12px rgba(0, 255, 170, 0.6));
+    transform: scale(1.08);
   }
 `;
 
@@ -1238,6 +1244,9 @@ const Dashboard = () => {
     <Container>
       <Sidebar>
         <SidebarContent>
+          <SidebarLogo>
+            <Logo src={logo} alt="Logo" onClick={handleLogoClick} />
+          </SidebarLogo>
           <SidebarItem 
             
             className="active"
@@ -1299,10 +1308,7 @@ const Dashboard = () => {
 
       <MainContent>
         <Header>
-          <HeaderLeft>
-            <Logo src={logo} alt="Logo" />
-            <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
-          </HeaderLeft>
+          <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
             <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
