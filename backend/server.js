@@ -2514,7 +2514,7 @@ app.get('/api/filters/options', async (req, res) => {
   }
 });
 
-app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
+app.post('/api/companies/filtered', async (req, res) => {
   console.log('🔍 Starting company search...');
   const startTime = Date.now();
   
@@ -2976,7 +2976,7 @@ app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
 });
 
 // Get total company count with filters (without returning data)
-app.post('/api/companies/count', checkUserAccess, async (req, res) => {
+app.post('/api/companies/count', async (req, res) => {
   const startTime = Date.now();
   
   try {
