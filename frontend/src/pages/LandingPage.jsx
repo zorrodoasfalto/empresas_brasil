@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../images/logo.png';
+import logo from '../assets/images/logo.png';
 
 // Subcomponentes internos
 const Section = ({ children, className = "", id = "" }) => (
