@@ -496,8 +496,12 @@ const InstagramEmailScraper = () => {
         startProgressEstimation(runId);
         return;
       } else {
-        progressPercent = 10 + ((elapsed - 2000) / 3000) * 10; // 10-20% while waiting for runId
-        message = '⏳ Aguardando resposta do servidor...';
+        progressPercent = 10 + ((elapsed - 2000) / 8000) * 10; // 10-20% while waiting for runId (mais tempo)
+        if (elapsed > 5000) {
+          message = '⏳ API do Instagram está processando... (pode levar até 30s)';
+        } else {
+          message = '⏳ Aguardando resposta do servidor...';
+        }
         progressPercent = Math.min(progressPercent, 20);
       }
       
@@ -539,6 +543,9 @@ const InstagramEmailScraper = () => {
           keyword: formData.keyword
         });
         
+        // Start the real progress estimation now that we have runId
+        startProgressEstimation(data.runId);
+        
       } else {
         toast.error('Erro ao iniciar scraping: ' + data.message);
         setIsRunning(false);
@@ -552,7 +559,7 @@ const InstagramEmailScraper = () => {
 
   const startProgressEstimation = async (runId) => {
     const startTime = Date.now();
-    const estimatedDuration = 25000; // 25 seconds estimated duration
+    const estimatedDuration = 60000; // 60 seconds estimated duration (mais realista)
     
     const updateProgress = () => {
       const elapsed = Date.now() - startTime;
