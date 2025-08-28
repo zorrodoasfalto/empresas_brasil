@@ -45,6 +45,26 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
+// Configure trust proxy and force HTTPS in production
+app.set('trust proxy', 1);
+
+// Security headers for HTTPS
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    // Force HTTPS redirect
+    if (!req.secure) {
+      return res.redirect(`https://${req.headers.host}${req.url}`);
+    }
+    
+    // Security headers
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+  }
+  next();
+});
+
 // Middleware para verificar acesso do usuário (trial ou assinatura ativa)
 async function checkUserAccess(req, res, next) {
   try {
@@ -176,11 +196,16 @@ const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
         process.env.FRONTEND_URL || 'https://your-frontend.railway.app',
-        'https://*.railway.app'
+        'https://*.railway.app',
+        /https:\/\/.*\.railway\.app$/,
+        // Add your custom domain here when you know it
+        process.env.CUSTOM_DOMAIN || 'https://yourdomain.com'
       ]
     : ['http://localhost:4001', 'http://localhost:3000'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
