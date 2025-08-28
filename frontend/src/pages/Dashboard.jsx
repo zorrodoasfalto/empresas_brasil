@@ -36,7 +36,7 @@ const Sidebar = styled.div`
 
 
 const SidebarContent = styled.div`
-  padding: 20px 0 20px 0;
+  padding: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -46,9 +46,11 @@ const SidebarLogo = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 25px 20px;
+  padding: 24px 20px;
   border-bottom: 1px solid rgba(0, 255, 170, 0.2);
   margin-bottom: 10px;
+  height: 72px;
+  box-sizing: border-box;
 `;
 
 const SidebarItem = styled.div`
