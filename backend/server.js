@@ -777,54 +777,22 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         console.log('🔍 DEBUG: All available fields in items:', Array.from(allFields).sort());
       }
       
-      // Filter and structure the results - extract username from URL when available
+      // Filter and structure the results - simplified version with easy username extraction
       const processedResults = items.filter(item => item.email || item.Email).map(item => {
         const url = item.url || item.link || item.profileUrl || item.profile_url;
-        let extractedUsername = '';
+        let extractedUsername = item.username || item.Username;
         
-        // Extract username from Instagram URL (after last /)
-        if (url) {
-          // Try to extract username from various Instagram URL formats
-          let rawUsername = '';
-          
-          // Direct profile: instagram.com/username
-          const directMatch = url.match(/instagram\.com\/([^\/\?\#]+)$/);
-          if (directMatch && directMatch[1] && !directMatch[1].includes('p') && !directMatch[1].includes('reel')) {
-            rawUsername = directMatch[1];
-          } else {
-            // Get the last part of the path that's not a post/reel ID
-            const pathMatch = url.match(/instagram\.com\/([^\/\?\#]+)/);
-            if (pathMatch && pathMatch[1] && !pathMatch[1].includes('p') && !pathMatch[1].includes('reel')) {
-              rawUsername = pathMatch[1];
-            }
-          }
-          
-          // Clean and format username
-          if (rawUsername && rawUsername.length > 0) {
-            // Remove trailing slashes, parameters, etc
-            rawUsername = rawUsername.replace(/[\?\#\/].*$/, '');
-            if (rawUsername && rawUsername !== 'p' && rawUsername !== 'reel' && rawUsername !== 'popular') {
-              extractedUsername = rawUsername.startsWith('@') ? rawUsername : '@' + rawUsername;
-            }
-          }
-        }
-        
-        // Use existing username or extracted username, or email prefix as fallback
-        let finalUsername = item.username || item.Username || extractedUsername;
-        if (!finalUsername || finalUsername === 'N/A' || finalUsername === '') {
-          // Extract username from email as fallback
-          const email = item.email || item.Email;
-          if (email) {
-            const emailPrefix = email.split('@')[0].toLowerCase();
-            // Clean email prefix (remove dots, numbers at end, etc)
-            const cleanPrefix = emailPrefix.replace(/[\.0-9]+$/, '').substring(0, 15);
-            finalUsername = '@' + cleanPrefix;
+        // Extract username from URL - simple method (after last slash)
+        if (!extractedUsername && url) {
+          const urlParts = url.split('/').filter(part => part);
+          if (urlParts.length > 0) {
+            extractedUsername = '@' + urlParts[urlParts.length - 1];
           }
         }
         
         return {
-          username: finalUsername || 'N/A',
-          fullName: item.fullName || item.full_name || item.name || item.Name || '',
+          username: extractedUsername || 'N/A',
+          fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
           email: item.email || item.Email,
           url: url,
           biography: item.biography || item.bio || item.description,
