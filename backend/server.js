@@ -3085,37 +3085,59 @@ app.post('/api/companies/count', async (req, res) => {
 // Serve favicon files (both dev and production)
 const path = require('path');
 
-// Favicon routes - work in both dev and production
+// Favicon routes - serve from project root (guaranteed to exist)
 app.get('/favicon.ico', (req, res) => {
-  const faviconPath = path.join(__dirname, '../frontend/dist/favicon.ico');
+  const faviconPath = path.join(__dirname, '../favicon.ico');
   res.sendFile(faviconPath, (err) => {
     if (err) {
-      console.log('Favicon not found:', faviconPath);
+      console.log('❌ Favicon not found at:', faviconPath);
       res.status(404).send('Favicon not found');
+    } else {
+      console.log('✅ Favicon served successfully');
     }
   });
 });
 
 app.get('/favicon-96x96.png', (req, res) => {
-  const faviconPath = path.join(__dirname, '../frontend/dist/favicon-96x96.png');
+  const faviconPath = path.join(__dirname, '../favicon-96x96.png');
   res.sendFile(faviconPath, (err) => {
     if (err) {
-      console.log('Favicon PNG not found:', faviconPath);
+      console.log('❌ Favicon PNG not found at:', faviconPath);
       res.status(404).send('Favicon PNG not found');
+    } else {
+      console.log('✅ Favicon PNG served successfully');
     }
   });
 });
 
 app.get('/favicon.svg', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/favicon.svg'));
+  const faviconPath = path.join(__dirname, '../favicon.svg');
+  res.sendFile(faviconPath, (err) => {
+    if (err) {
+      console.log('❌ Favicon SVG not found at:', faviconPath);
+      res.status(404).send('Favicon SVG not found');
+    }
+  });
 });
 
 app.get('/apple-touch-icon.png', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/apple-touch-icon.png'));
+  const faviconPath = path.join(__dirname, '../apple-touch-icon.png');
+  res.sendFile(faviconPath, (err) => {
+    if (err) {
+      console.log('❌ Apple touch icon not found at:', faviconPath);
+      res.status(404).send('Apple touch icon not found');
+    }
+  });
 });
 
 app.get('/site.webmanifest', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/site.webmanifest'));
+  const faviconPath = path.join(__dirname, '../site.webmanifest');
+  res.sendFile(faviconPath, (err) => {
+    if (err) {
+      console.log('❌ Web manifest not found at:', faviconPath);
+      res.status(404).send('Web manifest not found');
+    }
+  });
 });
 
 // Serve React frontend in production
