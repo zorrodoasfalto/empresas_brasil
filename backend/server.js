@@ -3088,6 +3088,8 @@ const path = require('path');
 // Favicon routes - serve from project root (guaranteed to exist)
 app.get('/favicon.ico', (req, res) => {
   const faviconPath = path.join(__dirname, '../favicon.ico');
+  res.setHeader('Content-Type', 'image/x-icon');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
   res.sendFile(faviconPath, (err) => {
     if (err) {
       console.log('❌ Favicon not found at:', faviconPath);
