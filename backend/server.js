@@ -2693,7 +2693,7 @@ app.post('/api/companies/filtered', async (req, res) => {
         orderByClause = 'ORDER BY est.cnpj_basico';
     }
     
-    // Complete query with all data including Simples Nacional
+    // Complete query with all data - optimized with better indexing strategy
     const query = `
       SELECT 
         est.cnpj,
@@ -2738,7 +2738,7 @@ app.post('/api/companies/filtered', async (req, res) => {
         simples.data_opcao_mei,
         simples.data_exclusao_mei
       FROM estabelecimento est
-      LEFT JOIN empresas emp ON est.cnpj_basico = emp.cnpj_basico
+      INNER JOIN empresas emp ON est.cnpj_basico = emp.cnpj_basico
       LEFT JOIN simples ON est.cnpj_basico = simples.cnpj_basico
       ${whereClause}
       ${orderByClause}
@@ -2775,17 +2775,30 @@ app.post('/api/companies/filtered', async (req, res) => {
       } else if (companyLimit >= 25000) {
         maxSociosPerCompany = 2; // Max 2 socios per company for 25k+ queries
         totalSociosLimit = 50000;
+      } else if (companyLimit >= 5000) {
+        maxSociosPerCompany = 3; // Max 3 socios per company for 5k+ queries
+        totalSociosLimit = 15000;
+      } else if (companyLimit >= 1000) {
+        maxSociosPerCompany = 4; // Max 4 socios per company for 1k+ queries
+        totalSociosLimit = 5000;
       }
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);
       
-      // Ultra-fast query for large volumes - minimal processing
-      const sociosQuery = companyLimit >= 50000 ? `
+      // Optimized socios query with all fields - performance focused
+      const sociosQuery = companyLimit >= 25000 ? `
         SELECT 
           cnpj_basico,
           identificador_de_socio,
           nome_socio,
-          qualificacao_socio
+          cnpj_cpf_socio,
+          qualificacao_socio,
+          data_entrada_sociedade,
+          pais,
+          representante_legal,
+          nome_representante,
+          qualificacao_representante_legal,
+          faixa_etaria
         FROM socios s
         WHERE cnpj_basico = ANY($1)
           AND nome_socio IS NOT NULL
