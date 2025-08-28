@@ -36,9 +36,9 @@ const Header = styled.header`
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(10, 48, 66, 0.95);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   
   nav {
     max-width: 1280px;
@@ -61,12 +61,6 @@ const Header = styled.header`
         width: auto;
       }
       
-      span {
-        margin-left: 12px;
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: #0a3042;
-      }
     }
     
     .nav-links {
@@ -79,12 +73,12 @@ const Header = styled.header`
       }
       
       a {
-        color: #6b7280;
+        color: #d1d5db;
         text-decoration: none;
         transition: color 0.3s ease;
         
         &:hover {
-          color: #0a3042;
+          color: #36e961;
         }
       }
     }
@@ -93,7 +87,7 @@ const Header = styled.header`
       display: block;
       background: none;
       border: none;
-      color: #6b7280;
+      color: #d1d5db;
       cursor: pointer;
       
       @media (min-width: 768px) {
@@ -104,8 +98,8 @@ const Header = styled.header`
 `;
 
 const CTAButton = styled.button`
-  background: linear-gradient(135deg, #11506e, #36e961);
-  color: white;
+  background: linear-gradient(135deg, #36e961, #64ee85);
+  color: #0a3042;
   padding: 12px 24px;
   border: none;
   border-radius: 9999px;
@@ -114,7 +108,7 @@ const CTAButton = styled.button`
   transition: all 0.3s ease;
   
   &:hover {
-    box-shadow: 0 10px 25px rgba(54, 233, 97, 0.3);
+    box-shadow: 0 10px 25px rgba(54, 233, 97, 0.4);
     transform: translateY(-2px);
   }
 `;
@@ -644,7 +638,6 @@ const LandingPage = () => {
           <div className="nav-content">
             <div className="logo">
               <img src={logo} alt="Data Atlas" />
-              <span>Data Atlas</span>
             </div>
 
             <div className="nav-links">
