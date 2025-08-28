@@ -643,7 +643,6 @@ const LandingPage = () => {
             <div className="nav-links">
               <a href="#beneficios" onClick={(e) => { e.preventDefault(); scrollToSection('beneficios'); }}>Benefícios</a>
               <a href="#ferramentas" onClick={(e) => { e.preventDefault(); scrollToSection('ferramentas'); }}>Ferramentas</a>
-              <a href="#casos" onClick={(e) => { e.preventDefault(); scrollToSection('casos'); }}>Casos</a>
               <a href="#trial" onClick={(e) => { e.preventDefault(); scrollToSection('trial'); }}>Trial</a>
               <CTAButton onClick={handleStartTrial}>
                 Teste Grátis
