@@ -49,7 +49,6 @@ const SidebarLogo = styled.div`
   padding: 25px 20px;
   border-bottom: 1px solid rgba(0, 255, 170, 0.2);
   margin-bottom: 10px;
-  background: rgba(0, 255, 170, 0.05);
 `;
 
 const SidebarItem = styled.div`
