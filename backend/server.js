@@ -662,7 +662,7 @@ app.get('/api/instagram/analyze-run/:runId', checkUserAccess, async (req, res) =
 });
 
 // Instagram email scraping usando Apify - OTIMIZADO para 25s/21 resultados
-app.post('/api/instagram/scrape', checkUserAccess, async (req, res) => {
+app.post('/api/instagram/scrape', async (req, res) => {
   try {
     const { keyword } = req.body;
     
@@ -734,7 +734,7 @@ app.post('/api/instagram/scrape', checkUserAccess, async (req, res) => {
 });
 
 // Instagram scraping progress endpoint
-app.get('/api/instagram/progress/:runId', checkUserAccess, async (req, res) => {
+app.get('/api/instagram/progress/:runId', async (req, res) => {
   try {
     const { runId } = req.params;
 
@@ -1804,7 +1804,7 @@ function updateProgress(sessionId, data) {
 }
 
 // LinkedIn search using Ghost Genius API (multiple pages)
-app.post('/api/linkedin/search-bulk', checkUserAccess, async (req, res) => {
+app.post('/api/linkedin/search-bulk', async (req, res) => {
   try {
     const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
     
@@ -2051,7 +2051,7 @@ app.post('/api/linkedin/search-bulk', checkUserAccess, async (req, res) => {
 });
 
 // LinkedIn search using Ghost Genius API (single page)
-app.post('/api/linkedin/search', checkUserAccess, async (req, res) => {
+app.post('/api/linkedin/search', async (req, res) => {
   try {
     const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
     

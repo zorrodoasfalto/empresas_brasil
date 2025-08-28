@@ -61,16 +61,14 @@ class User {
           UPDATE users 
           SET 
             trial_start_date = COALESCE(trial_start_date, created_at),
-            trial_expires_at = COALESCE(trial_expires_at, created_at + INTERVAL '30 days')
-          WHERE trial_start_date IS NULL OR trial_expires_at IS NULL
+            trial_expires_at = NOW() + INTERVAL '30 days'
         `);
         
         await this.pool.query(`
           UPDATE simple_users 
           SET 
             trial_start_date = COALESCE(trial_start_date, created_at),
-            trial_expires_at = COALESCE(trial_expires_at, created_at + INTERVAL '30 days')
-          WHERE trial_start_date IS NULL OR trial_expires_at IS NULL
+            trial_expires_at = NOW() + INTERVAL '30 days'
         `);
         
         console.log('✅ Trial fields added/updated for existing users in BOTH tables');

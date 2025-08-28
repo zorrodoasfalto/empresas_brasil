@@ -330,8 +330,8 @@ const LinkedInScraper = () => {
     page: 1,
     detailed: true,
     bulk: true,
-    pages: 20,
-    companyLimit: 100
+    pages: 5,
+    companyLimit: 50
   });
   
   const [isRunning, setIsRunning] = useState(false);
