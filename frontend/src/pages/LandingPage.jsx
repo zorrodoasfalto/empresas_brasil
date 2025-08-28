@@ -57,7 +57,7 @@ const Header = styled.header`
       align-items: center;
       
       img {
-        height: 32px;
+        height: 48px;
         width: auto;
       }
       
