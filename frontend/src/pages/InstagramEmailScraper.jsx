@@ -887,7 +887,7 @@ const InstagramEmailScraper = () => {
               <div style={{ fontSize: '0.8rem', color: '#999', marginTop: '0.4rem' }}>
                 💡 <strong>Dica:</strong> Use termos específicos para melhores resultados.
                 <br />Ex: "clínica veterinária", "restaurante", "academia"
-                <br />⏱️ <strong>Exemplo:</strong> "clínica veterinária" = 21 resultados em ~25s
+                <br />⏱️ O scrapping do Instagram pode levar aproximadamente de 2 a 3 minutos
               </div>
             </FormGroup>
           </FormGrid>
