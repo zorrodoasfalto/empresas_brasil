@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
+import logo from '../assets/images/logo.png';
 // import SubscriptionGate from '../components/SubscriptionGate'; // REMOVIDO - ACESSO LIVRE
 // import { useSubscription } from '../hooks/useSubscription'; // REMOVIDO - ACESSO LIVRE
 
@@ -16,7 +17,7 @@ const Container = styled.div`
 `;
 
 const Sidebar = styled.div`
-  width: ${props => props.$isOpen ? '280px' : '60px'};
+  width: 280px;
   min-height: 100vh;
   background: 
     linear-gradient(135deg, rgba(0, 255, 170, 0.1) 0%, rgba(0, 136, 204, 0.1) 100%),
@@ -33,31 +34,6 @@ const Sidebar = styled.div`
   border: 1px solid rgba(0, 255, 170, 0.3);
 `;
 
-const SidebarToggle = styled.button`
-  position: absolute;
-  top: 20px;
-  right: -15px;
-  background: linear-gradient(135deg, #00ffaa, #00ccff);
-  border: 2px solid #00ffaa;
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  color: #000;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-  z-index: 100000 !important;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 15px rgba(0, 255, 170, 0.8);
-  
-  &:hover {
-    transform: scale(1.2);
-    box-shadow: 0 0 20px rgba(0, 255, 170, 1);
-  }
-`;
 
 const SidebarContent = styled.div`
   padding: 80px 0 20px 0;
@@ -94,7 +70,7 @@ const SidebarItem = styled.div`
   }
   
   .text {
-    opacity: ${props => props.$sidebarOpen ? '1' : '0'};
+    opacity: 1;
     transition: opacity 0.3s ease;
     white-space: nowrap;
   }
@@ -102,7 +78,7 @@ const SidebarItem = styled.div`
 
 const MainContent = styled.div`
   flex: 1;
-  margin-left: ${props => props.$sidebarOpen ? '280px' : '60px'};
+  margin-left: 280px;
   transition: margin-left 0.3s ease;
   min-height: 100vh;
 `;
@@ -175,6 +151,13 @@ const Header = styled.header`
   position: relative;
 `;
 
+const HeaderLeft = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const Title = styled.h1`
   font-family: 'Orbitron', monospace;
   font-size: 1.8rem;
@@ -189,6 +172,18 @@ const Title = styled.h1`
     color: #00ccff;
     text-shadow: 0 0 15px rgba(0, 204, 255, 0.7);
     transform: translateY(-1px);
+  }
+`;
+
+const Logo = styled.img`
+  height: 50px;
+  width: auto;
+  filter: drop-shadow(0 0 10px rgba(0, 255, 170, 0.3));
+  transition: all 0.3s ease;
+  
+  &:hover {
+    filter: drop-shadow(0 0 15px rgba(0, 255, 170, 0.5));
+    transform: scale(1.05);
   }
 `;
 
@@ -1112,7 +1107,7 @@ const Dashboard = () => {
   };
 
   const [expandedRepresentantes, setExpandedRepresentantes] = useState({});
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -1185,9 +1180,6 @@ const Dashboard = () => {
     }
   };
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
 
   const handlePasswordChange = (e) => {
     setPasswordForm(prev => ({
@@ -1244,13 +1236,10 @@ const Dashboard = () => {
 
   return (
     <Container>
-      <Sidebar $isOpen={sidebarOpen}>
-        <SidebarToggle onClick={toggleSidebar}>
-          {sidebarOpen ? '←' : '→'}
-        </SidebarToggle>
+      <Sidebar>
         <SidebarContent>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen} 
+            
             className="active"
             onClick={() => setActiveModal(null)}
           >
@@ -1258,56 +1247,48 @@ const Dashboard = () => {
             <span className="text">Empresas Brasil</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/google-maps-scraper'}
           >
             <span className="icon">📍</span>
             <span className="text">Google Maps</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/linkedin-scraper'}
           >
             <span className="icon">🔵</span>
             <span className="text">LinkedIn</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/instagram'}
           >
             <span className="icon">📸</span>
             <span className="text">Instagram</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/leads'}
           >
             <span className="icon">🗃️</span>
             <span className="text">Leads</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/kanban'}
           >
             <span className="icon">📋</span>
             <span className="text">Kanban</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => window.location.href = '/funil'}
           >
             <span className="icon">🌪️</span>
             <span className="text">Funil</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={() => setActiveModal('settings')}
           >
             <span className="icon">⚙️</span>
             <span className="text">Configurações</span>
           </SidebarItem>
           <SidebarItem 
-            $sidebarOpen={sidebarOpen}
             onClick={logout}
           >
             <span className="icon">🚪</span>
@@ -1316,9 +1297,12 @@ const Dashboard = () => {
         </SidebarContent>
       </Sidebar>
 
-      <MainContent $sidebarOpen={sidebarOpen}>
+      <MainContent>
         <Header>
-          <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
+          <HeaderLeft>
+            <Logo src={logo} alt="Logo" />
+            <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
+          </HeaderLeft>
           <UserInfo>
             <span>Olá, {user?.email}</span>
             <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
