@@ -3085,6 +3085,27 @@ app.post('/api/companies/count', async (req, res) => {
 // Serve React frontend in production
 const path = require('path');
 if (process.env.NODE_ENV === 'production') {
+  // Explicitly serve favicon files first (before catch-all static)
+  app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/favicon.ico'));
+  });
+  
+  app.get('/favicon-96x96.png', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/favicon-96x96.png'));
+  });
+  
+  app.get('/favicon.svg', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/favicon.svg'));
+  });
+  
+  app.get('/apple-touch-icon.png', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/apple-touch-icon.png'));
+  });
+  
+  app.get('/site.webmanifest', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/site.webmanifest'));
+  });
+  
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
   app.get('*', (req, res) => {
