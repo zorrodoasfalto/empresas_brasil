@@ -1,7 +1,8 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { ArrowLeft, Database } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import logo from '../assets/images/logo.png';
 
 const Container = styled.div`
   min-height: 100vh;
@@ -35,9 +36,9 @@ const Header = styled.header`
   left: 0;
   right: 0;
   z-index: 100;
-  backdrop-filter: blur(20px);
-  background: rgba(15, 15, 35, 0.8);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+  backdrop-filter: blur(12px);
+  background: rgba(10, 48, 66, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
 const HeaderContent = styled.div`
@@ -50,15 +51,14 @@ const HeaderContent = styled.div`
 `;
 
 const Logo = styled.div`
-  font-size: 1.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6, #06b6d4);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   cursor: pointer;
+  
+  img {
+    height: 48px;
+    width: auto;
+  }
 `;
 
 const BackButton = styled.button`
@@ -173,8 +173,7 @@ const InstitutionalLayout = ({ title, children }) => {
       <Header>
         <HeaderContent>
           <Logo onClick={() => navigate('/')}>
-            <Database size={28} />
-            Empresas Brasil
+            <img src={logo} alt="Data Atlas" />
           </Logo>
           <BackButton onClick={() => navigate('/')}>
             <ArrowLeft size={18} />

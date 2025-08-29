@@ -3,9 +3,9 @@ import InstitutionalLayout from '../components/InstitutionalLayout';
 
 const AboutUs = () => {
   return (
-    <InstitutionalLayout title="Sobre Nós">
+    <InstitutionalLayout title="Sobre o Data Atlas">
       <p>
-        A <strong>Empresas Brasil</strong> é a plataforma líder em consulta de dados empresariais 
+        O <strong>Data Atlas</strong> é a plataforma líder em consulta de dados empresariais 
         no Brasil, oferecendo acesso à maior base de informações corporativas do país com mais de 
         <strong> 66 milhões de empresas</strong> cadastradas.
       </p>
@@ -54,8 +54,8 @@ const AboutUs = () => {
       </p>
 
       <p>
-        <strong>Empresas Brasil</strong> - Conectando você ao mercado corporativo brasileiro 
-        com precisão, velocidade and confiabilidade.
+        <strong>Data Atlas</strong> - Conectando você ao mercado corporativo brasileiro 
+        com precisão, velocidade e confiabilidade.
       </p>
     </InstitutionalLayout>
   );
