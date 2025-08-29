@@ -274,13 +274,12 @@ const FeatureList = styled.ul`
 `;
 
 const CheckoutCard = styled.div`
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  padding: 2.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  overflow: visible;
   
   &::before {
     content: '';
@@ -296,26 +295,28 @@ const CheckoutCard = styled.div`
 const CheckoutTitle = styled.h2`
   font-size: 1.5rem;
   font-weight: 700;
-  color: white;
+  color: #0a3042;
   margin-bottom: 1.5rem;
+  text-align: center;
 `;
 
 const SecurityBadge = styled.div`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #64748b;
   font-size: 0.9rem;
-  margin-bottom: 1.5rem;
 `;
 
 const CheckoutButton = styled.button`
   width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
   background: linear-gradient(135deg, #3b82f6, #1e40af);
   color: white;
   padding: 1rem 2rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 9999px;
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
@@ -324,13 +325,11 @@ const CheckoutButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
-  margin-bottom: 1rem;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 15px 35px rgba(59, 130, 246, 0.4);
     background: linear-gradient(135deg, #1e40af, #3b82f6);
   }
 
@@ -541,46 +540,46 @@ const Checkout = () => {
             ))}
           </PlanSelector>
 
-          <CheckoutCard>
-            <CheckoutTitle>Finalizar Assinatura</CheckoutTitle>
-            
-            <SecurityBadge>
+          {error && <ErrorMessage style={{ textAlign: 'center', marginBottom: '1.5rem' }}>{error}</ErrorMessage>}
+
+          <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+            <SecurityBadge style={{ justifyContent: 'center', color: '#64748b', marginBottom: '1rem' }}>
               <Shield size={16} />
               Pagamento seguro processado pelo Stripe
             </SecurityBadge>
+          </div>
 
-            {error && <ErrorMessage>{error}</ErrorMessage>}
+          <CheckoutButton 
+            onClick={handleCheckout}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <LoadingSpinner />
+                Processando...
+              </>
+            ) : (
+              <>
+                <CreditCard size={20} />
+                Pagar com Cartão
+              </>
+            )}
+          </CheckoutButton>
 
-            <CheckoutButton 
-              onClick={handleCheckout}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <LoadingSpinner />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <CreditCard size={20} />
-                  Pagar com Cartão
-                </>
-              )}
-            </CheckoutButton>
+          <InfoText style={{ textAlign: 'center', color: '#64748b', fontSize: '0.9rem', marginTop: '1rem' }}>
+            • Cobrança recorrente mensal de R$ {getDiscountedPrice(PLANS[selectedPlan].price)}<br/>
+            • {affiliateCode && '10% de desconto aplicado • '}
+            • Primeiro mês com acesso imediato<br/>
+            • Cancelamento a qualquer momento<br/>
+            • Sem taxa de adesão ou multa
+          </InfoText>
 
-            <InfoText>
-              • Cobrança recorrente mensal de R$ {getDiscountedPrice(PLANS[selectedPlan].price)}<br/>
-              • {affiliateCode && '10% de desconto aplicado • '}
-              • Primeiro mês com acesso imediato<br/>
-              • Cancelamento a qualquer momento<br/>
-              • Sem taxa de adesão ou multa
-            </InfoText>
-
-            <SecurityBadge>
+          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <SecurityBadge style={{ justifyContent: 'center', color: '#64748b', fontSize: '0.85rem' }}>
               <Zap size={16} />
               Ativação imediata após confirmação do pagamento
             </SecurityBadge>
-          </CheckoutCard>
+          </div>
         </NewCheckoutLayout>
       </Content>
     </Container>
