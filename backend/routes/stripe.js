@@ -46,7 +46,7 @@ const PLANS = {
   },
   max: {
     name: 'Plano Max',
-    priceId: 'price_1S1Y1cP405WDxxG8QdUJvjuq',
+    priceId: null, // Usar price_data temporariamente até obter price ID ativo
     price: 24700, // R$ 247.00 in cents
     interval: 'month'
   }
@@ -132,14 +132,37 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
       }
     });
 
+    // Create line item - handle Max plan with price_data
+    let lineItem;
+    if (!plan.priceId || planType === 'max') {
+      // Use price_data for Max plan (temporary until new active price ID is created)
+      lineItem = {
+        price_data: {
+          currency: 'brl',
+          product_data: {
+            name: plan.name,
+            description: 'Acesso completo à plataforma - Consultas ilimitadas de empresas brasileiras'
+          },
+          unit_amount: plan.price,
+          recurring: {
+            interval: 'month'
+          }
+        },
+        quantity: 1,
+      };
+    } else {
+      // Use existing priceId
+      lineItem = {
+        price: plan.priceId,
+        quantity: 1,
+      };
+    }
+
     // Create checkout session
     const sessionData = {
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{
-        price: plan.priceId,
-        quantity: 1,
-      }],
+      line_items: [lineItem],
       customer: customer.id,
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:4001'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4001'}/checkout?canceled=true`,
