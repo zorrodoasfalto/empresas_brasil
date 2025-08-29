@@ -46,7 +46,7 @@ const PLANS = {
   },
   max: {
     name: 'Plano Max',
-    priceId: 'price_1S1YbpP405WDxxG8uBdbYVC4', // Novo price ID do produto prod_SxTYu4T3TrJvfw
+    priceId: null, // Forçar price_data para evitar problemas em produção
     price: 24700, // R$ 247.00 in cents
     interval: 'month'
   }
@@ -132,14 +132,16 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
       }
     });
 
-    // Create line item - use priceId if available, otherwise price_data
+    // Create line item - force price_data for Max plan to avoid production issues
     let lineItem;
-    if (plan.priceId) {
+    if (plan.priceId && planType !== 'max') {
+      // Use priceId for Pro and Premium
       lineItem = {
         price: plan.priceId,
         quantity: 1,
       };
     } else {
+      // Use price_data for Max plan or plans without priceId
       lineItem = {
         price_data: {
           currency: 'brl',
