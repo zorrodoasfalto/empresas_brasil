@@ -227,6 +227,7 @@ const PlanTitle = styled.h2`
   font-weight: 700;
   color: #0a3042;
   margin-bottom: 1rem;
+  margin-top: ${props => props.hasPopularBadge ? '2rem' : '0'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,9 +244,10 @@ const PriceDisplay = styled.div`
 `;
 
 const PriceSubtext = styled.div`
-  color: rgba(255, 255, 255, 0.7);
+  color: #64748b;
   font-size: 1rem;
   margin-bottom: 2rem;
+  text-align: center;
 `;
 
 const FeatureList = styled.ul`
@@ -254,29 +256,31 @@ const FeatureList = styled.ul`
   margin: 2rem 0;
 
   li {
-    color: rgba(255, 255, 255, 0.8);
+    color: #475569;
     padding: 0.5rem 0;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.5rem;
+    line-height: 1.5;
 
     &::before {
       content: '✓';
-      color: #00ff88;
+      color: #36e961;
       font-weight: bold;
       font-size: 1.2rem;
+      margin-top: 0.1rem;
     }
   }
 `;
 
 const CheckoutCard = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 2.5rem;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   
   &::before {
     content: '';
@@ -509,7 +513,10 @@ const Checkout = () => {
                 {planKey === 'premium' && <PopularBadge>🔥 Mais Popular</PopularBadge>}
                 {selectedPlan === planKey && <SelectedBadge>Selecionado</SelectedBadge>}
                 
-                <PlanTitle style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+                <PlanTitle 
+                  style={{ fontSize: '1.2rem', marginBottom: '1rem' }}
+                  hasPopularBadge={planKey === 'premium'}
+                >
                   {plan.name}
                 </PlanTitle>
                 
@@ -518,7 +525,7 @@ const Checkout = () => {
                 </PriceDisplay>
                 
                 {affiliateCode && (
-                  <div style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', textDecoration: 'line-through' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '0.9rem', textDecoration: 'line-through', textAlign: 'center' }}>
                     De R$ {plan.price.toFixed(2)}
                   </div>
                 )}
