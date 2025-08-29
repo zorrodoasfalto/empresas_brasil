@@ -216,23 +216,6 @@ const LogoutButton = styled.button`
   }
 `;
 
-const UpgradeButton = styled.button`
-  background: linear-gradient(135deg, #3b82f6, #1e40af);
-  border: none;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: linear-gradient(135deg, #1e40af, #3b82f6);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
-`;
-
 const SettingsButton = styled.button`
   background: rgba(255, 255, 255, 0.1);
   color: #00ffaa;
@@ -251,6 +234,23 @@ const SettingsButton = styled.button`
     background: rgba(0, 255, 170, 0.1);
     transform: rotate(90deg);
     border-color: rgba(0, 255, 170, 0.5);
+  }
+`;
+
+const UpgradeButton = styled.button`
+  background: linear-gradient(135deg, #3b82f6, #1e40af);
+  border: none;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(135deg, #1e40af, #3b82f6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   }
 `;
 
@@ -714,6 +714,17 @@ const Dashboard = () => {
     naturezaJuridica: []
   });
 
+  // Estados para sistema de afiliados
+  const [affiliateData, setAffiliateData] = useState({
+    code: null,
+    totalReferrals: 0,
+    totalCommissions: 0,
+    monthlyCommissions: 0,
+    pendingWithdrawals: 0
+  });
+  const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const token = localStorage.getItem('token');
+
   // Funções para sistema de afiliados
   const loadAffiliateData = async () => {
     try {
@@ -754,12 +765,12 @@ const Dashboard = () => {
     loadFiltersData();
   }, []);
 
-  // Carregar dados de afiliados quando a aba for aberta
+  // Carregar dados de afiliados quando o modal de configurações for aberto
   useEffect(() => {
-    if (activeModal === 'settings' && settingsTab === 'affiliate' && token) {
+    if (activeModal === 'settings' && token) {
       loadAffiliateData();
     }
-  }, [activeModal, settingsTab, token]);
+  }, [activeModal, token]);
 
   const loadFiltersData = async () => {
     try {
@@ -1184,18 +1195,8 @@ const Dashboard = () => {
     newPassword: '',
     confirmPassword: ''
   });
-
-  // Estados para sistema de afiliados
-  const [affiliateData, setAffiliateData] = useState({
-    code: null,
-    totalReferrals: 0,
-    totalCommissions: 0,
-    monthlyCommissions: 0,
-    pendingWithdrawals: 0
-  });
-  const [affiliateLoading, setAffiliateLoading] = useState(false);
-  const [settingsTab, setSettingsTab] = useState('profile'); // profile, affiliate
-  const token = localStorage.getItem('token');
+  
+  const [settingsTab, setSettingsTab] = useState('profile');
   // Removed complex offset system - using search modes instead
   
   const toggleRepresentantes = (empresaIndex) => {
@@ -1986,325 +1987,202 @@ const Dashboard = () => {
       {/* Modal de configurações */}
       {activeModal === 'settings' && (
         <Modal onClick={() => setActiveModal(null)}>
-          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
             <ModalHeader>
               <h3>⚙️ Configurações da Conta</h3>
               <CloseButton onClick={() => setActiveModal(null)}>×</CloseButton>
             </ModalHeader>
             
-            {/* Abas */}
-            <div style={{ 
-              display: 'flex', 
-              borderBottom: '1px solid rgba(255,255,255,0.1)', 
-              marginBottom: '1.5rem' 
-            }}>
-              {[
-                { id: 'profile', icon: '👤', label: 'Perfil' },
-                { id: 'password', icon: '🔐', label: 'Senha' },
-                { id: 'affiliate', icon: '👥', label: 'Afiliados' }
-              ].map(tab => (
+            <div style={{ color: '#e0e0e0' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Label>Email</Label>
+                <div style={{ 
+                  padding: '0.75rem', 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '6px', 
+                  border: '1px solid rgba(255,255,255,0.1)' 
+                }}>
+                  {user?.email}
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Label>Nome</Label>
+                <div style={{ 
+                  padding: '0.75rem', 
+                  background: 'rgba(0,0,0,0.2)', 
+                  borderRadius: '6px', 
+                  border: '1px solid rgba(255,255,255,0.1)' 
+                }}>
+                  {user?.firstName || 'Usuário'}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
                 <button
-                  key={tab.id}
-                  onClick={() => setSettingsTab(tab.id)}
+                  onClick={() => setActiveModal('password')}
                   style={{
-                    background: settingsTab === tab.id 
-                      ? 'linear-gradient(135deg, #00ffaa, #00ccff)' 
-                      : 'transparent',
-                    color: settingsTab === tab.id ? '#000' : '#e0e0e0',
+                    background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
                     border: 'none',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '6px 6px 0 0',
+                    color: '#fff',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '6px',
                     cursor: 'pointer',
-                    fontWeight: settingsTab === tab.id ? 'bold' : 'normal',
+                    fontWeight: 'bold',
+                    width: '100%',
+                    fontSize: '16px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
-                    flex: 1,
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    gap: '10px'
                   }}
                 >
-                  {tab.icon} {tab.label}
+                  🔐 Alterar Senha
                 </button>
-              ))}
-            </div>
+              </div>
 
-            <div style={{ color: '#e0e0e0' }}>
-              {/* Aba Perfil */}
-              {settingsTab === 'profile' && (
-                <div>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>Email</Label>
-                    <div style={{ 
-                      padding: '0.75rem', 
-                      background: 'rgba(0,0,0,0.2)', 
-                      borderRadius: '6px', 
-                      border: '1px solid rgba(255,255,255,0.1)' 
-                    }}>
-                      {user?.email}
+              <div style={{ 
+                marginBottom: '1.5rem',
+                background: 'rgba(0, 255, 170, 0.1)', 
+                border: '1px solid rgba(0, 255, 170, 0.3)', 
+                borderRadius: '8px', 
+                padding: '1rem'
+              }}>
+                <h4 style={{ color: '#00ffaa', margin: '0 0 1rem 0' }}>👥 Sistema de Afiliados</h4>
+                
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr', 
+                  gap: '1rem', 
+                  marginBottom: '1rem' 
+                }}>
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.3)', 
+                    padding: '0.8rem', 
+                    borderRadius: '6px', 
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                      {affiliateData.totalReferrals}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                      Indicações
                     </div>
                   </div>
                   
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>Nome</Label>
-                    <div style={{ 
-                      padding: '0.75rem', 
-                      background: 'rgba(0,0,0,0.2)', 
-                      borderRadius: '6px', 
-                      border: '1px solid rgba(255,255,255,0.1)' 
-                    }}>
-                      {user?.firstName || user?.name || 'Usuário'}
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.3)', 
+                    padding: '0.8rem', 
+                    borderRadius: '6px', 
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                      R$ {(affiliateData.totalCommissions / 100).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                      Comissões
                     </div>
                   </div>
+                </div>
 
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>ID do Usuário</Label>
+                {affiliateData.code && (
+                  <div style={{ marginBottom: '1rem' }}>
                     <div style={{ 
-                      padding: '0.75rem', 
-                      background: 'rgba(0,0,0,0.2)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      background: 'rgba(0,0,0,0.3)', 
                       borderRadius: '6px', 
                       border: '1px solid rgba(255,255,255,0.1)',
-                      fontFamily: 'monospace'
+                      marginBottom: '0.5rem'
                     }}>
-                      #{user?.id}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Aba Alterar Senha */}
-              {settingsTab === 'password' && (
-                <div>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>Senha Atual</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm(prev => ({
-                        ...prev,
-                        currentPassword: e.target.value
-                      }))}
-                      placeholder="Digite sua senha atual"
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>Nova Senha</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm(prev => ({
-                        ...prev,
-                        newPassword: e.target.value
-                      }))}
-                      placeholder="Digite a nova senha"
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <Label>Confirmar Nova Senha</Label>
-                    <Input
-                      type="password"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm(prev => ({
-                        ...prev,
-                        confirmPassword: e.target.value
-                      }))}
-                      placeholder="Confirme a nova senha"
-                    />
-                  </div>
-
-                  <button
-                    onClick={() => {/* handlePasswordChange */}}
-                    style={{
-                      background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                      width: '100%',
-                      fontSize: '16px'
-                    }}
-                  >
-                    🔐 Alterar Senha
-                  </button>
-                </div>
-              )}
-
-              {/* Aba Sistema de Afiliados */}
-              {settingsTab === 'affiliate' && (
-                <div>
-                  <div style={{ 
-                    background: 'rgba(0, 255, 170, 0.1)', 
-                    border: '1px solid rgba(0, 255, 170, 0.3)', 
-                    borderRadius: '8px', 
-                    padding: '1rem', 
-                    marginBottom: '1.5rem' 
-                  }}>
-                    <h4 style={{ color: '#00ffaa', margin: '0 0 0.5rem 0' }}>Como funciona:</h4>
-                    <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: 1.6 }}>
-                      <li>Compartilhe seu link de afiliado e ganhe <strong>15% de comissão</strong> recorrente</li>
-                      <li>Seus indicados ganham <strong>10% de desconto</strong> permanente</li>
-                      <li>Comissões são pagas mensalmente conforme as assinaturas ativas</li>
-                    </ul>
-                  </div>
-
-                  {/* Estatísticas */}
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr', 
-                    gap: '1rem', 
-                    marginBottom: '1.5rem' 
-                  }}>
-                    <div style={{ 
-                      background: 'rgba(0,0,0,0.3)', 
-                      padding: '1rem', 
-                      borderRadius: '8px', 
-                      textAlign: 'center',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00ffaa' }}>
-                        {affiliateData.totalReferrals}
+                      <div style={{ 
+                        flex: 1, 
+                        padding: '0.5rem', 
+                        fontFamily: 'monospace', 
+                        color: '#00ffaa', 
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem'
+                      }}>
+                        {affiliateData.code}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                        Indicações
-                      </div>
+                      <button
+                        onClick={copyAffiliateCode}
+                        style={{
+                          background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                          color: '#000',
+                          border: 'none',
+                          padding: '0.3rem 0.6rem',
+                          margin: '0.2rem',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        📋
+                      </button>
                     </div>
                     
-                    <div style={{ 
-                      background: 'rgba(0,0,0,0.3)', 
-                      padding: '1rem', 
-                      borderRadius: '8px', 
-                      textAlign: 'center',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00ffaa' }}>
-                        R$ {(affiliateData.totalCommissions / 100).toFixed(2)}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
-                        Comissões Totais
-                      </div>
-                    </div>
+                    <button
+                      onClick={copyAffiliateUrl}
+                      style={{
+                        background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        width: '100%',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      🔗 Copiar Link de Indicação
+                    </button>
                   </div>
+                )}
 
-                  {/* Código e Link */}
-                  {affiliateData.code && (
-                    <div>
-                      <div style={{ marginBottom: '1rem' }}>
-                        <Label>Seu Código de Afiliado</Label>
-                        <div style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          background: 'rgba(0,0,0,0.3)', 
-                          borderRadius: '6px', 
-                          border: '1px solid rgba(255,255,255,0.1)' 
-                        }}>
-                          <div style={{ 
-                            flex: 1, 
-                            padding: '0.75rem', 
-                            fontFamily: 'monospace', 
-                            color: '#00ffaa', 
-                            fontWeight: 'bold',
-                            letterSpacing: '2px',
-                            fontSize: '1.1rem'
-                          }}>
-                            {affiliateData.code}
-                          </div>
-                          <button
-                            onClick={copyAffiliateCode}
-                            style={{
-                              background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
-                              color: '#000',
-                              border: 'none',
-                              padding: '0.5rem 1rem',
-                              margin: '0.25rem',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontWeight: 'bold',
-                              fontSize: '0.8rem'
-                            }}
-                          >
-                            📋 Copiar
-                          </button>
-                        </div>
-                      </div>
+                <button
+                  onClick={loadAffiliateData}
+                  disabled={affiliateLoading}
+                  style={{
+                    background: affiliateLoading ? 'rgba(255,255,255,0.1)' : 'rgba(0, 255, 170, 0.2)',
+                    color: affiliateLoading ? 'rgba(255,255,255,0.5)' : '#00ffaa',
+                    border: '1px solid rgba(0, 255, 170, 0.3)',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    cursor: affiliateLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 'bold',
+                    width: '100%',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  {affiliateLoading ? '⏳ Carregando...' : '🔄 Atualizar Dados'}
+                </button>
 
-                      <div style={{ marginBottom: '1rem' }}>
-                        <Label>Link de Indicação</Label>
-                        <div style={{ 
-                          background: 'rgba(0,0,0,0.2)', 
-                          padding: '0.5rem', 
-                          borderRadius: '6px', 
-                          fontFamily: 'monospace', 
-                          fontSize: '0.8rem', 
-                          wordBreak: 'break-all',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          marginBottom: '0.5rem'
-                        }}>
-                          {window.location.origin}/checkout?ref={affiliateData.code}
-                        </div>
-                        <button
-                          onClick={copyAffiliateUrl}
-                          style={{
-                            background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            width: '100%'
-                          }}
-                        >
-                          🔗 Copiar Link Completo
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {!affiliateData.code && !affiliateLoading && (
-                    <div style={{ 
-                      background: 'rgba(59, 130, 246, 0.1)', 
-                      border: '1px solid rgba(59, 130, 246, 0.3)', 
-                      borderRadius: '8px', 
-                      padding: '1rem', 
-                      textAlign: 'center' 
-                    }}>
-                      Seu código de afiliado será gerado automaticamente quando você fizer sua primeira indicação.
-                    </div>
-                  )}
-
-                  <button
-                    onClick={loadAffiliateData}
-                    disabled={affiliateLoading}
-                    style={{
-                      background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
-                      color: '#000',
-                      border: 'none',
-                      padding: '0.5rem 1rem',
-                      borderRadius: '6px',
-                      cursor: affiliateLoading ? 'not-allowed' : 'pointer',
-                      fontWeight: 'bold',
-                      opacity: affiliateLoading ? 0.6 : 1,
-                      marginTop: '1rem'
-                    }}
-                  >
-                    {affiliateLoading ? '⏳ Carregando...' : '🔄 Atualizar Dados'}
-                  </button>
+                <div style={{ 
+                  fontSize: '0.8rem', 
+                  color: 'rgba(255,255,255,0.7)', 
+                  marginTop: '0.5rem',
+                  textAlign: 'center'
+                }}>
+                  Ganhe 15% de comissão • Indicados ganham 10% de desconto
                 </div>
-              )}
+              </div>
               
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={() => setActiveModal(null)}
                   style={{
-                    background: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: '#e0e0e0',
+                    background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                    border: 'none',
+                    color: '#000',
                     padding: '0.75rem 1.5rem',
                     borderRadius: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontWeight: 'bold'
                   }}
                 >
                   Fechar
