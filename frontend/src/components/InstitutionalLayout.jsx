@@ -6,48 +6,27 @@ import logo from '../assets/images/logo.png';
 
 const Container = styled.div`
   min-height: 100vh;
-  background: linear-gradient(135deg, 
-    #0f0f23 0%, 
-    #1a1a2e 25%, 
-    #16213e 50%, 
-    #0f0f23 100%
-  );
-  position: relative;
-  overflow-x: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: 
-      radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.1) 0%, transparent 50%),
-      radial-gradient(circle at 40% 40%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
-    pointer-events: none;
-  }
+  background: #ffffff;
+  font-family: 'Inter', 'Roboto', system-ui, sans-serif;
 `;
 
 const Header = styled.header`
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  backdrop-filter: blur(12px);
+  z-index: 50;
   background: rgba(10, 48, 66, 0.95);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
-const HeaderContent = styled.div`
-  max-width: 1200px;
+const HeaderContent = styled.nav`
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 1rem 2rem;
+  padding: 0 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  height: 64px;
 `;
 
 const Logo = styled.div`
@@ -62,106 +41,117 @@ const Logo = styled.div`
 `;
 
 const BackButton = styled.button`
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  color: white;
+  background: linear-gradient(135deg, #36e961, #64ee85);
+  color: #0a3042;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-
+  font-size: 0.875rem;
+  
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(54, 233, 97, 0.4);
+    transform: translateY(-2px);
   }
 `;
 
 const Content = styled.main`
-  max-width: 800px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 8rem 2rem 4rem;
-  position: relative;
-  z-index: 1;
-
-  @media (max-width: 768px) {
-    padding: 6rem 1rem 2rem;
+  padding: 4rem 1rem;
+  
+  @media (min-width: 640px) {
+    padding: 4rem 1.5rem;
+  }
+  
+  @media (min-width: 1024px) {
+    padding: 4rem 2rem;
   }
 `;
 
 const Title = styled.h1`
   font-size: 2.5rem;
-  font-weight: 700;
+  font-weight: bold;
+  color: #0a3042;
   margin-bottom: 2rem;
-  background: linear-gradient(135deg, #ffffff, #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   line-height: 1.2;
-
-  @media (max-width: 768px) {
-    font-size: 2rem;
+  
+  @media (min-width: 640px) {
+    font-size: 3rem;
+  }
+  
+  @media (min-width: 1024px) {
+    font-size: 3.75rem;
   }
 `;
 
 const ContentCard = styled.div`
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 3rem;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
-  }
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
   h2 {
-    color: #3b82f6;
-    font-size: 1.5rem;
-    font-weight: 600;
+    color: #0a3042;
+    font-size: 1.875rem;
+    font-weight: bold;
     margin: 2rem 0 1rem 0;
+    
+    &:first-child {
+      margin-top: 0;
+    }
   }
 
   h3 {
-    color: #06b6d4;
-    font-size: 1.25rem;
+    color: #36e961;
+    font-size: 1.5rem;
     font-weight: 600;
     margin: 1.5rem 0 1rem 0;
   }
 
   p {
-    color: rgba(255, 255, 255, 0.8);
+    color: #6b7280;
     line-height: 1.7;
     margin-bottom: 1rem;
+    font-size: 1.125rem;
   }
 
   ul {
-    margin: 1rem 0 1rem 2rem;
+    margin: 1rem 0 1rem 1.5rem;
     
     li {
-      color: rgba(255, 255, 255, 0.8);
+      color: #6b7280;
       line-height: 1.6;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-size: 1.125rem;
     }
   }
 
   strong {
-    color: white;
+    color: #0a3042;
     font-weight: 600;
   }
 
   @media (max-width: 768px) {
     padding: 2rem;
+    
+    h2 {
+      font-size: 1.5rem;
+    }
+    
+    h3 {
+      font-size: 1.25rem;
+    }
+    
+    p, li {
+      font-size: 1rem;
+    }
   }
 `;
 
