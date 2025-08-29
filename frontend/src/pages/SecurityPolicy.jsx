@@ -7,7 +7,7 @@ const SecurityPolicy = () => {
       <p><strong>Última atualização:</strong> Janeiro de 2025</p>
       
       <p>
-        A <strong>Empresas Brasil</strong> leva a segurança muito a sério. Esta página detalha 
+        O <strong>Data Atlas</strong> leva a segurança muito a sério. Esta página detalha 
         nossas medidas de proteção e boas práticas implementadas para garantir a integridade 
         dos dados e a confiabilidade de nossos serviços.
       </p>
@@ -187,8 +187,8 @@ const SecurityPolicy = () => {
         Para reportar vulnerabilidades ou questões de segurança:
       </p>
       <ul>
-        <li><strong>E-mail:</strong> security@empresasbrasil.com</li>
-        <li><strong>Telefone 24/7:</strong> (11) 99999-9999</li>
+        <li><strong>E-mail:</strong> contato@dataatlas.com.br</li>
+        <li><strong>Telefone 24/7:</strong> (19) 992753157</li>
         <li><strong>Bug Bounty:</strong> Programa de recompensas disponível</li>
         <li><strong>Criptografia:</strong> Chave PGP disponível mediante solicitação</li>
       </ul>
