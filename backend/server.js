@@ -2811,8 +2811,8 @@ app.post('/api/companies/filtered', async (req, res) => {
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);
       
-      // Optimized socios query with all fields - performance focused
-      const sociosQuery = companyLimit >= 25000 ? `
+      // QUERY ULTRA-OTIMIZADA: Sempre usa ROW_NUMBER para limitar sócios por empresa
+      const sociosQuery = `
         SELECT 
           cnpj_basico,
           identificador_de_socio,
@@ -2824,43 +2824,35 @@ app.post('/api/companies/filtered', async (req, res) => {
           representante_legal,
           nome_representante,
           qualificacao_representante_legal,
-          faixa_etaria
-        FROM socios s
-        WHERE cnpj_basico = ANY($1)
-          AND nome_socio IS NOT NULL
-          AND nome_socio != ''
-        ORDER BY cnpj_basico, identificador_de_socio
-        LIMIT $2
-      ` : `
-        SELECT DISTINCT ON (socios.cnpj_basico, socios.identificador_de_socio)
-          socios.cnpj_basico,
-          socios.identificador_de_socio,
-          socios.nome_socio,
-          socios.cnpj_cpf_socio,
-          socios.qualificacao_socio,
-          socios.data_entrada_sociedade,
-          socios.pais,
-          socios.representante_legal,
-          socios.nome_representante,
-          socios.qualificacao_representante_legal,
-          socios.faixa_etaria
+          faixa_etaria,
+          rn
         FROM (
-          SELECT *, ROW_NUMBER() OVER (PARTITION BY cnpj_basico ORDER BY identificador_de_socio) as rn
+          SELECT 
+            cnpj_basico,
+            identificador_de_socio,
+            nome_socio,
+            cnpj_cpf_socio,
+            qualificacao_socio,
+            data_entrada_sociedade,
+            pais,
+            representante_legal,
+            nome_representante,
+            qualificacao_representante_legal,
+            faixa_etaria,
+            ROW_NUMBER() OVER (PARTITION BY cnpj_basico ORDER BY identificador_de_socio) as rn
           FROM socios
           WHERE cnpj_basico = ANY($1)
-          AND nome_socio IS NOT NULL
-          AND nome_socio != ''
-        ) socios
+            AND nome_socio IS NOT NULL
+            AND nome_socio != ''
+        ) ranked_socios
         WHERE rn <= $2
-        ORDER BY socios.cnpj_basico, socios.identificador_de_socio
+        ORDER BY cnpj_basico, identificador_de_socio
         LIMIT $3
       `;
       
       try {
-        // Different parameters for optimized vs full query
-        const queryParams = companyLimit >= 50000 
-          ? [cnpjBasicos, totalSociosLimit] // Simple query: only array and limit
-          : [cnpjBasicos, maxSociosPerCompany, totalSociosLimit]; // Full query: array, per-company limit, total limit
+        // Agora sempre usa os mesmos parâmetros: CNPJ array, max sócios por empresa, total limit
+        const queryParams = [cnpjBasicos, maxSociosPerCompany, totalSociosLimit];
           
         const sociosResult = await pool.query(sociosQuery, queryParams);
         console.log(`📊 Found ${sociosResult.rows.length} socios records`);
@@ -2871,19 +2863,8 @@ app.post('/api/companies/filtered', async (req, res) => {
             sociosData[socio.cnpj_basico] = [];
           }
           
-          // For 50k+ queries (simplified structure) vs normal queries (full structure)
-          const socioData = companyLimit >= 50000 ? {
-            identificador: socio.identificador_de_socio || 1,
-            nome: socio.nome_socio,
-            cpf_cnpj: null, // Not available in fast query
-            qualificacao: socio.qualificacao_socio,
-            data_entrada: null, // Not available in fast query
-            pais: null, // Not available in fast query
-            representante_legal_cpf: null,
-            representante_legal_nome: null,
-            representante_legal_qualificacao: null,
-            faixa_etaria: null
-          } : {
+          // Agora sempre usa estrutura completa (todos os campos disponíveis)
+          const socioData = {
             identificador: socio.identificador_de_socio,
             nome: socio.nome_socio,
             cpf_cnpj: socio.cnpj_cpf_socio,
