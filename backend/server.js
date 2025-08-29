@@ -1060,6 +1060,40 @@ app.post('/api/debug/create-victor', async (req, res) => {
   }
 });
 
+// DEBUG: Reset Victor's password (temporary)
+app.post('/api/debug/reset-victor', async (req, res) => {
+  try {
+    const email = 'victormagalhaesg@gmail.com';
+    const newPassword = 'victor123';
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    const result = await pool.query(
+      'UPDATE simple_users SET password = $1 WHERE email = $2 RETURNING id, email',
+      [hashedPassword, email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.json({
+        success: false,
+        message: 'Usuário Victor não encontrado'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Senha do Victor resetada para: victor123',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('❌ Error resetting Victor password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao resetar senha do Victor',
+      error: error.message
+    });
+  }
+});
+
 // DEBUG: List users (temporary)
 app.get('/api/debug/users', async (req, res) => {
   try {

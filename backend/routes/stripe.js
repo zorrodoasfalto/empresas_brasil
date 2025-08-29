@@ -46,8 +46,8 @@ const PLANS = {
   },
   max: {
     name: 'Plano Max',
-    priceId: process.env.STRIPE_PRICE_ID_MAX,
-    price: 19700, // R$ 197.00 in cents
+    priceId: 'price_1S1Y1cP405WDxxG8QdUJvjuq',
+    price: 24700, // R$ 247.00 in cents
     interval: 'month'
   }
 };
