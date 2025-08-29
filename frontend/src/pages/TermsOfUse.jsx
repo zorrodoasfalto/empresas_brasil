@@ -7,13 +7,13 @@ const TermsOfUse = () => {
       <p><strong>Última atualização:</strong> Janeiro de 2025</p>
       
       <p>
-        Estes Termos de Uso regem a utilização da plataforma <strong>Empresas Brasil</strong>. 
+        Estes Termos de Uso regem a utilização da plataforma <strong>Data Atlas</strong>. 
         Ao acessar e usar nossos serviços, você concorda com todos os termos aqui estabelecidos.
       </p>
 
       <h2>1. Definições</h2>
       <ul>
-        <li><strong>"Plataforma":</strong> Sistema Empresas Brasil e todos os seus serviços</li>
+        <li><strong>"Plataforma":</strong> Sistema Data Atlas e todos os seus serviços</li>
         <li><strong>"Usuário":</strong> Pessoa física ou jurídica que acessa a plataforma</li>
         <li><strong>"Dados":</strong> Informações empresariais disponibilizadas na plataforma</li>
         <li><strong>"Serviços":</strong> Consultas, filtros, exportações e demais funcionalidades</li>
@@ -96,7 +96,9 @@ const TermsOfUse = () => {
       
       <h3>7.1 Planos</h3>
       <ul>
-        <li>Plano Profissional: R$ 79,90/mês</li>
+        <li>Plano Pro: R$ 97,00/mês</li>
+        <li>Plano Premium: R$ 147,00/mês</li>
+        <li>Plano Max: R$ 197,00/mês</li>
         <li>Cobrança recorrente mensal</li>
         <li>Renovação automática</li>
       </ul>
@@ -113,7 +115,7 @@ const TermsOfUse = () => {
       
       <p>
         A plataforma, código, design e funcionalidades são de propriedade exclusiva 
-        da <strong>Empresas Brasil</strong>. Os dados empresariais são de domínio público, 
+        do <strong>Data Atlas</strong>. Os dados empresariais são de domínio público, 
         mas sua compilação e organização são protegidas por direitos autorais.
       </p>
 
@@ -129,7 +131,7 @@ const TermsOfUse = () => {
       <h2>10. Limitação de Responsabilidade</h2>
       
       <p>
-        A <strong>Empresas Brasil</strong> não se responsabiliza por:
+        O <strong>Data Atlas</strong> não se responsabiliza por:
       </p>
       <ul>
         <li>Exatidão de dados de fontes terceiras</li>
@@ -150,7 +152,7 @@ const TermsOfUse = () => {
       
       <p>
         Estes termos são regidos pela legislação brasileira. Eventuais disputas serão 
-        resolvidas no foro da Comarca de São Paulo, SP, com renúncia a qualquer outro 
+        resolvidas no foro da Comarca de Campinas, SP, com renúncia a qualquer outro 
         por mais privilegiado que seja.
       </p>
 
@@ -160,9 +162,9 @@ const TermsOfUse = () => {
         Para dúvidas sobre estes termos:
       </p>
       <ul>
-        <li><strong>E-mail:</strong> juridico@empresasbrasil.com</li>
-        <li><strong>Telefone:</strong> (11) 99999-9999</li>
-        <li><strong>Endereço:</strong> São Paulo, SP - Brasil</li>
+        <li><strong>E-mail:</strong> contato@dataatlas.com.br</li>
+        <li><strong>Telefone:</strong> (19) 992753157</li>
+        <li><strong>Endereço:</strong> Rua José de Campos Sáles 619, Campinas - SP</li>
       </ul>
     </InstitutionalLayout>
   );
