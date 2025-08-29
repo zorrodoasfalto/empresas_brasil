@@ -159,6 +159,12 @@ const Header = styled.header`
     0 4px 20px rgba(0, 255, 170, 0.1),
     0 0 0 1px rgba(0, 255, 170, 0.1);
   position: relative;
+  min-height: 80px;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+    flex-wrap: nowrap;
+  }
 `;
 
 
@@ -197,6 +203,16 @@ const UserInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-shrink: 0;
+  min-width: 0;
+  
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+    font-size: 0.9rem;
+  }
 `;
 
 const LogoutButton = styled.button`
