@@ -180,11 +180,12 @@ if (APIFY_API_KEY) {
 console.log('✅ Ghost Genius API configured for LinkedIn');
 
 // Import routes
-// const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
+const stripeRoutes = require('./routes/stripe');
 const authRoutes = require('./routes/auth');
 
 // Import database initialization
 const { createUsersTable } = require('./database/init-users');
+const { initStripeAndAffiliates } = require('./database/init-stripe-affiliates');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
@@ -253,7 +254,7 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
+app.use('/api/stripe', stripeRoutes);
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
 // DEBUG: Check if user ID 1 exists and generate token
@@ -3283,7 +3284,7 @@ app.post('/api/debug/login', async (req, res) => {
   }
 });
 
-Promise.all([initDB(), createUsersTable()]).then(() => {
+Promise.all([initDB(), createUsersTable(), initStripeAndAffiliates(pool)]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');

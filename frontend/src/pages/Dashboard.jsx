@@ -216,6 +216,27 @@ const LogoutButton = styled.button`
   }
 `;
 
+const SettingsButton = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  color: #00ffaa;
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+
+  &:hover {
+    background: rgba(0, 255, 170, 0.1);
+    transform: rotate(90deg);
+    border-color: rgba(0, 255, 170, 0.5);
+  }
+`;
+
 const UpgradeButton = styled.button`
   background: linear-gradient(135deg, #3b82f6, #1e40af);
   border: none;
@@ -693,9 +714,52 @@ const Dashboard = () => {
     naturezaJuridica: []
   });
 
+  // Funções para sistema de afiliados
+  const loadAffiliateData = async () => {
+    try {
+      setAffiliateLoading(true);
+      const response = await fetch('/api/stripe/affiliate-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAffiliateData(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de afiliado:', error);
+    } finally {
+      setAffiliateLoading(false);
+    }
+  };
+
+  const copyAffiliateCode = () => {
+    if (affiliateData.code) {
+      navigator.clipboard.writeText(affiliateData.code);
+      toast.success('Código copiado!');
+    }
+  };
+
+  const copyAffiliateUrl = () => {
+    if (affiliateData.code) {
+      const url = `${window.location.origin}/checkout?ref=${affiliateData.code}`;
+      navigator.clipboard.writeText(url);
+      toast.success('Link de afiliado copiado!');
+    }
+  };
+
   useEffect(() => {
     loadFiltersData();
   }, []);
+
+  // Carregar dados de afiliados quando o modal de configurações for aberto
+  useEffect(() => {
+    if (activeModal === 'settings' && token) {
+      loadAffiliateData();
+    }
+  }, [activeModal, token]);
 
   const loadFiltersData = async () => {
     try {
@@ -1120,6 +1184,17 @@ const Dashboard = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  
+  // Estados para sistema de afiliados
+  const [affiliateData, setAffiliateData] = useState({
+    code: null,
+    totalReferrals: 0,
+    totalCommissions: 0,
+    monthlyCommissions: 0,
+    pendingWithdrawals: 0
+  });
+  const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('profile');
   // Removed complex offset system - using search modes instead
   
   const toggleRepresentantes = (empresaIndex) => {
@@ -1312,6 +1387,9 @@ const Dashboard = () => {
           <UserInfo>
             <span>Olá, {user?.email}</span>
             <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
+            <SettingsButton onClick={() => setActiveModal('settings')} title="Configurações">
+              ⚙️
+            </SettingsButton>
             <LogoutButton onClick={logout}>Sair</LogoutButton>
           </UserInfo>
         </Header>
@@ -1959,6 +2037,137 @@ const Dashboard = () => {
                 >
                   🔐 Alterar Senha
                 </button>
+              </div>
+
+              <div style={{ 
+                marginBottom: '1.5rem',
+                background: 'rgba(0, 255, 170, 0.1)', 
+                border: '1px solid rgba(0, 255, 170, 0.3)', 
+                borderRadius: '8px', 
+                padding: '1rem'
+              }}>
+                <h4 style={{ color: '#00ffaa', margin: '0 0 1rem 0' }}>👥 Sistema de Afiliados</h4>
+                
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr', 
+                  gap: '1rem', 
+                  marginBottom: '1rem' 
+                }}>
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.3)', 
+                    padding: '0.8rem', 
+                    borderRadius: '6px', 
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                      {affiliateData.totalReferrals}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                      Indicações
+                    </div>
+                  </div>
+                  
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.3)', 
+                    padding: '0.8rem', 
+                    borderRadius: '6px', 
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                      R$ {(affiliateData.totalCommissions / 100).toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                      Comissões
+                    </div>
+                  </div>
+                </div>
+
+                {affiliateData.code && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      background: 'rgba(0,0,0,0.3)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      marginBottom: '0.5rem'
+                    }}>
+                      <div style={{ 
+                        flex: 1, 
+                        padding: '0.5rem', 
+                        fontFamily: 'monospace', 
+                        color: '#00ffaa', 
+                        fontWeight: 'bold',
+                        fontSize: '0.9rem'
+                      }}>
+                        {affiliateData.code}
+                      </div>
+                      <button
+                        onClick={copyAffiliateCode}
+                        style={{
+                          background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                          color: '#000',
+                          border: 'none',
+                          padding: '0.3rem 0.6rem',
+                          margin: '0.2rem',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        📋
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={copyAffiliateUrl}
+                      style={{
+                        background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        width: '100%',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      🔗 Copiar Link de Indicação
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={loadAffiliateData}
+                  disabled={affiliateLoading}
+                  style={{
+                    background: affiliateLoading ? 'rgba(255,255,255,0.1)' : 'rgba(0, 255, 170, 0.2)',
+                    color: affiliateLoading ? 'rgba(255,255,255,0.5)' : '#00ffaa',
+                    border: '1px solid rgba(0, 255, 170, 0.3)',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    cursor: affiliateLoading ? 'not-allowed' : 'pointer',
+                    fontWeight: 'bold',
+                    width: '100%',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  {affiliateLoading ? '⏳ Carregando...' : '🔄 Atualizar Dados'}
+                </button>
+
+                <div style={{ 
+                  fontSize: '0.8rem', 
+                  color: 'rgba(255,255,255,0.7)', 
+                  marginTop: '0.5rem',
+                  textAlign: 'center'
+                }}>
+                  Ganhe 15% de comissão • Indicados ganham 10% de desconto
+                </div>
               </div>
               
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

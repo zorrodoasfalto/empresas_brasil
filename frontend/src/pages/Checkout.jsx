@@ -106,13 +106,81 @@ const Content = styled.main`
 
 const CheckoutGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 2fr 1fr;
   gap: 3rem;
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 2rem;
   }
+`;
+
+const PlansGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+`;
+
+const PlanSelector = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+`;
+
+const SelectablePlanCard = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 2px solid ${props => props.selected ? 'rgba(59, 130, 246, 0.8)' : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  
+  &:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: translateY(-2px);
+  }
+  
+  ${props => props.selected && `
+    background: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+  `}
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+  }
+`;
+
+const SelectedBadge = styled.div`
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+`;
+
+const DiscountBadge = styled.div`
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
+  color: #0a0a0a;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 0.5rem;
 `;
 
 const PlanCard = styled.div`
@@ -280,11 +348,65 @@ const InfoText = styled.p`
   margin-bottom: 1rem;
 `;
 
+// Plan configuration
+const PLANS = {
+  pro: {
+    name: 'Plano Pro',
+    price: 97.00,
+    features: [
+      'Acesso a 66 milhões de empresas',
+      'Consultas de até 10.000 empresas',
+      'Exportação profissional Excel/CSV',
+      'Dados completos + sócios',
+      'Filtros avançados',
+      'Suporte por email'
+    ]
+  },
+  premium: {
+    name: 'Plano Premium',
+    price: 147.00,
+    features: [
+      'Acesso a 66 milhões de empresas',
+      'Consultas de até 25.000 empresas',
+      'Exportação profissional Excel/CSV',
+      'Dados completos + sócios',
+      'Todos os 20 segmentos',
+      'Filtros avançados',
+      'Suporte prioritário'
+    ]
+  },
+  max: {
+    name: 'Plano Max',
+    price: 197.00,
+    features: [
+      'Acesso a 66 milhões de empresas',
+      'Consultas ilimitadas até 50k por vez',
+      'Exportação profissional Excel/CSV',
+      'Dados completos + sócios',
+      'Todos os 20 segmentos',
+      'Filtros avançados',
+      'Performance otimizada',
+      'Suporte técnico prioritário'
+    ]
+  }
+};
+
 const Checkout = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('pro');
+  const [affiliateCode, setAffiliateCode] = useState('');
+
+  // Capture affiliate code from URL on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    if (ref) {
+      setAffiliateCode(ref);
+    }
+  }, []);
 
   const handleCheckout = async () => {
     if (!user || !token) {
@@ -301,7 +423,11 @@ const Checkout = () => {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({
+          planType: selectedPlan,
+          affiliateCode: affiliateCode || null
+        })
       });
 
       const data = await response.json();
@@ -318,6 +444,11 @@ const Checkout = () => {
       setError(error.message);
       setLoading(false);
     }
+  };
+
+  // Helper function to get discounted price
+  const getDiscountedPrice = (price) => {
+    return affiliateCode ? (price * 0.9).toFixed(2) : price.toFixed(2);
   };
 
   return (
@@ -337,25 +468,52 @@ const Checkout = () => {
 
       <Content>
         <CheckoutGrid>
-          <PlanCard>
-            <PlanTitle>
+          <PlansGrid>
+            <PlanTitle style={{ marginBottom: '1.5rem' }}>
               <Sparkles size={24} />
-              Plano Profissional
+              Escolha seu Plano
             </PlanTitle>
-            <PriceDisplay>R$ 79,90</PriceDisplay>
-            <PriceSubtext>por mês • cancelamento a qualquer momento</PriceSubtext>
             
-            <FeatureList>
-              <li>Acesso a 66 milhões de empresas</li>
-              <li>Consultas ilimitadas até 50k por vez</li>
-              <li>Exportação profissional Excel/CSV</li>
-              <li>Dados completos + sócios</li>
-              <li>Todos os 20 segmentos</li>
-              <li>Filtros avançados</li>
-              <li>Performance otimizada</li>
-              <li>Suporte técnico</li>
-            </FeatureList>
-          </PlanCard>
+            {affiliateCode && (
+              <DiscountBadge>
+                🎉 Código de desconto ativo! 10% OFF em todos os planos
+              </DiscountBadge>
+            )}
+            
+            <PlanSelector>
+              {Object.entries(PLANS).map(([planKey, plan]) => (
+                <SelectablePlanCard 
+                  key={planKey}
+                  selected={selectedPlan === planKey}
+                  onClick={() => setSelectedPlan(planKey)}
+                >
+                  {selectedPlan === planKey && <SelectedBadge>Selecionado</SelectedBadge>}
+                  
+                  <PlanTitle style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+                    {plan.name}
+                  </PlanTitle>
+                  
+                  <PriceDisplay style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+                    R$ {getDiscountedPrice(plan.price)}
+                  </PriceDisplay>
+                  
+                  {affiliateCode && (
+                    <div style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem', textDecoration: 'line-through' }}>
+                      De R$ {plan.price.toFixed(2)}
+                    </div>
+                  )}
+                  
+                  <PriceSubtext>por mês</PriceSubtext>
+                  
+                  <FeatureList>
+                    {plan.features.map((feature, index) => (
+                      <li key={index}>{feature}</li>
+                    ))}
+                  </FeatureList>
+                </SelectablePlanCard>
+              ))}
+            </PlanSelector>
+          </PlansGrid>
 
           <CheckoutCard>
             <CheckoutTitle>Finalizar Assinatura</CheckoutTitle>
@@ -385,7 +543,8 @@ const Checkout = () => {
             </CheckoutButton>
 
             <InfoText>
-              • Cobrança recorrente mensal de R$ 79,90<br/>
+              • Cobrança recorrente mensal de R$ {getDiscountedPrice(PLANS[selectedPlan].price)}<br/>
+              • {affiliateCode && '10% de desconto aplicado • '}
               • Primeiro mês com acesso imediato<br/>
               • Cancelamento a qualquer momento<br/>
               • Sem taxa de adesão ou multa
