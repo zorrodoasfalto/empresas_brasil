@@ -32,8 +32,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('🔍 AuthContext: Iniciando login para:', email);
       const response = await authService.login(email, password);
       console.log('🔍 AuthContext: Login response received', response);
+      
+      if (!response.token || !response.user) {
+        console.error('🔍 AuthContext: Resposta inválida - missing token or user');
+        throw new Error('Resposta de login inválida');
+      }
       
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
@@ -43,12 +49,16 @@ export const AuthProvider = ({ children }) => {
       setUser(response.user);
       
       console.log('🔍 AuthContext: State updated - token:', !!response.token, 'user:', !!response.user);
+      console.log('🔍 AuthContext: isAuthenticated will be:', !!(response.user && response.token));
       toast.success('Login realizado com sucesso!');
+      
+      // Force a small delay to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       return { success: true };
     } catch (error) {
       console.error('🔍 AuthContext: Login error', error);
-      const message = error.response?.data?.message || 'Erro ao fazer login';
+      const message = error.response?.data?.message || error.message || 'Erro ao fazer login';
       toast.error(message);
       return { success: false, message };
     }

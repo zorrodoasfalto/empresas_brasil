@@ -227,16 +227,21 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('🔍 Login: useEffect detected authentication, navigating to dashboard');
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
 
   const onSubmit = async (data) => {
     setLoading(true);
+    console.log('🔍 Login: Submitting login form for:', data.email);
+    
     const result = await login(data.email, data.password);
+    console.log('🔍 Login: Login result:', result);
     
     if (result.success) {
-      navigate('/dashboard');
+      console.log('🔍 Login: Login successful, AuthContext should update soon...');
+      // Don't navigate here - let useEffect handle it when isAuthenticated changes
     }
     
     setLoading(false);
