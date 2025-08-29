@@ -34,19 +34,19 @@ const authenticateToken = (req, res, next) => {
 const PLANS = {
   pro: {
     name: 'Plano Pro',
-    priceId: process.env.STRIPE_PRICE_ID_PRO,
+    priceId: null, // Temporário: usar price_data até configurar price IDs ativos
     price: 9700, // R$ 97.00 in cents
     interval: 'month'
   },
   premium: {
     name: 'Plano Premium', 
-    priceId: process.env.STRIPE_PRICE_ID_PREMIUM,
+    priceId: null, // Temporário: usar price_data até configurar price IDs ativos
     price: 14700, // R$ 147.00 in cents
     interval: 'month'
   },
   max: {
     name: 'Plano Max',
-    priceId: null, // Usar price_data temporariamente até obter price ID ativo
+    priceId: 'price_1S1Y1cP405WDxxG8QdUJvjuq', // Price ID ativado pelo usuário
     price: 24700, // R$ 247.00 in cents
     interval: 'month'
   }
@@ -132,28 +132,26 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
       }
     });
 
-    // Create line item - handle Max plan with price_data
+    // Create line item - use priceId if available, otherwise price_data
     let lineItem;
-    if (!plan.priceId || planType === 'max') {
-      // Use price_data for Max plan (temporary until new active price ID is created)
+    if (plan.priceId) {
+      lineItem = {
+        price: plan.priceId,
+        quantity: 1,
+      };
+    } else {
       lineItem = {
         price_data: {
           currency: 'brl',
           product_data: {
             name: plan.name,
-            description: 'Acesso completo à plataforma - Consultas ilimitadas de empresas brasileiras'
+            description: `Acesso completo ao ${plan.name} - Consultas ilimitadas de empresas brasileiras`
           },
           unit_amount: plan.price,
           recurring: {
             interval: 'month'
           }
         },
-        quantity: 1,
-      };
-    } else {
-      // Use existing priceId
-      lineItem = {
-        price: plan.priceId,
         quantity: 1,
       };
     }
