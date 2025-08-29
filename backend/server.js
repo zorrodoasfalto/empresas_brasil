@@ -8,6 +8,9 @@ const { ApifyClient } = require('apify-client');
 const User = require('./models/User');
 require('dotenv').config();
 
+// Stripe routes
+const stripeRoutes = require('./routes/stripe');
+
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
 function cleanNomeFantasia(nomeFantasia) {
   if (!nomeFantasia || nomeFantasia.trim() === '') {
@@ -253,7 +256,7 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
+app.use('/api/stripe', stripeRoutes); // STRIPE ROUTES REATIVADAS
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
 // DEBUG: Check if user ID 1 exists and generate token
@@ -485,6 +488,110 @@ async function initDB() {
     console.log('✅ Database initialized with CRM tables');
   } catch (error) {
     console.error('❌ Database error:', error.message);
+  }
+}
+
+// Create Stripe and Affiliates tables
+async function initStripeAndAffiliates() {
+  try {
+    console.log('🏗️  Creating Stripe and Affiliates tables...');
+
+    // 1. Subscriptions table  
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        stripe_customer_id VARCHAR(255),
+        stripe_subscription_id VARCHAR(255) UNIQUE,
+        stripe_price_id VARCHAR(255),
+        plan_type VARCHAR(50) DEFAULT 'pro',
+        status VARCHAR(50) DEFAULT 'inactive',
+        current_period_start TIMESTAMP,
+        current_period_end TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES simple_users(id) ON DELETE CASCADE
+      );
+    `);
+
+    // 2. Affiliates table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS affiliates (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        affiliate_code VARCHAR(20) UNIQUE NOT NULL,
+        total_earned DECIMAL(10,2) DEFAULT 0.00,
+        total_referrals INTEGER DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES simple_users(id) ON DELETE CASCADE
+      );
+    `);
+
+    // 3. Affiliate referrals table  
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS affiliate_referrals (
+        id SERIAL PRIMARY KEY,
+        affiliate_id INTEGER NOT NULL,
+        referred_user_id INTEGER NOT NULL,
+        commission_rate DECIMAL(5,2) DEFAULT 15.00,
+        monthly_commission DECIMAL(10,2) DEFAULT 0.00,
+        plan_type VARCHAR(50),
+        status VARCHAR(20) DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE,
+        FOREIGN KEY (referred_user_id) REFERENCES simple_users(id) ON DELETE CASCADE,
+        UNIQUE(affiliate_id, referred_user_id)
+      );
+    `);
+
+    // 4. Affiliate withdrawals table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS affiliate_withdrawals (
+        id SERIAL PRIMARY KEY,
+        affiliate_id INTEGER NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        pix_key VARCHAR(255),
+        notes TEXT,
+        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP,
+        processed_by VARCHAR(255),
+        FOREIGN KEY (affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE
+      );
+    `);
+
+    // 5. Affiliate commissions table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS affiliate_commissions (
+        id SERIAL PRIMARY KEY,
+        affiliate_id INTEGER NOT NULL,
+        referred_user_id INTEGER NOT NULL,
+        stripe_subscription_id VARCHAR(255),
+        amount DECIMAL(10,2) NOT NULL,
+        plan_type VARCHAR(50),
+        commission_month DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'earned',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE,
+        FOREIGN KEY (referred_user_id) REFERENCES simple_users(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Create indexes for performance
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+      CREATE INDEX IF NOT EXISTS idx_affiliates_code ON affiliates(affiliate_code);
+      CREATE INDEX IF NOT EXISTS idx_referrals_affiliate_id ON affiliate_referrals(affiliate_id);
+      CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON affiliate_withdrawals(status);
+    `);
+
+    console.log('✅ Stripe and Affiliates tables created successfully!');
+  } catch (error) {
+    console.error('❌ Error creating Stripe/Affiliates tables:', error.message);
   }
 }
 
@@ -3283,7 +3390,7 @@ app.post('/api/debug/login', async (req, res) => {
   }
 });
 
-Promise.all([initDB(), createUsersTable()]).then(() => {
+Promise.all([initDB(), createUsersTable(), initStripeAndAffiliates()]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');

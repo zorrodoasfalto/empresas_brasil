@@ -693,9 +693,52 @@ const Dashboard = () => {
     naturezaJuridica: []
   });
 
+  // Funções para sistema de afiliados
+  const loadAffiliateData = async () => {
+    try {
+      setAffiliateLoading(true);
+      const response = await fetch('/api/stripe/affiliate-status', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAffiliateData(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados de afiliado:', error);
+    } finally {
+      setAffiliateLoading(false);
+    }
+  };
+
+  const copyAffiliateCode = () => {
+    if (affiliateData.code) {
+      navigator.clipboard.writeText(affiliateData.code);
+      toast.success('Código copiado!');
+    }
+  };
+
+  const copyAffiliateUrl = () => {
+    if (affiliateData.code) {
+      const url = `${window.location.origin}/checkout?ref=${affiliateData.code}`;
+      navigator.clipboard.writeText(url);
+      toast.success('Link de afiliado copiado!');
+    }
+  };
+
   useEffect(() => {
     loadFiltersData();
   }, []);
+
+  // Carregar dados de afiliados quando a aba for aberta
+  useEffect(() => {
+    if (activeModal === 'settings' && settingsTab === 'affiliate' && token) {
+      loadAffiliateData();
+    }
+  }, [activeModal, settingsTab, token]);
 
   const loadFiltersData = async () => {
     try {
@@ -1120,6 +1163,17 @@ const Dashboard = () => {
     newPassword: '',
     confirmPassword: ''
   });
+
+  // Estados para sistema de afiliados
+  const [affiliateData, setAffiliateData] = useState({
+    code: null,
+    totalReferrals: 0,
+    totalCommissions: 0,
+    monthlyCommissions: 0,
+    pendingWithdrawals: 0
+  });
+  const [affiliateLoading, setAffiliateLoading] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('profile'); // profile, affiliate
   // Removed complex offset system - using search modes instead
   
   const toggleRepresentantes = (empresaIndex) => {
@@ -1907,71 +1961,325 @@ const Dashboard = () => {
       {/* Modal de configurações */}
       {activeModal === 'settings' && (
         <Modal onClick={() => setActiveModal(null)}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
             <ModalHeader>
               <h3>⚙️ Configurações da Conta</h3>
               <CloseButton onClick={() => setActiveModal(null)}>×</CloseButton>
             </ModalHeader>
             
-            <div style={{ color: '#e0e0e0' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <Label>Email</Label>
-                <div style={{ 
-                  padding: '0.75rem', 
-                  background: 'rgba(0,0,0,0.2)', 
-                  borderRadius: '6px', 
-                  border: '1px solid rgba(255,255,255,0.1)' 
-                }}>
-                  {user?.email}
-                </div>
-              </div>
-              
-              <div style={{ marginBottom: '1.5rem' }}>
-                <Label>Nome</Label>
-                <div style={{ 
-                  padding: '0.75rem', 
-                  background: 'rgba(0,0,0,0.2)', 
-                  borderRadius: '6px', 
-                  border: '1px solid rgba(255,255,255,0.1)' 
-                }}>
-                  {user?.firstName || 'Usuário'}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
+            {/* Abas */}
+            <div style={{ 
+              display: 'flex', 
+              borderBottom: '1px solid rgba(255,255,255,0.1)', 
+              marginBottom: '1.5rem' 
+            }}>
+              {[
+                { id: 'profile', icon: '👤', label: 'Perfil' },
+                { id: 'password', icon: '🔐', label: 'Senha' },
+                { id: 'affiliate', icon: '👥', label: 'Afiliados' }
+              ].map(tab => (
                 <button
-                  onClick={() => setActiveModal('password')}
+                  key={tab.id}
+                  onClick={() => setSettingsTab(tab.id)}
                   style={{
-                    background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
+                    background: settingsTab === tab.id 
+                      ? 'linear-gradient(135deg, #00ffaa, #00ccff)' 
+                      : 'transparent',
+                    color: settingsTab === tab.id ? '#000' : '#e0e0e0',
                     border: 'none',
-                    color: '#fff',
-                    padding: '0.75rem 1.5rem',
-                    borderRadius: '6px',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px 6px 0 0',
                     cursor: 'pointer',
-                    fontWeight: 'bold',
-                    width: '100%',
-                    fontSize: '16px',
+                    fontWeight: settingsTab === tab.id ? 'bold' : 'normal',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px'
+                    gap: '0.5rem',
+                    flex: 1,
+                    justifyContent: 'center'
                   }}
                 >
-                  🔐 Alterar Senha
+                  {tab.icon} {tab.label}
                 </button>
-              </div>
+              ))}
+            </div>
+
+            <div style={{ color: '#e0e0e0' }}>
+              {/* Aba Perfil */}
+              {settingsTab === 'profile' && (
+                <div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Email</Label>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      background: 'rgba(0,0,0,0.2)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255,255,255,0.1)' 
+                    }}>
+                      {user?.email}
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Nome</Label>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      background: 'rgba(0,0,0,0.2)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255,255,255,0.1)' 
+                    }}>
+                      {user?.firstName || user?.name || 'Usuário'}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>ID do Usuário</Label>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      background: 'rgba(0,0,0,0.2)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      fontFamily: 'monospace'
+                    }}>
+                      #{user?.id}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Aba Alterar Senha */}
+              {settingsTab === 'password' && (
+                <div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Senha Atual</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm(prev => ({
+                        ...prev,
+                        currentPassword: e.target.value
+                      }))}
+                      placeholder="Digite sua senha atual"
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm(prev => ({
+                        ...prev,
+                        newPassword: e.target.value
+                      }))}
+                      placeholder="Digite a nova senha"
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Confirmar Nova Senha</Label>
+                    <Input
+                      type="password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm(prev => ({
+                        ...prev,
+                        confirmPassword: e.target.value
+                      }))}
+                      placeholder="Confirme a nova senha"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => {/* handlePasswordChange */}}
+                    style={{
+                      background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      width: '100%',
+                      fontSize: '16px'
+                    }}
+                  >
+                    🔐 Alterar Senha
+                  </button>
+                </div>
+              )}
+
+              {/* Aba Sistema de Afiliados */}
+              {settingsTab === 'affiliate' && (
+                <div>
+                  <div style={{ 
+                    background: 'rgba(0, 255, 170, 0.1)', 
+                    border: '1px solid rgba(0, 255, 170, 0.3)', 
+                    borderRadius: '8px', 
+                    padding: '1rem', 
+                    marginBottom: '1.5rem' 
+                  }}>
+                    <h4 style={{ color: '#00ffaa', margin: '0 0 0.5rem 0' }}>Como funciona:</h4>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: 1.6 }}>
+                      <li>Compartilhe seu link de afiliado e ganhe <strong>15% de comissão</strong> recorrente</li>
+                      <li>Seus indicados ganham <strong>10% de desconto</strong> permanente</li>
+                      <li>Comissões são pagas mensalmente conforme as assinaturas ativas</li>
+                    </ul>
+                  </div>
+
+                  {/* Estatísticas */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr', 
+                    gap: '1rem', 
+                    marginBottom: '1.5rem' 
+                  }}>
+                    <div style={{ 
+                      background: 'rgba(0,0,0,0.3)', 
+                      padding: '1rem', 
+                      borderRadius: '8px', 
+                      textAlign: 'center',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                        {affiliateData.totalReferrals}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                        Indicações
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      background: 'rgba(0,0,0,0.3)', 
+                      padding: '1rem', 
+                      borderRadius: '8px', 
+                      textAlign: 'center',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#00ffaa' }}>
+                        R$ {(affiliateData.totalCommissions / 100).toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)' }}>
+                        Comissões Totais
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Código e Link */}
+                  {affiliateData.code && (
+                    <div>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <Label>Seu Código de Afiliado</Label>
+                        <div style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          background: 'rgba(0,0,0,0.3)', 
+                          borderRadius: '6px', 
+                          border: '1px solid rgba(255,255,255,0.1)' 
+                        }}>
+                          <div style={{ 
+                            flex: 1, 
+                            padding: '0.75rem', 
+                            fontFamily: 'monospace', 
+                            color: '#00ffaa', 
+                            fontWeight: 'bold',
+                            letterSpacing: '2px',
+                            fontSize: '1.1rem'
+                          }}>
+                            {affiliateData.code}
+                          </div>
+                          <button
+                            onClick={copyAffiliateCode}
+                            style={{
+                              background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                              color: '#000',
+                              border: 'none',
+                              padding: '0.5rem 1rem',
+                              margin: '0.25rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontWeight: 'bold',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            📋 Copiar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '1rem' }}>
+                        <Label>Link de Indicação</Label>
+                        <div style={{ 
+                          background: 'rgba(0,0,0,0.2)', 
+                          padding: '0.5rem', 
+                          borderRadius: '6px', 
+                          fontFamily: 'monospace', 
+                          fontSize: '0.8rem', 
+                          wordBreak: 'break-all',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          marginBottom: '0.5rem'
+                        }}>
+                          {window.location.origin}/checkout?ref={affiliateData.code}
+                        </div>
+                        <button
+                          onClick={copyAffiliateUrl}
+                          style={{
+                            background: 'linear-gradient(135deg, #3b82f6, #1e40af)',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            width: '100%'
+                          }}
+                        >
+                          🔗 Copiar Link Completo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!affiliateData.code && !affiliateLoading && (
+                    <div style={{ 
+                      background: 'rgba(59, 130, 246, 0.1)', 
+                      border: '1px solid rgba(59, 130, 246, 0.3)', 
+                      borderRadius: '8px', 
+                      padding: '1rem', 
+                      textAlign: 'center' 
+                    }}>
+                      Seu código de afiliado será gerado automaticamente quando você fizer sua primeira indicação.
+                    </div>
+                  )}
+
+                  <button
+                    onClick={loadAffiliateData}
+                    disabled={affiliateLoading}
+                    style={{
+                      background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                      color: '#000',
+                      border: 'none',
+                      padding: '0.5rem 1rem',
+                      borderRadius: '6px',
+                      cursor: affiliateLoading ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold',
+                      opacity: affiliateLoading ? 0.6 : 1,
+                      marginTop: '1rem'
+                    }}
+                  >
+                    {affiliateLoading ? '⏳ Carregando...' : '🔄 Atualizar Dados'}
+                  </button>
+                </div>
+              )}
               
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem' }}>
                 <button
                   onClick={() => setActiveModal(null)}
                   style={{
-                    background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
-                    border: 'none',
-                    color: '#000',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#e0e0e0',
                     padding: '0.75rem 1.5rem',
                     borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
+                    cursor: 'pointer'
                   }}
                 >
                   Fechar
