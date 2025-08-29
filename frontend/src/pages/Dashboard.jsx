@@ -233,6 +233,30 @@ const UpgradeButton = styled.button`
   }
 `;
 
+const SettingsButton = styled.button`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  color: #00ffaa;
+  padding: 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  margin-right: 0.5rem;
+  
+  &:hover {
+    background: rgba(0, 255, 170, 0.1);
+    border-color: #00ffaa;
+    transform: rotate(90deg);
+    box-shadow: 0 4px 12px rgba(0, 255, 170, 0.2);
+  }
+`;
+
 const Content = styled.div`
   padding: 2rem;
   max-width: 1400px;
@@ -1176,8 +1200,6 @@ const Dashboard = () => {
       [empresaIndex]: !prev[empresaIndex]
     }));
   };
-
-  const [expandedRepresentantes, setExpandedRepresentantes] = useState({});
   // Removed complex offset system - using search modes instead
   
   const toggleRepresentantes = (empresaIndex) => {
@@ -1369,6 +1391,7 @@ const Dashboard = () => {
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
+            <SettingsButton onClick={() => setActiveModal('settings')}>⚙️</SettingsButton>
             <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
             <LogoutButton onClick={logout}>Sair</LogoutButton>
           </UserInfo>
@@ -1980,6 +2003,7 @@ const Dashboard = () => {
               {[
                 { id: 'profile', icon: '👤', label: 'Perfil' },
                 { id: 'password', icon: '🔐', label: 'Senha' },
+                { id: 'premium', icon: '💎', label: 'Premium' },
                 { id: 'affiliate', icon: '👥', label: 'Afiliados' }
               ].map(tab => (
                 <button
@@ -2093,7 +2117,7 @@ const Dashboard = () => {
                   </div>
 
                   <button
-                    onClick={() => {/* handlePasswordChange */}}
+                    onClick={handlePasswordChange}
                     style={{
                       background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
                       border: 'none',
@@ -2107,6 +2131,90 @@ const Dashboard = () => {
                     }}
                   >
                     🔐 Alterar Senha
+                  </button>
+                </div>
+              )}
+
+              {/* Aba Premium */}
+              {settingsTab === 'premium' && (
+                <div>
+                  <div style={{ 
+                    background: 'rgba(59, 130, 246, 0.1)', 
+                    border: '1px solid rgba(59, 130, 246, 0.3)', 
+                    borderRadius: '8px', 
+                    padding: '1rem', 
+                    marginBottom: '1.5rem' 
+                  }}>
+                    <h4 style={{ color: '#3b82f6', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      💎 Sua Assinatura Premium
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginTop: '1rem' }}>
+                      <div style={{ textAlign: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                        <div style={{ color: '#00ffaa', fontSize: '1.2rem', fontWeight: 'bold' }}>✅ Ativo</div>
+                        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>Status</div>
+                      </div>
+                      <div style={{ textAlign: 'center', padding: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                        <div style={{ color: '#00ccff', fontSize: '1.2rem', fontWeight: 'bold' }}>∞</div>
+                        <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>Dias Restantes</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Plano Atual</Label>
+                    <div style={{ 
+                      padding: '0.75rem', 
+                      background: 'rgba(59, 130, 246, 0.1)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      💎 <strong>Premium Vitalício</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <Label>Benefícios Inclusos</Label>
+                    <div style={{ 
+                      padding: '1rem', 
+                      background: 'rgba(0,0,0,0.2)', 
+                      borderRadius: '6px', 
+                      border: '1px solid rgba(255,255,255,0.1)' 
+                    }}>
+                      <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: 1.8 }}>
+                        <li>🔥 Acesso a <strong>66M+ empresas</strong> do Brasil</li>
+                        <li>📊 Exportação ilimitada (Excel/CSV)</li>
+                        <li>🔍 Filtros avançados e segmentação</li>
+                        <li>📍 Google Maps Scraper premium</li>
+                        <li>🔵 LinkedIn Scraper premium</li>
+                        <li>📸 Instagram Scraper premium</li>
+                        <li>🗃️ CRM completo (Leads + Kanban + Funil)</li>
+                        <li>⚡ Suporte prioritário 24/7</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => window.open('https://wa.me/5511999999999', '_blank')}
+                    style={{
+                      background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      width: '100%',
+                      fontSize: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    💬 Suporte Premium WhatsApp
                   </button>
                 </div>
               )}
