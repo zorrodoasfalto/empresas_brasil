@@ -7,7 +7,7 @@ const PrivacyPolicy = () => {
       <p><strong>Última atualização:</strong> Janeiro de 2025</p>
       
       <p>
-        A <strong>Empresas Brasil</strong> respeita sua privacidade e está comprometida em 
+        O <strong>Data Atlas</strong> respeita sua privacidade e está comprometida em 
         proteger suas informações pessoais. Esta Política de Privacidade explica como coletamos, 
         usamos e protegemos seus dados.
       </p>
@@ -121,9 +121,9 @@ const PrivacyPolicy = () => {
         Para questões sobre privacidade, entre em contato:
       </p>
       <ul>
-        <li><strong>E-mail:</strong> privacidade@empresasbrasil.com</li>
-        <li><strong>Telefone:</strong> (11) 99999-9999</li>
-        <li><strong>Endereço:</strong> São Paulo, SP - Brasil</li>
+        <li><strong>E-mail:</strong> contato@dataatlas.com.br</li>
+        <li><strong>Telefone:</strong> (19) 992753157</li>
+        <li><strong>Endereço:</strong> Rua José de Campos Sáles 619, Campinas - SP</li>
       </ul>
 
       <p>
