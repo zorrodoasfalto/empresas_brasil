@@ -46,7 +46,7 @@ const PLANS = {
   },
   max: {
     name: 'Plano Max',
-    priceId: 'price_1S1Y1cP405WDxxG8QdUJvjuq', // Price ID ativado pelo usuário
+    priceId: 'price_1S1YbpP405WDxxG8uBdbYVC4', // Novo price ID do produto prod_SxTYu4T3TrJvfw
     price: 24700, // R$ 247.00 in cents
     interval: 'month'
   }
