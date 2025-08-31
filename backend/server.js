@@ -493,7 +493,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const result = await pool.query('SELECT id, email, password, name FROM simple_users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, email, password, name, role FROM simple_users WHERE email = $1', [email]);
     
     if (result.rows.length === 0) {
       return res.json({ success: false, message: 'Usuário não encontrado' });
@@ -516,7 +516,7 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       message: 'Login realizado com sucesso',
       token,
-      user: { id: user.id, email: user.email, name: user.name }
+      user: { id: user.id, email: user.email, name: user.name, role: user.role || 'user' }
     });
     
   } catch (error) {

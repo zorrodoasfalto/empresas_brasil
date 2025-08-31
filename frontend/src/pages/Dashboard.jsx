@@ -264,12 +264,35 @@ const SettingsButton = styled.button`
   justify-content: center;
   transition: all 0.3s ease;
   margin-right: 0.5rem;
-  
+
   &:hover {
     background: rgba(0, 255, 170, 0.1);
     border-color: #00ffaa;
-    transform: rotate(90deg);
-    box-shadow: 0 4px 12px rgba(0, 255, 170, 0.2);
+    transform: scale(1.05);
+  }
+`;
+
+const AdminButton = styled.button`
+  background: rgba(255, 100, 0, 0.3);
+  border: 1px solid rgba(255, 100, 0, 0.3);
+  color: #ff6400;
+  padding: 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  margin-right: 0.5rem;
+  
+  &:hover {
+    background: rgba(255, 100, 0, 0.1);
+    border-color: #ff6400;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255, 100, 0, 0.2);
   }
 `;
 
@@ -1422,6 +1445,9 @@ const Dashboard = () => {
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
+            {user?.role === 'admin' && (
+              <AdminButton onClick={() => setActiveModal('admin')}>👑</AdminButton>
+            )}
             <SettingsButton onClick={() => setActiveModal('settings')}>⚙️</SettingsButton>
             <UpgradeButton onClick={handleUpgrade}>💎 Premium</UpgradeButton>
             <LogoutButton onClick={logout}>Sair</LogoutButton>
@@ -2410,6 +2436,58 @@ const Dashboard = () => {
                   >
                     {affiliateLoading ? '⏳ Carregando...' : '🔄 Atualizar Dados'}
                   </button>
+
+                  {/* Botão de Saque - Só aparece se houver comissões disponíveis */}
+                  {affiliateData.totalCommissions > 0 && (
+                    <button
+                      onClick={() => {
+                        // TODO: Implementar solicitação de saque
+                        alert('Solicitação de saque enviada! Aguarde aprovação do administrador.');
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #28a745, #20c997)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        marginTop: '1rem',
+                        marginLeft: '0.5rem',
+                        fontSize: '1rem',
+                        boxShadow: '0 4px 12px rgba(40, 167, 69, 0.3)',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseOver={(e) => {
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 6px 16px rgba(40, 167, 69, 0.4)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.3)';
+                      }}
+                    >
+                      💰 Solicitar Saque (R$ {affiliateData.totalCommissions.toFixed(2)})
+                    </button>
+                  )}
+
+                  {/* Informação sobre saques */}
+                  <div style={{ 
+                    background: 'rgba(255, 193, 7, 0.1)', 
+                    border: '1px solid rgba(255, 193, 7, 0.3)', 
+                    borderRadius: '8px', 
+                    padding: '1rem', 
+                    marginTop: '1.5rem',
+                    fontSize: '0.9rem'
+                  }}>
+                    <h5 style={{ color: '#ffc107', margin: '0 0 0.5rem 0' }}>ℹ️ Sobre os Saques:</h5>
+                    <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: 1.5 }}>
+                      <li>Valor mínimo para saque: <strong>R$ 50,00</strong></li>
+                      <li>Saques são processados em até <strong>7 dias úteis</strong></li>
+                      <li>Você receberá um e-mail quando o pagamento for aprovado</li>
+                      <li>Histórico de saques disponível no painel administrativo</li>
+                    </ul>
+                  </div>
                 </div>
               )}
               
@@ -2427,6 +2505,155 @@ const Dashboard = () => {
                 >
                   Fechar
                 </button>
+              </div>
+            </div>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Modal Admin - Apenas para usuários admin */}
+      {activeModal === 'admin' && user?.role === 'admin' && (
+        <Modal onClick={() => setActiveModal(null)}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <ModalHeader>
+              <h3>👑 Painel Administrativo</h3>
+              <CloseButton onClick={() => setActiveModal(null)}>×</CloseButton>
+            </ModalHeader>
+            
+            <div style={{ padding: '1.5rem 0' }}>
+              <h4 style={{ color: '#00ffaa', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                💰 Solicitações de Saque - Afiliados
+              </h4>
+              
+              {/* Lista de solicitações de saque */}
+              <div style={{ 
+                background: 'rgba(0, 0, 0, 0.3)', 
+                borderRadius: '8px', 
+                padding: '1rem',
+                border: '1px solid rgba(0, 255, 170, 0.3)'
+              }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr', 
+                  gap: '1rem', 
+                  padding: '0.5rem 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  fontWeight: 'bold',
+                  color: '#00ffaa'
+                }}>
+                  <div>Afiliado</div>
+                  <div>Valor</div>
+                  <div>Data</div>
+                  <div>Status</div>
+                  <div>Ações</div>
+                </div>
+                
+                {/* Exemplo de solicitação */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr', 
+                  gap: '1rem', 
+                  padding: '0.75rem 0',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ color: '#e0e0e0' }}>
+                    <div>João Silva</div>
+                    <div style={{ fontSize: '0.8rem', color: '#999' }}>joao@email.com</div>
+                  </div>
+                  <div style={{ color: '#00ffaa', fontWeight: 'bold' }}>R$ 150,00</div>
+                  <div style={{ color: '#e0e0e0' }}>25/08/2025</div>
+                  <div>
+                    <span style={{ 
+                      background: 'rgba(255, 193, 7, 0.2)', 
+                      color: '#ffc107', 
+                      padding: '0.25rem 0.5rem', 
+                      borderRadius: '4px', 
+                      fontSize: '0.8rem' 
+                    }}>
+                      Pendente
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button style={{
+                      background: 'linear-gradient(135deg, #28a745, #20c997)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem'
+                    }}>
+                      ✓ Aprovar
+                    </button>
+                    <button style={{
+                      background: 'linear-gradient(135deg, #dc3545, #c82333)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem'
+                    }}>
+                      ✗ Rejeitar
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Mensagem quando não há solicitações */}
+                <div style={{ 
+                  textAlign: 'center', 
+                  color: '#999', 
+                  padding: '2rem',
+                  fontStyle: 'italic'
+                }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💼</div>
+                  <div>Nenhuma solicitação de saque pendente no momento</div>
+                </div>
+              </div>
+              
+              {/* Estatísticas */}
+              <div style={{ 
+                marginTop: '2rem',
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(3, 1fr)', 
+                gap: '1rem' 
+              }}>
+                <div style={{ 
+                  background: 'rgba(40, 167, 69, 0.2)', 
+                  padding: '1rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(40, 167, 69, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
+                  <div style={{ color: '#28a745', fontWeight: 'bold' }}>Aprovados</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>12</div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(255, 193, 7, 0.2)', 
+                  padding: '1rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(255, 193, 7, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
+                  <div style={{ color: '#ffc107', fontWeight: 'bold' }}>Pendentes</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>3</div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(220, 53, 69, 0.2)', 
+                  padding: '1rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(220, 53, 69, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
+                  <div style={{ color: '#dc3545', fontWeight: 'bold' }}>Rejeitados</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>2</div>
+                </div>
               </div>
             </div>
           </ModalContent>
