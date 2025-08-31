@@ -487,11 +487,12 @@ const Funil = () => {
           perspective: '1000px'
         }}>
           {getFilteredPhases().map((phase, index) => {
-            const filteredTotalLeads = getFilteredPhases().reduce((total, p) => total + p.leads.length, 0);
-            const percentage = filteredTotalLeads > 0 ? (phase.leads.length / filteredTotalLeads * 100) : 25;
-            const width = Math.max(percentage, 10); // Mínimo 10% para visibilidade
+            // Create funnel shape: largest to smallest regardless of lead count
+            const totalPhases = getFilteredPhases().length;
             const maxWidth = 600;
-            const actualWidth = (width / 100) * maxWidth;
+            // Calculate decreasing width: first phase 100%, last phase 40%
+            const widthPercentage = 100 - (index * (60 / (totalPhases - 1)));
+            const actualWidth = (widthPercentage / 100) * maxWidth;
             
             return (
               <div key={phase.id} style={{
@@ -511,10 +512,10 @@ const Funil = () => {
                   boxShadow: `0 8px 25px ${phase.cor}40`,
                   transform: 'perspective(500px) rotateX(10deg)',
                   clipPath: index === 0 
-                    ? 'polygon(0% 0%, 100% 0%, 90% 100%, 10% 100%)' // Topo mais largo
-                    : index === funnelData.length - 1
-                    ? 'polygon(10% 0%, 90% 0%, 100% 100%, 0% 100%)' // Base mais estreita
-                    : 'polygon(5% 0%, 95% 0%, 85% 100%, 15% 100%)' // Meio
+                    ? 'polygon(0% 0%, 100% 0%, 95% 100%, 5% 100%)' // Primeiro: bem largo no topo, pouco estreito embaixo
+                    : index === getFilteredPhases().length - 1
+                    ? 'polygon(15% 0%, 85% 0%, 80% 100%, 20% 100%)' // Último: mais estreito
+                    : `polygon(${5 + (index * 5)}% 0%, ${95 - (index * 5)}% 0%, ${85 - (index * 5)}% 100%, ${15 + (index * 5)}% 100%)` // Progressivo
                 }}>
                   <div style={{
                     color: 'white',
@@ -544,7 +545,7 @@ const Funil = () => {
                     fontWeight: 'bold',
                     whiteSpace: 'nowrap'
                   }}>
-                    {filteredTotalLeads > 0 ? `${(phase.leads.length / filteredTotalLeads * 100).toFixed(1)}%` : '0%'}
+                    {getFilteredPhases().reduce((total, p) => total + p.leads.length, 0) > 0 ? `${(phase.leads.length / getFilteredPhases().reduce((total, p) => total + p.leads.length, 0) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
                 

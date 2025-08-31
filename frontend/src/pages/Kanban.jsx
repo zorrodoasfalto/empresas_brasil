@@ -212,7 +212,7 @@ const Kanban = () => {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/crm/funil', {
+      const response = await fetch('/api/crm/kanban', {
         headers
       });
       
@@ -220,7 +220,7 @@ const Kanban = () => {
       if (data.success) {
         setFunnelData(data.funil);
       } else {
-        toast.error('Erro ao carregar funil');
+        toast.error('Erro ao carregar kanban');
       }
     } catch (error) {
       console.error('Error fetching funnel:', error);

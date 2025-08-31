@@ -6,18 +6,23 @@ import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
 import logo from '../assets/images/logo.png';
-// import SubscriptionGate from '../components/SubscriptionGate'; // REMOVIDO - ACESSO LIVRE
-// import { useSubscription } from '../hooks/useSubscription'; // REMOVIDO - ACESSO LIVRE
+import thumbnail from '../assets/images/thumbnail.png';
+// import SubscriptionGate from '../components/SubscriptionGate'; // TODO: Restaurar controle de assinatura
+// import { useSubscription } from '../hooks/useSubscription'; // TODO: Restaurar controle de assinatura
 
 const Container = styled.div`
   min-height: 100vh;
   background: transparent;
   position: relative;
   display: flex;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
 `;
 
 const Sidebar = styled.div`
-  width: 280px;
+  width: ${props => props.isMinimized ? '70px' : '280px'};
   min-height: 100vh;
   background: 
     linear-gradient(135deg, rgba(0, 255, 170, 0.1) 0%, rgba(0, 136, 204, 0.1) 100%),
@@ -32,6 +37,20 @@ const Sidebar = styled.div`
   overflow: hidden;
   box-shadow: 2px 0 15px rgba(0, 255, 170, 0.2);
   border: 1px solid rgba(0, 255, 170, 0.3);
+  
+  @media (max-width: 768px) {
+    width: 100%;
+    height: auto;
+    min-height: auto;
+    position: ${props => props.isMobileMenuOpen ? 'fixed' : 'fixed'};
+    transform: ${props => props.isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)'};
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    border-right: none;
+    border-bottom: 2px solid rgba(0, 255, 170, 0.4);
+  }
 `;
 
 
@@ -44,23 +63,57 @@ const SidebarContent = styled.div`
 
 const SidebarLogo = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: ${props => props.isMinimized ? 'center' : 'space-between'};
   align-items: center;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid rgba(0, 255, 170, 0.2);
   height: auto;
   box-sizing: border-box;
+  position: relative;
+`;
+
+const MenuToggleButton = styled.button`
+  background: rgba(0, 255, 170, 0.1);
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  color: #00ffaa;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  
+  &:hover {
+    background: rgba(0, 255, 170, 0.2);
+    border-color: rgba(0, 255, 170, 0.5);
+    box-shadow: 0 4px 12px rgba(0, 255, 170, 0.3);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const SidebarItem = styled.div`
-  padding: 15px 20px;
+  padding: ${props => props.isMinimized ? '15px 10px' : '15px 20px'};
   color: #e0e0e0;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: ${props => props.isMinimized ? '0' : '15px'};
   border-left: 3px solid transparent;
+  justify-content: ${props => props.isMinimized ? 'center' : 'flex-start'};
   
   &:hover {
     background: rgba(0, 255, 170, 0.1);
@@ -80,7 +133,8 @@ const SidebarItem = styled.div`
   }
   
   .text {
-    opacity: 1;
+    opacity: ${props => props.isMinimized ? '0' : '1'};
+    display: ${props => props.isMinimized ? 'none' : 'block'};
     transition: opacity 0.3s ease;
     white-space: nowrap;
   }
@@ -88,9 +142,70 @@ const SidebarItem = styled.div`
 
 const MainContent = styled.div`
   flex: 1;
-  margin-left: 280px;
+  margin-left: ${props => props.isMenuMinimized ? '70px' : '280px'};
   transition: margin-left 0.3s ease;
   min-height: 100vh;
+  
+  @media (max-width: 768px) {
+    margin-left: 0;
+    padding: 1rem;
+    padding-top: 60px; /* Space for mobile header */
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    padding-top: 60px;
+  }
+`;
+
+const MobileHeader = styled.div`
+  display: none;
+  
+  @media (max-width: 768px) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(15, 15, 35, 0.98);
+    border-bottom: 1px solid rgba(0, 255, 170, 0.3);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9998;
+  }
+`;
+
+const MobileMenuButton = styled.button`
+  background: none;
+  border: none;
+  color: #00ffaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+  
+  &:hover {
+    background-color: rgba(0, 255, 170, 0.1);
+  }
+`;
+
+const MobileLogo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  
+  img {
+    width: 30px;
+    height: 30px;
+  }
+  
+  span {
+    color: #00ffaa;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
 `;
 
 const Modal = styled.div`
@@ -317,6 +432,16 @@ const FiltersGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -546,6 +671,14 @@ const Table = styled.table`
   border-collapse: collapse;
   min-width: 2500px;
   font-size: 0.85rem;
+  
+  @media (max-width: 768px) {
+    min-width: auto;
+    font-size: 0.75rem;
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 `;
 
 const Th = styled.th`
@@ -721,6 +854,8 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   // const { subscriptionStatus } = useSubscription(); // REMOVIDO - ARQUIVO DELETADO
   
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMenuMinimized, setIsMenuMinimized] = useState(false);
   const [filters, setFilters] = useState({
     segmentoNegocio: '',
     uf: '',
@@ -1585,51 +1720,123 @@ const Dashboard = () => {
 
   return (
     <Container>
-      <Sidebar>
+      <MobileHeader>
+        <MobileMenuButton onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          {isMobileMenuOpen ? '✕' : '☰'}
+        </MobileMenuButton>
+        <MobileLogo>
+          <img src={logo} alt="Logo" onClick={handleLogoClick} />
+          <span>DataAtlas</span>
+        </MobileLogo>
+        <div></div> {/* Spacer for layout */}
+      </MobileHeader>
+      
+      <Sidebar isMobileMenuOpen={isMobileMenuOpen} isMinimized={isMenuMinimized}>
         <SidebarContent>
-          <SidebarLogo>
-            <Logo src={logo} alt="Logo" onClick={handleLogoClick} />
+          <SidebarLogo isMinimized={isMenuMinimized}>
+            <Logo 
+              src={isMenuMinimized ? thumbnail : logo} 
+              alt="Logo" 
+              onClick={handleLogoClick} 
+              style={{ 
+                width: isMenuMinimized ? '30px' : 'auto',
+                height: isMenuMinimized ? '30px' : 'auto'
+              }}
+            />
+            {!isMenuMinimized && (
+              <MenuToggleButton onClick={() => setIsMenuMinimized(!isMenuMinimized)}>
+                ‹
+              </MenuToggleButton>
+            )}
+          </SidebarLogo>
+          
+          {isMenuMinimized && (
+            <MenuToggleButton 
+              onClick={() => setIsMenuMinimized(!isMenuMinimized)}
+              style={{ 
+                position: 'absolute',
+                top: '100px',
+                right: '-16px',
+                background: 'rgba(15, 15, 35, 0.95)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '0 8px 8px 0',
+                borderLeft: 'none',
+                width: '24px',
+                height: '40px',
+                zIndex: '10'
+              }}
+            >
+              ›
+            </MenuToggleButton>
+          )
           </SidebarLogo>
           <SidebarItem 
-            
+            isMinimized={isMenuMinimized}
             className="active"
-            onClick={() => setActiveModal(null)}
+            onClick={() => {
+              setActiveModal(null);
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">🏢</span>
             <span className="text">Empresas Brasil</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/google-maps-scraper'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/google-maps-scraper';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">📍</span>
             <span className="text">Google Maps</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/linkedin-scraper'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/linkedin-scraper';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">🔵</span>
             <span className="text">LinkedIn</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/instagram'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/instagram';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">📸</span>
             <span className="text">Instagram</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/leads'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/leads';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">🗃️</span>
             <span className="text">Leads</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/kanban'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/kanban';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">📋</span>
             <span className="text">Kanban</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => window.location.href = '/funil'}
+            isMinimized={isMenuMinimized}
+            onClick={() => {
+              window.location.href = '/funil';
+              setIsMobileMenuOpen(false);
+            }}
           >
             <span className="icon">🌪️</span>
             <span className="text">Funil</span>
@@ -1649,7 +1856,7 @@ const Dashboard = () => {
         </SidebarContent>
       </Sidebar>
 
-      <MainContent>
+      <MainContent isMenuMinimized={isMenuMinimized}>
         <Header>
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>

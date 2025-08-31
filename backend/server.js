@@ -1414,9 +1414,9 @@ app.get('/api/crm/kanban', checkUserAccess, async (req, res) => {
       ORDER BY ordem
     `, [userId]);
 
-    // If user has no funnel phases, create default ones
+    // If user has no funnel phases, create default ones (same as funil)
     if (phases.rows.length === 0) {
-      console.log(`🎯 Creating default kanban phases for user ${userId}`);
+      console.log(`🎯 Creating default funnel phases for user ${userId} (from kanban)`);
       
       const defaultPhases = [
         { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
