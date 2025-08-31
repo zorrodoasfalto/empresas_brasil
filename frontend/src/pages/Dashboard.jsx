@@ -63,7 +63,7 @@ const SidebarContent = styled.div`
 
 const SidebarLogo = styled.div`
   display: flex;
-  justify-content: ${props => props.isMinimized ? 'center' : 'space-between'};
+  justify-content: center;
   align-items: center;
   padding: 1.5rem 2rem;
   border-bottom: 1px solid rgba(0, 255, 170, 0.2);
@@ -1759,31 +1759,20 @@ const Dashboard = () => {
                 onClick={handleLogoClick}
               />
             )}
-            {!isMenuMinimized && (
-              <MenuToggleButton onClick={() => setIsMenuMinimized(!isMenuMinimized)}>
-                ‹
-              </MenuToggleButton>
-            )}
-          </SidebarLogo>
-          
-          {isMenuMinimized && (
+            {/* Botão toggle sempre no mesmo local */}
             <MenuToggleButton 
               onClick={() => setIsMenuMinimized(!isMenuMinimized)}
               style={{ 
                 position: 'absolute',
-                top: '100px',
-                right: '-16px',
-                borderRadius: '0 8px 8px 0',
-                borderLeft: 'none',
-                width: '24px',
-                height: '40px',
-                zIndex: '10',
-                fontSize: '16px'
+                top: '50%',
+                right: '10px',
+                transform: 'translateY(-50%)',
+                zIndex: '10'
               }}
             >
-              ›
+              {isMenuMinimized ? '›' : '‹'}
             </MenuToggleButton>
-          )}
+          </SidebarLogo>
           <SidebarItem 
             isMinimized={isMenuMinimized}
             className="active"
