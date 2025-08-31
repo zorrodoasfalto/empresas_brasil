@@ -789,6 +789,7 @@ const LandingPage = () => {
                   <li><strong>20</strong> segmentos mapeados</li>
                   <li><strong>Dados de sócios</strong>: 3+ por empresa</li>
                   <li><strong>Dados de contato</strong>: telefone, email, endereço</li>
+                  <li><strong>Base atualizada</strong>: dados oficiais Receita Federal</li>
                 </ul>
               </Card>
 
