@@ -198,6 +198,32 @@ const InfoItem = styled.div`
   }
 `;
 
+const DeleteButton = styled.button`
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  border-radius: 6px;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  
+  &:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.7);
+    transform: scale(1.05);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
 const LeadFooter = styled.div`
   display: flex;
   justify-content: space-between;
@@ -315,6 +341,37 @@ const Leads = () => {
     }
 
     setFilteredLeads(filtered);
+  };
+
+  const deleteLead = async (leadId, leadName) => {
+    if (!window.confirm(`Tem certeza que deseja deletar o lead "${leadName}"?`)) {
+      return;
+    }
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`/api/crm/leads/${leadId}`, {
+        method: 'DELETE',
+        headers
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`✅ Lead "${leadName}" deletado com sucesso!`);
+        // Atualizar a lista removendo o lead deletado
+        setLeads(prev => prev.filter(lead => lead.id !== leadId));
+      } else {
+        toast.error(`❌ Erro ao deletar lead: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error);
+      toast.error('❌ Erro ao conectar com servidor');
+    }
   };
 
   const exportToExcel = (data) => {
@@ -507,11 +564,19 @@ const Leads = () => {
                     <LeadCompany>🏢 {lead.empresa}</LeadCompany>
                   )}
                 </div>
-                {lead.fase_atual && (
-                  <FaseTag color={lead.fase_cor}>
-                    {lead.fase_atual}
-                  </FaseTag>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {lead.fase_atual && (
+                    <FaseTag color={lead.fase_cor}>
+                      {lead.fase_atual}
+                    </FaseTag>
+                  )}
+                  <DeleteButton
+                    onClick={() => deleteLead(lead.id, lead.nome)}
+                    title="Deletar lead"
+                  >
+                    🗑️
+                  </DeleteButton>
+                </div>
               </LeadHeader>
 
               <LeadInfo>

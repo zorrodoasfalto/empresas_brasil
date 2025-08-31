@@ -1539,6 +1539,45 @@ app.put('/api/crm/leads/:leadId/fase', checkUserAccess, async (req, res) => {
   }
 });
 
+// DELETE /api/crm/leads/:leadId - Deletar um lead
+app.delete('/api/crm/leads/:leadId', checkUserAccess, async (req, res) => {
+  try {
+    const { leadId } = req.params;
+
+    // Verificar se o lead existe
+    const leadCheck = await pool.query('SELECT nome FROM leads WHERE id = $1', [leadId]);
+    
+    if (leadCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead não encontrado'
+      });
+    }
+
+    const leadName = leadCheck.rows[0].nome;
+
+    // Deletar das tabelas relacionadas primeiro
+    await pool.query('DELETE FROM lead_funil WHERE lead_id = $1', [leadId]);
+    
+    // Deletar o lead principal
+    await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
+
+    console.log(`🗑️ Lead deletado: ID ${leadId} - ${leadName}`);
+
+    res.json({
+      success: true,
+      message: `Lead "${leadName}" deletado com sucesso`
+    });
+  } catch (error) {
+    console.error('❌ Delete lead error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao deletar lead',
+      error: error.message
+    });
+  }
+});
+
 // APIFY INTEGRATION ENDPOINTS
 
 // Get available Apify actors
