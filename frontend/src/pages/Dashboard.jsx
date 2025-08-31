@@ -808,7 +808,10 @@ const Dashboard = () => {
     const searchParams = new URLSearchParams(location.search);
     const tab = searchParams.get('tab');
     
+    console.log('URL params:', location.search, 'tab:', tab); // Debug
+    
     if (tab === 'configuracoes') {
+      console.log('Abrindo configurações...'); // Debug
       setActiveModal('settings');
       setSettingsTab('affiliate'); // Abre direto na aba de afiliados
     }
