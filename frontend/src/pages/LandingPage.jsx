@@ -801,8 +801,8 @@ const LandingPage = () => {
                   <li><strong>LinkedIn Company Scraper</strong>: dados empresariais</li>
                   <li><strong>Google Maps Business</strong>: prospecção local</li>
                   <li><strong>Busca Empresarial Inteligente</strong>: filtros avançados</li>
-                  <li><strong>API integradas</strong>: Ghost Genius + Google Places</li>
-                  <li><strong>Processamento</strong>: tempo real com progresso</li>
+                  <li><strong>Processamento em tempo real</strong>: com progresso</li>
+                  <li><strong>Múltiplos canais</strong>: prospecção integrada</li>
                 </ul>
               </Card>
 
@@ -812,7 +812,7 @@ const LandingPage = () => {
                 <ul className="card-list">
                   <li><strong>Pipeline Kanban</strong>: visual e drag & drop</li>
                   <li><strong>Gestão de Leads</strong>: histórico completo</li>
-                  <li><strong>Fases customizáveis</strong>: adapte ao seu processo</li>
+                  <li><strong>Fases customizáveis</strong>: adapte seu processo</li>
                   <li><strong>Acompanhamento</strong>: progresso por etapa</li>
                   <li><strong>Conversão otimizada</strong>: identifique gargalos</li>
                   <li><strong>Interface intuitiva</strong>: fácil de usar</li>
