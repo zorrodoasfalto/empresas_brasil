@@ -907,44 +907,31 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar solicitações de saque (admin) - COM DEBUG
+  // Função para carregar solicitações de saque (admin)
   const loadAdminWithdrawals = async () => {
-    console.log('💰 DEBUG: Iniciando loadAdminWithdrawals...');
-    console.log('💰 DEBUG: adminWithdrawalsLoading atual:', adminWithdrawalsLoading);
+    if (adminWithdrawalsLoading) {
+      return;
+    }
+    
     setAdminWithdrawalsLoading(true);
-    console.log('💰 DEBUG: setAdminWithdrawalsLoading(true) chamado');
     
     try {
       const token = localStorage.getItem('token');
-      console.log('💰 DEBUG: Token obtido:', token ? 'EXISTS' : 'NULL');
-      
-      console.log('💰 DEBUG: Fazendo fetch para /api/admin/withdrawals...');
       const response = await fetch('/api/admin/withdrawals', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      console.log('💰 DEBUG: Response status:', response.status);
-      console.log('💰 DEBUG: Response ok:', response.ok);
-      
-      const data = await response.json();
-      console.log('💰 DEBUG: Data recebida:', JSON.stringify(data, null, 2));
-      
-      if (data.success) {
-        console.log('💰 DEBUG: SUCCESS! Withdrawals length:', data.withdrawals?.length || 0);
-        console.log('💰 DEBUG: Chamando setAdminWithdrawals com:', data.withdrawals);
-        setAdminWithdrawals(data.withdrawals || []);
-        console.log('💰 DEBUG: setAdminWithdrawals executado');
-      } else {
-        console.log('💰 DEBUG: ERRO! Backend retornou:', data.message);
-        setAdminWithdrawals([]);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setAdminWithdrawals(data.withdrawals || []);
+        }
       }
     } catch (error) {
-      console.error('💰 DEBUG: ERRO CATCH:', error);
+      console.error('Erro ao carregar saques:', error);
       setAdminWithdrawals([]);
     } finally {
-      console.log('💰 DEBUG: Finally - chamando setAdminWithdrawalsLoading(false)');
       setAdminWithdrawalsLoading(false);
-      console.log('💰 DEBUG: loadAdminWithdrawals FINALIZADO');
     }
   };
 
@@ -1007,17 +994,11 @@ const Dashboard = () => {
     }
   }, [activeModal, settingsTab]);
 
-  // Carregar estatísticas admin quando o modal for aberto - ÚNICO useEffect
+  // Carregar estatísticas admin quando o modal for aberto
   useEffect(() => {
-    console.log('🔍 DEBUG: Admin modal useEffect EXECUTOU - activeModal:', activeModal, 'user:', user?.email);
-    
     if (activeModal === 'admin') {
-      console.log('🔍 DEBUG: Modal admin detectado - FORÇANDO carregamento...');
-      console.log('🔍 DEBUG: Chamando loadAdminStats...');
       loadAdminStats();
-      console.log('🔍 DEBUG: Chamando loadAdminWithdrawals...');
       loadAdminWithdrawals();
-      console.log('🔍 DEBUG: Ambas funções chamadas!');
     }
   }, [activeModal]);
 
