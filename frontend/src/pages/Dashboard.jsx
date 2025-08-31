@@ -934,7 +934,7 @@ const Dashboard = () => {
     console.log(`🔧 Atualizando saque ${withdrawalId} para ${status}`);
     
     try {
-      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}`, {
+      const response = await fetch(`/api/debug/withdrawals/${withdrawalId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -951,9 +951,7 @@ const Dashboard = () => {
         // Atualizar lista SEM loading state
         console.log('🔄 Recarregando lista...');
         
-        const reloadResponse = await fetch('/api/admin/withdrawals', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const reloadResponse = await fetch('/api/debug/withdrawals-data');
         const reloadData = await reloadResponse.json();
         setAdminWithdrawals(reloadData.withdrawals || []);
         console.log('✅ Lista recarregada:', reloadData.withdrawals?.length || 0);

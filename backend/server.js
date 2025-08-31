@@ -44,37 +44,59 @@ function cleanNomeFantasia(nomeFantasia) {
 const app = express();
 const PORT = process.env.PORT || 6000;
 
-// ROTA TEMPORÁRIA PARA DEBUG - NÃO AFETA NADA EXISTENTE
-app.get('/api/debug/withdrawals-data', (req, res) => {
-  res.json({
-    success: true,
-    withdrawals: [
-      {
-        id: 1,
-        userId: 1,
-        affiliateName: 'Teste Usuario',
-        affiliateEmail: 'teste@test.com',
-        amount: 150,
-        pixKey: 'teste@test.com',
-        status: 'pending',
-        adminNotes: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: 2, 
-        userId: 2,
-        affiliateName: 'Rody Rodrigo',
-        affiliateEmail: 'rodyrodrigo@gmail.com',
-        amount: 250,
-        pixKey: 'rodyrodrigo@gmail.com', 
-        status: 'pending',
-        adminNotes: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
-  });
+// ROTA DEBUG PARA DADOS REAIS DO BANCO
+app.get('/api/debug/withdrawals-data', async (req, res) => {
+  try {
+    const withdrawalsQuery = await pool.query(
+      `SELECT 
+        aw.*,
+        su.name as user_name,
+        su.email as user_email
+       FROM affiliate_withdrawals aw
+       INNER JOIN simple_users su ON aw.user_id = su.id
+       ORDER BY aw.created_at DESC`
+    );
+    
+    const withdrawals = withdrawalsQuery.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      affiliateName: row.user_name,
+      affiliateEmail: row.user_email,
+      amount: row.amount / 100, // converter para reais
+      pixKey: row.pix_key,
+      status: row.status,
+      adminNotes: row.admin_notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      withdrawals
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na rota debug:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ROTA DEBUG PARA ATUALIZAR STATUS
+app.patch('/api/debug/withdrawals/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+    
+    await pool.query(
+      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = NOW() WHERE id = $3',
+      [status, adminNotes, id]
+    );
+    
+    res.json({ success: true, message: 'Status atualizado' });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
