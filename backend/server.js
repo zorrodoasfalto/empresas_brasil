@@ -43,61 +43,6 @@ function cleanNomeFantasia(nomeFantasia) {
 
 const app = express();
 const PORT = process.env.PORT || 6000;
-
-// ROTA DEBUG PARA DADOS REAIS DO BANCO
-app.get('/api/debug/withdrawals-data', async (req, res) => {
-  try {
-    const withdrawalsQuery = await pool.query(
-      `SELECT 
-        aw.*,
-        su.name as user_name,
-        su.email as user_email
-       FROM affiliate_withdrawals aw
-       INNER JOIN simple_users su ON aw.user_id = su.id
-       ORDER BY aw.created_at DESC`
-    );
-    
-    const withdrawals = withdrawalsQuery.rows.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      affiliateName: row.user_name,
-      affiliateEmail: row.user_email,
-      amount: row.amount / 100, // converter para reais
-      pixKey: row.pix_key,
-      status: row.status,
-      adminNotes: row.admin_notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }));
-    
-    res.json({
-      success: true,
-      withdrawals
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro na rota debug:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ROTA DEBUG PARA ATUALIZAR STATUS
-app.patch('/api/debug/withdrawals/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, adminNotes } = req.body;
-    
-    await pool.query(
-      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = NOW() WHERE id = $3',
-      [status, adminNotes, id]
-    );
-    
-    res.json({ success: true, message: 'Status atualizado' });
-  } catch (error) {
-    console.error('❌ Erro ao atualizar:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
 // Configure trust proxy and force HTTPS in production
@@ -267,6 +212,66 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
+
+// ROTAS DEBUG APÓS MIDDLEWARES
+app.get('/api/debug/withdrawals-data', async (req, res) => {
+  try {
+    const withdrawalsQuery = await pool.query(
+      `SELECT 
+        aw.*,
+        su.name as user_name,
+        su.email as user_email
+       FROM affiliate_withdrawals aw
+       INNER JOIN simple_users su ON aw.user_id = su.id
+       ORDER BY aw.created_at DESC`
+    );
+    
+    const withdrawals = withdrawalsQuery.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      affiliateName: row.user_name,
+      affiliateEmail: row.user_email,
+      amount: row.amount / 100,
+      pixKey: row.pix_key,
+      status: row.status,
+      adminNotes: row.admin_notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+    
+    res.json({
+      success: true,
+      withdrawals
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro na rota debug:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.patch('/api/debug/withdrawals/:id', async (req, res) => {
+  try {
+    console.log('🚨 PATCH recebido - Body:', req.body, 'Params:', req.params);
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ success: false, message: 'Status é obrigatório' });
+    }
+    
+    await pool.query(
+      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = NOW() WHERE id = $3',
+      [status, adminNotes || null, id]
+    );
+    
+    console.log('✅ Status atualizado para:', status);
+    res.json({ success: true, message: 'Status atualizado' });
+  } catch (error) {
+    console.error('❌ Erro ao atualizar:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // JWT Authentication Middleware (strict)
 const authenticateToken = (req, res, next) => {
