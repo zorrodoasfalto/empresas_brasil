@@ -788,6 +788,7 @@ const LandingPage = () => {
                   <li>Cobertura nacional: <strong>27 estados + DF</strong></li>
                   <li><strong>20</strong> segmentos mapeados</li>
                   <li><strong>Dados de sócios</strong>: 3+ por empresa</li>
+                  <li><strong>Dados de contato</strong>: telefone, email, endereço</li>
                 </ul>
               </Card>
 
@@ -853,7 +854,8 @@ const LandingPage = () => {
                         <li style={{ marginBottom: '0.5rem' }}>• Performance: <strong>50.000 empresas em ~2,5 minutos</strong></li>
                         <li style={{ marginBottom: '0.5rem' }}>• Exportação nativa <strong>Excel (.xlsx)</strong> e <strong>CSV</strong></li>
                         <li style={{ marginBottom: '0.5rem' }}>• <strong>32+ campos</strong> por empresa exportados</li>
-                        <li>• Dados de sócios detalhados inclusos</li>
+                        <li style={{ marginBottom: '0.5rem' }}>• Dados de sócios detalhados inclusos</li>
+                        <li>• <strong>Dados de contato</strong>: telefone, email, endereço</li>
                       </ul>
                     </div>
                   </div>
