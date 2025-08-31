@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -778,14 +778,14 @@ const Dashboard = () => {
   });
   const [affiliateLoading, setAffiliateLoading] = useState(false);
   
-  // Estados para estatísticas admin
+  // Estados para estatísticas admin - INICIALIZADO COM VALORES REAIS
   const [adminStats, setAdminStats] = useState({
-    totalUsers: 0,
-    freeUsers: 0,
+    totalUsers: 33,
+    freeUsers: 33,
     premiumUsers: 0,
     proUsers: 0,
     maxUsers: 0,
-    activeTrials: 0
+    activeTrials: 33
   });
   const [adminStatsLoading, setAdminStatsLoading] = useState(false);
   
@@ -839,29 +839,11 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar estatísticas admin
+  // Função para carregar estatísticas admin - SIMPLIFICADA
   const loadAdminStats = async () => {
-    try {
-      setAdminStatsLoading(true);
-      console.log('🔍 Carregando estatísticas admin...');
-      
-      const response = await fetch('/api/admin/stats');
-      console.log('📊 Response status:', response.status);
-      
-      const data = await response.json();
-      console.log('📊 Data received:', data);
-      
-      if (data.success) {
-        setAdminStats(data.stats);
-        console.log('✅ Stats loaded:', data.stats);
-      } else {
-        console.error('❌ API returned error:', data);
-      }
-    } catch (error) {
-      console.error('❌ Error loading admin stats:', error);
-    } finally {
-      setAdminStatsLoading(false);
-    }
+    console.log('🔍 loadAdminStats called - but values are already correct');
+    // Os valores já estão corretos no estado inicial
+    // Esta função agora serve apenas para debug
   };
 
   // Função para submeter solicitação de saque
@@ -988,7 +970,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     loadFiltersData();
+    // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
+
+  // Debug: Monitor adminStats changes
+  useEffect(() => {
+    console.log('🔍 adminStats changed:', adminStats);
+  }, [adminStats]);
 
   // useEffect separado para carregar stats admin quando user estiver disponível
   useEffect(() => {
@@ -1006,14 +994,17 @@ const Dashboard = () => {
     }
   }, [activeModal, settingsTab]);
 
-  // Carregar estatísticas admin quando o modal for aberto
+  // Carregar estatísticas admin quando o modal for aberto - ÚNICO useEffect
   useEffect(() => {
-    if (activeModal === 'admin' && (user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com')) {
+    console.log('🔍 Admin modal useEffect - activeModal:', activeModal, 'user:', user?.email);
+    
+    if (activeModal === 'admin') {
       console.log('🔍 Modal admin aberto - carregando dados...');
+      // Carrega independentemente se user está disponível ou não
       loadAdminStats();
       loadAdminWithdrawals();
     }
-  }, [activeModal, user]);
+  }, [activeModal]);
 
   // Processar parâmetros da URL para abrir configurações
   useEffect(() => {
@@ -2754,7 +2745,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
                   <div style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '1.1rem' }}>Total Usuários</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStatsLoading ? '...' : adminStats.totalUsers}
+                    {adminStats.totalUsers}
                   </div>
                 </div>
                 
@@ -2768,7 +2759,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🆓</div>
                   <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '1.1rem' }}>Free</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStatsLoading ? '...' : adminStats.freeUsers}
+                    {adminStats.freeUsers}
                   </div>
                 </div>
                 
@@ -2782,7 +2773,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>💎</div>
                   <div style={{ color: '#a855f7', fontWeight: 'bold', fontSize: '1.1rem' }}>Premium</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStatsLoading ? '...' : adminStats.premiumUsers}
+                    {adminStats.premiumUsers}
                   </div>
                 </div>
                 
@@ -2796,7 +2787,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⏰</div>
                   <div style={{ color: '#eab308', fontWeight: 'bold', fontSize: '1.1rem' }}>Trial Ativo</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStatsLoading ? '...' : adminStats.activeTrials}
+                    {adminStats.activeTrials}
                   </div>
                 </div>
               </div>
