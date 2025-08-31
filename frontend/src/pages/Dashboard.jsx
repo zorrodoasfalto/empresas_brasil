@@ -777,6 +777,17 @@ const Dashboard = () => {
     pendingWithdrawals: 0
   });
   const [affiliateLoading, setAffiliateLoading] = useState(false);
+  
+  // Estados para estatísticas admin
+  const [adminStats, setAdminStats] = useState({
+    totalUsers: 0,
+    freeUsers: 0,
+    premiumUsers: 0,
+    proUsers: 0,
+    maxUsers: 0,
+    activeTrials: 0
+  });
+  const [adminStatsLoading, setAdminStatsLoading] = useState(false);
 
   // Funções para sistema de afiliados
   const loadAffiliateData = async () => {
@@ -815,6 +826,25 @@ const Dashboard = () => {
     }
   };
 
+  // Função para carregar estatísticas admin
+  const loadAdminStats = async () => {
+    if (user?.role !== 'admin' && user?.email !== 'rodyrodrigo@gmail.com') return;
+    
+    try {
+      setAdminStatsLoading(true);
+      const response = await fetch('/api/admin/stats');
+      const data = await response.json();
+      
+      if (data.success) {
+        setAdminStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error loading admin stats:', error);
+    } finally {
+      setAdminStatsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadFiltersData();
   }, []);
@@ -825,6 +855,13 @@ const Dashboard = () => {
       loadAffiliateData();
     }
   }, [activeModal, settingsTab]);
+
+  // Carregar estatísticas admin quando o modal for aberto
+  useEffect(() => {
+    if (activeModal === 'admin' && (user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com')) {
+      loadAdminStats();
+    }
+  }, [activeModal, user]);
 
   // Processar parâmetros da URL para abrir configurações
   useEffect(() => {
@@ -2521,6 +2558,74 @@ const Dashboard = () => {
             </ModalHeader>
             
             <div style={{ padding: '1.5rem 0' }}>
+              {/* Cards de Estatísticas de Usuários */}
+              <h4 style={{ color: '#00ffaa', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                👥 Estatísticas de Usuários
+              </h4>
+              
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+                gap: '1rem', 
+                marginBottom: '2rem' 
+              }}>
+                <div style={{ 
+                  background: 'rgba(59, 130, 246, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(59, 130, 246, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
+                  <div style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '1.1rem' }}>Total Usuários</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStatsLoading ? '...' : adminStats.totalUsers}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(34, 197, 94, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(34, 197, 94, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🆓</div>
+                  <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '1.1rem' }}>Free</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStatsLoading ? '...' : adminStats.freeUsers}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(168, 85, 247, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(168, 85, 247, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>💎</div>
+                  <div style={{ color: '#a855f7', fontWeight: 'bold', fontSize: '1.1rem' }}>Premium</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStatsLoading ? '...' : adminStats.premiumUsers}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(234, 179, 8, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(234, 179, 8, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⏰</div>
+                  <div style={{ color: '#eab308', fontWeight: 'bold', fontSize: '1.1rem' }}>Trial Ativo</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStatsLoading ? '...' : adminStats.activeTrials}
+                  </div>
+                </div>
+              </div>
+
               <h4 style={{ color: '#00ffaa', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 💰 Solicitações de Saque - Afiliados
               </h4>
@@ -2548,57 +2653,7 @@ const Dashboard = () => {
                   <div>Ações</div>
                 </div>
                 
-                {/* Exemplo de solicitação */}
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr', 
-                  gap: '1rem', 
-                  padding: '0.75rem 0',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  alignItems: 'center'
-                }}>
-                  <div style={{ color: '#e0e0e0' }}>
-                    <div>João Silva</div>
-                    <div style={{ fontSize: '0.8rem', color: '#999' }}>joao@email.com</div>
-                  </div>
-                  <div style={{ color: '#00ffaa', fontWeight: 'bold' }}>R$ 150,00</div>
-                  <div style={{ color: '#e0e0e0' }}>25/08/2025</div>
-                  <div>
-                    <span style={{ 
-                      background: 'rgba(255, 193, 7, 0.2)', 
-                      color: '#ffc107', 
-                      padding: '0.25rem 0.5rem', 
-                      borderRadius: '4px', 
-                      fontSize: '0.8rem' 
-                    }}>
-                      Pendente
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button style={{
-                      background: 'linear-gradient(135deg, #28a745, #20c997)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem'
-                    }}>
-                      ✓ Aprovar
-                    </button>
-                    <button style={{
-                      background: 'linear-gradient(135deg, #dc3545, #c82333)',
-                      color: 'white',
-                      border: 'none',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem'
-                    }}>
-                      ✗ Rejeitar
-                    </button>
-                  </div>
-                </div>
+                {/* Lista dinâmica de solicitações - será implementada com dados reais */}
                 
                 {/* Mensagem quando não há solicitações */}
                 <div style={{ 
@@ -2628,7 +2683,7 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
                   <div style={{ color: '#28a745', fontWeight: 'bold' }}>Aprovados</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>12</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
                 </div>
                 
                 <div style={{ 
@@ -2640,7 +2695,7 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
                   <div style={{ color: '#ffc107', fontWeight: 'bold' }}>Pendentes</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>3</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
                 </div>
                 
                 <div style={{ 
@@ -2652,7 +2707,7 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
                   <div style={{ color: '#dc3545', fontWeight: 'bold' }}>Rejeitados</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>2</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
                 </div>
               </div>
             </div>

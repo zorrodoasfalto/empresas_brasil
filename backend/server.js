@@ -3299,6 +3299,57 @@ app.post('/api/debug/login', async (req, res) => {
   }
 });
 
+// Admin statistics endpoint
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    console.log('📊 Admin stats requested');
+    
+    // Get total users count
+    const totalUsers = await pool.query('SELECT COUNT(*) as count FROM users');
+    
+    // Get subscription stats from simple_users (main table for auth)
+    const subscriptionStats = await pool.query(`
+      SELECT 
+        COALESCE(subscription_active, false) as is_active,
+        COUNT(*) as count
+      FROM simple_users 
+      GROUP BY COALESCE(subscription_active, false)
+    `);
+    
+    // Get trial stats
+    const trialStats = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE trial_expires_at > CURRENT_TIMESTAMP) as active_trials,
+        COUNT(*) FILTER (WHERE trial_expires_at <= CURRENT_TIMESTAMP OR trial_expires_at IS NULL) as inactive_trials
+      FROM simple_users
+    `);
+    
+    // Process subscription data
+    const subscriptionMap = {};
+    subscriptionStats.rows.forEach(row => {
+      subscriptionMap[row.is_active ? 'premium' : 'free'] = parseInt(row.count);
+    });
+    
+    const stats = {
+      totalUsers: parseInt(totalUsers.rows[0].count),
+      freeUsers: subscriptionMap.free || 0,
+      premiumUsers: subscriptionMap.premium || 0,
+      proUsers: 0, // Not implemented yet
+      maxUsers: 0, // Not implemented yet
+      activeTrials: parseInt(trialStats.rows[0].active_trials || 0),
+      expiredTrials: parseInt(trialStats.rows[0].inactive_trials || 0)
+    };
+    
+    console.log('📊 Admin stats:', stats);
+    res.json({ success: true, stats });
+    
+  } catch (error) {
+    console.error('❌ Admin stats error:', error);
+    res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas' });
+  }
+});
+
 Promise.all([initDB(), createUsersTable(), initStripeAndAffiliates(pool)]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
