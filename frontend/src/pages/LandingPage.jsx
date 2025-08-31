@@ -1233,7 +1233,7 @@ const LandingPage = () => {
                     <div className="benefit-icon">📊</div>
                     <div className="benefit-text">
                       <div className="title">Dashboard completo</div>
-                      <div className="description">Acompanhe ganhos em tempo real</div>
+                      <div className="description">Aba Afiliados em Configurações</div>
                     </div>
                   </div>
                   
@@ -1249,9 +1249,9 @@ const LandingPage = () => {
                 <div className="affiliate-cta">
                   <button 
                     className="primary-btn"
-                    onClick={() => navigate('/afiliados')}
+                    onClick={() => navigate('/dashboard')}
                   >
-                    Tornar-me Afiliado
+                    Acessar Dashboard
                   </button>
                 </div>
               </div>
