@@ -1768,7 +1768,7 @@ const Dashboard = () => {
             >
               ›
             </MenuToggleButton>
-          )
+          )}
           </SidebarLogo>
           <SidebarItem 
             isMinimized={isMenuMinimized}
