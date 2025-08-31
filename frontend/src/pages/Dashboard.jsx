@@ -907,12 +907,8 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar solicitações de saque (admin)
+  // Função para carregar solicitações de saque (admin) - FETCH REAL
   const loadAdminWithdrawals = async () => {
-    if (adminWithdrawalsLoading) {
-      return;
-    }
-    
     setAdminWithdrawalsLoading(true);
     
     try {
@@ -921,15 +917,14 @@ const Dashboard = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAdminWithdrawals(data.withdrawals || []);
-        }
+      const data = await response.json();
+      
+      if (data.success && data.withdrawals) {
+        setAdminWithdrawals(data.withdrawals);
       }
+      
     } catch (error) {
       console.error('Erro ao carregar saques:', error);
-      setAdminWithdrawals([]);
     } finally {
       setAdminWithdrawalsLoading(false);
     }
