@@ -1445,7 +1445,7 @@ const Dashboard = () => {
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
-            {user?.role === 'admin' && (
+            {(user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com') && (
               <AdminButton onClick={() => setActiveModal('admin')}>👑</AdminButton>
             )}
             <SettingsButton onClick={() => setActiveModal('settings')}>⚙️</SettingsButton>
@@ -2512,7 +2512,7 @@ const Dashboard = () => {
       )}
 
       {/* Modal Admin - Apenas para usuários admin */}
-      {activeModal === 'admin' && user?.role === 'admin' && (
+      {activeModal === 'admin' && (user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com') && (
         <Modal onClick={() => setActiveModal(null)}>
           <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '80vh', overflowY: 'auto' }}>
             <ModalHeader>
