@@ -804,23 +804,19 @@ const Dashboard = () => {
 
   // Funções para sistema de afiliados
   const loadAffiliateData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      setAffiliateLoading(true);
-      const response = await fetch('/api/stripe/affiliate-status', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAffiliateData(data);
+    console.log('🔍 Carregando dados de afiliado...');
+    const token = localStorage.getItem('token');
+    
+    const response = await fetch('/api/stripe/affiliate-status', {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    } catch (error) {
-      console.error('Erro ao carregar dados de afiliado:', error);
-    } finally {
-      setAffiliateLoading(false);
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setAffiliateData(data);
+      console.log('✅ Dados de afiliado carregados:', data);
     }
   };
 
@@ -997,7 +993,22 @@ const Dashboard = () => {
   // Carregar dados de afiliados quando a aba for aberta
   useEffect(() => {
     if (activeModal === 'settings' && settingsTab === 'affiliate') {
-      loadAffiliateData();
+      console.log('🔍 Aba afiliados aberta - carregando dados direto...');
+      
+      const carregarAfiliado = async () => {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/stripe/affiliate-status', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setAffiliateData(data);
+          console.log('✅ Afiliado carregado direto:', data);
+        }
+      };
+      
+      carregarAfiliado();
     }
   }, [activeModal, settingsTab]);
 
