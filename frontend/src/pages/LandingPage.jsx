@@ -1249,9 +1249,9 @@ const LandingPage = () => {
                 <div className="affiliate-cta">
                   <button 
                     className="primary-btn"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/dashboard?tab=configuracoes')}
                   >
-                    Acessar Dashboard
+                    Acessar Configurações
                   </button>
                 </div>
               </div>
