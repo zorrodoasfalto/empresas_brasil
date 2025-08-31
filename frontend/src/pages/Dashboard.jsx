@@ -788,6 +788,19 @@ const Dashboard = () => {
     activeTrials: 0
   });
   const [adminStatsLoading, setAdminStatsLoading] = useState(false);
+  
+  // Estados para o modal de saque
+  const [withdrawalModal, setWithdrawalModal] = useState(false);
+  const [withdrawalForm, setWithdrawalForm] = useState({
+    amount: '',
+    pixKey: '',
+    pixKeyType: 'cpf' // cpf, email, telefone, chave
+  });
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false);
+  
+  // Estados para admin de saques
+  const [adminWithdrawals, setAdminWithdrawals] = useState([]);
+  const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
 
   // Funções para sistema de afiliados
   const loadAffiliateData = async () => {
@@ -851,6 +864,128 @@ const Dashboard = () => {
     }
   };
 
+  // Função para submeter solicitação de saque
+  const submitWithdrawal = async () => {
+    try {
+      setWithdrawalLoading(true);
+      
+      // Validações frontend
+      const amount = parseFloat(withdrawalForm.amount);
+      if (!amount || amount < 50) {
+        toast.error('Valor mínimo para saque é R$ 50,00');
+        return;
+      }
+      
+      if (amount > affiliateData.totalCommissions) {
+        toast.error('Valor solicitado superior ao disponível');
+        return;
+      }
+      
+      if (!withdrawalForm.pixKey) {
+        toast.error('Chave PIX é obrigatória');
+        return;
+      }
+      
+      console.log('💰 Enviando solicitação de saque:', {
+        amount,
+        pixKey: withdrawalForm.pixKey,
+        pixKeyType: withdrawalForm.pixKeyType
+      });
+      
+      const response = await fetch('/api/withdrawals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          amount,
+          pixKey: withdrawalForm.pixKey,
+          pixKeyType: withdrawalForm.pixKeyType
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success('Solicitação de saque enviada com sucesso! Aguarde aprovação do administrador.');
+        setWithdrawalModal(false);
+        setWithdrawalForm({ amount: '', pixKey: '', pixKeyType: 'cpf' });
+        // Recarregar dados do afiliado para atualizar saldo disponível
+        loadAffiliateData();
+      } else {
+        toast.error(data.message || 'Erro ao solicitar saque');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao solicitar saque:', error);
+      toast.error('Erro interno. Tente novamente.');
+    } finally {
+      setWithdrawalLoading(false);
+    }
+  };
+
+  // Função para carregar solicitações de saque (admin)
+  const loadAdminWithdrawals = async () => {
+    try {
+      setAdminWithdrawalsLoading(true);
+      console.log('💰 Admin carregando solicitações de saque...');
+      
+      const response = await fetch('/api/admin/withdrawals', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log('💰 Saques recebidos:', data);
+      
+      if (data.success) {
+        setAdminWithdrawals(data.withdrawals);
+        console.log('✅ Saques carregados:', data.withdrawals.length);
+      } else {
+        console.error('❌ Erro ao carregar saques:', data.message);
+        toast.error(data.message || 'Erro ao carregar solicitações');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao carregar saques admin:', error);
+      toast.error('Erro interno ao carregar saques');
+    } finally {
+      setAdminWithdrawalsLoading(false);
+    }
+  };
+
+  // Função para atualizar status de saque (admin)
+  const updateWithdrawalStatus = async (withdrawalId, status, adminNotes = '') => {
+    try {
+      console.log(`🔧 Admin atualizando saque ${withdrawalId} para ${status}`);
+      
+      const response = await fetch(`/api/admin/withdrawals/${withdrawalId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status, adminNotes })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(data.message);
+        // Recarregar lista de saques
+        loadAdminWithdrawals();
+      } else {
+        toast.error(data.message || 'Erro ao atualizar saque');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erro ao atualizar saque:', error);
+      toast.error('Erro interno ao atualizar saque');
+    }
+  };
+
   useEffect(() => {
     loadFiltersData();
   }, []);
@@ -874,7 +1009,9 @@ const Dashboard = () => {
   // Carregar estatísticas admin quando o modal for aberto
   useEffect(() => {
     if (activeModal === 'admin' && (user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com')) {
+      console.log('🔍 Modal admin aberto - carregando dados...');
       loadAdminStats();
+      loadAdminWithdrawals();
     }
   }, [activeModal, user]);
 
@@ -2493,8 +2630,11 @@ const Dashboard = () => {
                   {affiliateData.totalCommissions > 0 && (
                     <button
                       onClick={() => {
-                        // TODO: Implementar solicitação de saque
-                        alert('Solicitação de saque enviada! Aguarde aprovação do administrador.');
+                        setWithdrawalForm({
+                          ...withdrawalForm,
+                          amount: affiliateData.totalCommissions.toString()
+                        });
+                        setWithdrawalModal(true);
                       }}
                       style={{
                         background: 'linear-gradient(135deg, #28a745, #20c997)',
@@ -2579,7 +2719,10 @@ const Dashboard = () => {
                   👥 Estatísticas de Usuários
                 </h4>
                 <button 
-                  onClick={loadAdminStats}
+                  onClick={() => {
+                    loadAdminStats();
+                    loadAdminWithdrawals();
+                  }}
                   style={{
                     background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
                     color: '#000',
@@ -2685,18 +2828,133 @@ const Dashboard = () => {
                   <div>Ações</div>
                 </div>
                 
-                {/* Lista dinâmica de solicitações - será implementada com dados reais */}
-                
-                {/* Mensagem quando não há solicitações */}
-                <div style={{ 
-                  textAlign: 'center', 
-                  color: '#999', 
-                  padding: '2rem',
-                  fontStyle: 'italic'
-                }}>
-                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💼</div>
-                  <div>Nenhuma solicitação de saque pendente no momento</div>
-                </div>
+                {/* Lista dinâmica de solicitações com dados reais */}
+                {adminWithdrawalsLoading ? (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    color: '#999', 
+                    padding: '2rem'
+                  }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                    <div>Carregando solicitações de saque...</div>
+                  </div>
+                ) : adminWithdrawals.length > 0 ? (
+                  adminWithdrawals.map(withdrawal => (
+                    <div key={withdrawal.id} style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '2fr 1fr 1fr 1fr 2fr', 
+                      gap: '1rem', 
+                      padding: '0.75rem 0',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{ color: '#e0e0e0', fontWeight: 'bold' }}>
+                          {withdrawal.affiliateName}
+                        </div>
+                        <div style={{ color: '#999', fontSize: '0.8rem' }}>
+                          {withdrawal.affiliateEmail}
+                        </div>
+                        <div style={{ color: '#00ffaa', fontSize: '0.8rem' }}>
+                          PIX: {withdrawal.pixKey}
+                        </div>
+                      </div>
+                      <div style={{ color: '#e0e0e0', fontWeight: 'bold' }}>
+                        R$ {withdrawal.amount.toFixed(2)}
+                      </div>
+                      <div style={{ color: '#e0e0e0', fontSize: '0.8rem' }}>
+                        {new Date(withdrawal.createdAt).toLocaleDateString('pt-BR')}
+                      </div>
+                      <div>
+                        <span style={{ 
+                          background: 
+                            withdrawal.status === 'pending' ? 'rgba(255, 193, 7, 0.2)' :
+                            withdrawal.status === 'approved' ? 'rgba(40, 167, 69, 0.2)' :
+                            withdrawal.status === 'rejected' ? 'rgba(220, 53, 69, 0.2)' :
+                            'rgba(100, 100, 100, 0.2)',
+                          color: 
+                            withdrawal.status === 'pending' ? '#ffc107' :
+                            withdrawal.status === 'approved' ? '#28a745' :
+                            withdrawal.status === 'rejected' ? '#dc3545' :
+                            '#e0e0e0',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.8rem',
+                          fontWeight: 'bold'
+                        }}>
+                          {withdrawal.status === 'pending' ? '⏳ Pendente' :
+                           withdrawal.status === 'approved' ? '✅ Aprovado' :
+                           withdrawal.status === 'rejected' ? '❌ Rejeitado' :
+                           withdrawal.status === 'paid' ? '💰 Pago' :
+                           withdrawal.status}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {withdrawal.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => updateWithdrawalStatus(withdrawal.id, 'approved', 'Saque aprovado pelo administrador')}
+                              style={{
+                                background: 'linear-gradient(135deg, #28a745, #20c997)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              ✅ Aprovar
+                            </button>
+                            <button
+                              onClick={() => updateWithdrawalStatus(withdrawal.id, 'rejected', 'Saque rejeitado pelo administrador')}
+                              style={{
+                                background: 'linear-gradient(135deg, #dc3545, #c82333)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              ❌ Rejeitar
+                            </button>
+                          </>
+                        )}
+                        {withdrawal.status === 'approved' && (
+                          <button
+                            onClick={() => updateWithdrawalStatus(withdrawal.id, 'paid', 'Pagamento processado')}
+                            style={{
+                              background: 'linear-gradient(135deg, #007bff, #0056b3)',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '0.4rem 0.8rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.7rem',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            💰 Marcar Pago
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    color: '#999', 
+                    padding: '2rem',
+                    fontStyle: 'italic'
+                  }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💼</div>
+                    <div>Nenhuma solicitação de saque encontrada</div>
+                  </div>
+                )}
               </div>
               
               {/* Estatísticas */}
@@ -2715,7 +2973,9 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
                   <div style={{ color: '#28a745', fontWeight: 'bold' }}>Aprovados</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
+                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'approved' || w.status === 'paid').length}
+                  </div>
                 </div>
                 
                 <div style={{ 
@@ -2727,7 +2987,9 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
                   <div style={{ color: '#ffc107', fontWeight: 'bold' }}>Pendentes</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
+                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'pending').length}
+                  </div>
                 </div>
                 
                 <div style={{ 
@@ -2739,9 +3001,193 @@ const Dashboard = () => {
                 }}>
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
                   <div style={{ color: '#dc3545', fontWeight: 'bold' }}>Rejeitados</div>
-                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>0</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
+                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'rejected').length}
+                  </div>
                 </div>
               </div>
+            </div>
+          </ModalContent>
+        </Modal>
+      )}
+
+      {/* Modal de Solicitação de Saque */}
+      {withdrawalModal && (
+        <Modal onClick={() => setWithdrawalModal(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <ModalHeader>
+              <h3>💰 Solicitar Saque</h3>
+              <CloseButton onClick={() => setWithdrawalModal(false)}>×</CloseButton>
+            </ModalHeader>
+            
+            <div style={{ padding: '1.5rem 0' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ 
+                  background: 'rgba(40, 167, 69, 0.1)', 
+                  border: '1px solid rgba(40, 167, 69, 0.3)', 
+                  borderRadius: '8px', 
+                  padding: '1rem',
+                  textAlign: 'center',
+                  marginBottom: '1.5rem'
+                }}>
+                  <div style={{ color: '#28a745', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                    💎 Saldo Disponível: R$ {affiliateData.totalCommissions.toFixed(2)}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    color: '#e0e0e0', 
+                    fontWeight: 'bold', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    💵 Valor do Saque (R$)
+                  </label>
+                  <input
+                    type="number"
+                    min="50"
+                    max={affiliateData.totalCommissions}
+                    step="0.01"
+                    value={withdrawalForm.amount}
+                    onChange={(e) => setWithdrawalForm({
+                      ...withdrawalForm,
+                      amount: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '6px',
+                      color: '#e0e0e0',
+                      fontSize: '1rem'
+                    }}
+                    placeholder="Digite o valor (mínimo R$ 50,00)"
+                  />
+                  <small style={{ color: '#999', fontSize: '0.8rem' }}>
+                    Valor mínimo: R$ 50,00 | Máximo: R$ {affiliateData.totalCommissions.toFixed(2)}
+                  </small>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    color: '#e0e0e0', 
+                    fontWeight: 'bold', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    🏷️ Tipo de Chave PIX
+                  </label>
+                  <select
+                    value={withdrawalForm.pixKeyType}
+                    onChange={(e) => setWithdrawalForm({
+                      ...withdrawalForm,
+                      pixKeyType: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '6px',
+                      color: '#e0e0e0',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    <option value="cpf">📄 CPF</option>
+                    <option value="email">📧 E-mail</option>
+                    <option value="telefone">📱 Telefone</option>
+                    <option value="chave">🔑 Chave Aleatória</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ 
+                    display: 'block', 
+                    color: '#e0e0e0', 
+                    fontWeight: 'bold', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    🔑 Chave PIX
+                  </label>
+                  <input
+                    type="text"
+                    value={withdrawalForm.pixKey}
+                    onChange={(e) => setWithdrawalForm({
+                      ...withdrawalForm,
+                      pixKey: e.target.value
+                    })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      background: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '6px',
+                      color: '#e0e0e0',
+                      fontSize: '1rem'
+                    }}
+                    placeholder={
+                      withdrawalForm.pixKeyType === 'cpf' ? 'Digite seu CPF (000.000.000-00)' :
+                      withdrawalForm.pixKeyType === 'email' ? 'Digite seu e-mail' :
+                      withdrawalForm.pixKeyType === 'telefone' ? 'Digite seu telefone (+5511999999999)' :
+                      'Digite sua chave aleatória'
+                    }
+                  />
+                </div>
+
+                <div style={{ 
+                  background: 'rgba(255, 193, 7, 0.1)', 
+                  border: '1px solid rgba(255, 193, 7, 0.3)', 
+                  borderRadius: '8px', 
+                  padding: '1rem',
+                  fontSize: '0.9rem'
+                }}>
+                  <div style={{ color: '#ffc107', fontWeight: 'bold', marginBottom: '0.5rem' }}>ℹ️ Importante:</div>
+                  <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: 1.5, color: '#e0e0e0' }}>
+                    <li>Valor mínimo para saque: <strong>R$ 50,00</strong></li>
+                    <li>Processamento em até <strong>7 dias úteis</strong></li>
+                    <li>Você receberá confirmação por e-mail</li>
+                    <li>Verifique se sua chave PIX está correta</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <button
+                onClick={() => setWithdrawalModal(false)}
+                disabled={withdrawalLoading}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#e0e0e0',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '6px',
+                  cursor: withdrawalLoading ? 'not-allowed' : 'pointer',
+                  opacity: withdrawalLoading ? 0.6 : 1
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={submitWithdrawal}
+                disabled={withdrawalLoading}
+                style={{
+                  background: withdrawalLoading 
+                    ? 'rgba(100,100,100,0.5)' 
+                    : 'linear-gradient(135deg, #28a745, #20c997)',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '6px',
+                  cursor: withdrawalLoading ? 'not-allowed' : 'pointer',
+                  fontWeight: 'bold',
+                  opacity: withdrawalLoading ? 0.6 : 1
+                }}
+              >
+                {withdrawalLoading ? '⏳ Enviando...' : '💰 Solicitar Saque'}
+              </button>
             </div>
           </ModalContent>
         </Modal>

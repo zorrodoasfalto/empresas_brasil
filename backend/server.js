@@ -3350,6 +3350,258 @@ app.get('/api/admin/stats', async (req, res) => {
   }
 });
 
+// ===========================================
+// WITHDRAWAL ENDPOINTS - Sistema de Saques
+// ===========================================
+
+// POST /api/withdrawals - Solicitar saque (apenas afiliados)
+app.post('/api/withdrawals', async (req, res) => {
+  try {
+    const { amount, pixKey, pixKeyType } = req.body;
+    
+    // Verificar autenticação
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+    
+    // Verificar se o usuário é afiliado
+    const affiliateQuery = await pool.query(
+      'SELECT * FROM affiliates WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (affiliateQuery.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Usuário não é afiliado' });
+    }
+    
+    const affiliate = affiliateQuery.rows[0];
+    const availableAmount = affiliate.total_commissions; // já em centavos
+    const requestedAmount = Math.round(amount * 100); // converter para centavos
+    
+    // Validações
+    if (requestedAmount < 5000) { // R$ 50,00 mínimo
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valor mínimo para saque é R$ 50,00' 
+      });
+    }
+    
+    if (requestedAmount > availableAmount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valor solicitado superior ao disponível para saque' 
+      });
+    }
+    
+    if (!pixKey || !pixKeyType) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Chave PIX é obrigatória' 
+      });
+    }
+    
+    // Verificar se não há saque pendente
+    const pendingWithdrawal = await pool.query(
+      'SELECT * FROM affiliate_withdrawals WHERE affiliate_id = $1 AND status = $2',
+      [affiliate.id, 'pending']
+    );
+    
+    if (pendingWithdrawal.rows.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Você já possui uma solicitação de saque pendente' 
+      });
+    }
+    
+    // Criar solicitação de saque
+    const withdrawalQuery = await pool.query(
+      `INSERT INTO affiliate_withdrawals (affiliate_id, amount, pix_key, status) 
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [affiliate.id, requestedAmount, `${pixKeyType}:${pixKey}`, 'pending']
+    );
+    
+    const withdrawal = withdrawalQuery.rows[0];
+    
+    console.log(`💰 Nova solicitação de saque - Afiliado ID: ${affiliate.id}, Valor: R$ ${(requestedAmount/100).toFixed(2)}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Solicitação de saque criada com sucesso! Você receberá o pagamento em até 7 dias úteis.',
+      withdrawal: {
+        id: withdrawal.id,
+        amount: withdrawal.amount / 100, // converter para reais
+        status: withdrawal.status,
+        createdAt: withdrawal.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao criar solicitação de saque:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// GET /api/admin/withdrawals - Listar solicitações de saque (apenas admin)
+app.get('/api/admin/withdrawals', async (req, res) => {
+  try {
+    // Verificar se é admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Verificar se é admin (role ou email específico)
+    const userQuery = await pool.query(
+      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
+      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
+    );
+    
+    if (userQuery.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    }
+    
+    // Buscar todas as solicitações de saque com dados do afiliado
+    const withdrawalsQuery = await pool.query(
+      `SELECT 
+        aw.*,
+        a.affiliate_code,
+        a.total_commissions,
+        su.name as affiliate_name,
+        su.email as affiliate_email
+       FROM affiliate_withdrawals aw
+       INNER JOIN affiliates a ON aw.affiliate_id = a.id
+       INNER JOIN simple_users su ON a.user_id = su.id
+       ORDER BY aw.created_at DESC`
+    );
+    
+    const withdrawals = withdrawalsQuery.rows.map(row => ({
+      id: row.id,
+      affiliateId: row.affiliate_id,
+      affiliateName: row.affiliate_name,
+      affiliateEmail: row.affiliate_email,
+      affiliateCode: row.affiliate_code,
+      amount: row.amount / 100, // converter para reais
+      pixKey: row.pix_key,
+      status: row.status,
+      adminNotes: row.admin_notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      availableCommissions: row.total_commissions / 100 // comissões disponíveis em reais
+    }));
+    
+    console.log(`📋 Admin solicitou lista de saques - ${withdrawals.length} registros encontrados`);
+    
+    res.json({ 
+      success: true, 
+      withdrawals 
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao buscar solicitações de saque:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// PATCH /api/admin/withdrawals/:id - Aprovar/rejeitar saque (apenas admin)
+app.patch('/api/admin/withdrawals/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+    
+    // Verificar se é admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Verificar se é admin (role ou email específico)
+    const userQuery = await pool.query(
+      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
+      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
+    );
+    
+    if (userQuery.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    }
+    
+    // Validar status
+    const validStatuses = ['approved', 'rejected', 'paid'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Status inválido. Use: approved, rejected ou paid' 
+      });
+    }
+    
+    // Buscar a solicitação atual
+    const currentWithdrawal = await pool.query(
+      'SELECT * FROM affiliate_withdrawals WHERE id = $1',
+      [id]
+    );
+    
+    if (currentWithdrawal.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Solicitação de saque não encontrada' });
+    }
+    
+    const withdrawal = currentWithdrawal.rows[0];
+    
+    // Se estiver aprovando, verificar se afiliado ainda tem saldo
+    if (status === 'approved' && withdrawal.status === 'pending') {
+      const affiliateQuery = await pool.query(
+        'SELECT total_commissions FROM affiliates WHERE id = $1',
+        [withdrawal.affiliate_id]
+      );
+      
+      const affiliate = affiliateQuery.rows[0];
+      if (withdrawal.amount > affiliate.total_commissions) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Afiliado não possui saldo suficiente para aprovação' 
+        });
+      }
+      
+      // Deduzir valor das comissões do afiliado
+      await pool.query(
+        'UPDATE affiliates SET total_commissions = total_commissions - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [withdrawal.amount, withdrawal.affiliate_id]
+      );
+    }
+    
+    // Atualizar solicitação
+    const updateQuery = await pool.query(
+      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+      [status, adminNotes, id]
+    );
+    
+    const updatedWithdrawal = updateQuery.rows[0];
+    
+    console.log(`🔧 Admin atualizou saque ID ${id} - Status: ${status}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Solicitação ${status === 'approved' ? 'aprovada' : status === 'rejected' ? 'rejeitada' : 'marcada como paga'} com sucesso!`,
+      withdrawal: {
+        id: updatedWithdrawal.id,
+        status: updatedWithdrawal.status,
+        adminNotes: updatedWithdrawal.admin_notes,
+        updatedAt: updatedWithdrawal.updated_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao atualizar solicitação de saque:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
 Promise.all([initDB(), createUsersTable(), initStripeAndAffiliates(pool)]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
