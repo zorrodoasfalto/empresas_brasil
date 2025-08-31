@@ -920,12 +920,8 @@ const Dashboard = () => {
     }, 3000);
     
     try {
-      const token = localStorage.getItem('token') || '';
-      console.log('🔍 Token length:', token.length);
-      
-      if (!token) {
-        throw new Error('No token');
-      }
+      const token = localStorage.getItem('token');
+      console.log('🔍 Token existe:', !!token);
       
       console.log('🔍 Iniciando fetch...');
       const response = await fetch('/api/admin/withdrawals', {
