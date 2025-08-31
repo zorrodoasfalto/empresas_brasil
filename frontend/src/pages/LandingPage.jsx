@@ -796,10 +796,12 @@ const LandingPage = () => {
                 <div className="card-icon">🔍</div>
                 <h3 className="card-title">Prospecção multicanal</h3>
                 <ul className="card-list">
-                  <li>Instagram Email Scraper</li>
-                  <li>LinkedIn Company Scraper</li>
-                  <li>Google Maps Business</li>
-                  <li>Busca Empresarial Inteligente</li>
+                  <li><strong>Instagram Email Scraper</strong>: extração de emails</li>
+                  <li><strong>LinkedIn Company Scraper</strong>: dados empresariais</li>
+                  <li><strong>Google Maps Business</strong>: prospecção local</li>
+                  <li><strong>Busca Empresarial Inteligente</strong>: filtros avançados</li>
+                  <li><strong>API integradas</strong>: Ghost Genius + Google Places</li>
+                  <li><strong>Processamento</strong>: tempo real com progresso</li>
                 </ul>
               </Card>
 
@@ -809,8 +811,10 @@ const LandingPage = () => {
                 <ul className="card-list">
                   <li><strong>Pipeline Kanban</strong>: visual e drag & drop</li>
                   <li><strong>Gestão de Leads</strong>: histórico completo</li>
-                  <li>Fases customizáveis</li>
-                  <li>Acompanhamento por etapa</li>
+                  <li><strong>Fases customizáveis</strong>: adapte ao seu processo</li>
+                  <li><strong>Acompanhamento</strong>: progresso por etapa</li>
+                  <li><strong>Conversão otimizada</strong>: identifique gargalos</li>
+                  <li><strong>Interface intuitiva</strong>: fácil de usar</li>
                 </ul>
               </Card>
 
@@ -818,10 +822,12 @@ const LandingPage = () => {
                 <div className="card-icon">📊</div>
                 <h3 className="card-title">Exportação sem atrito</h3>
                 <ul className="card-list">
-                  <li>Exportação nativa <strong>Excel (.xlsx)</strong> e <strong>CSV</strong></li>
-                  <li><strong>32+ campos</strong> por empresa</li>
-                  <li>Dados de sócios inclusos</li>
-                  <li>Performance: <strong>50k em 2,5min</strong></li>
+                  <li><strong>Exportação nativa</strong>: Excel (.xlsx) e CSV</li>
+                  <li><strong>32+ campos</strong> por empresa exportados</li>
+                  <li><strong>Dados de sócios</strong>: informações detalhadas</li>
+                  <li><strong>Performance</strong>: 50k empresas em 2,5min</li>
+                  <li><strong>Formato compatível</strong>: Excel brasileiro</li>
+                  <li><strong>Larguras automáticas</strong>: colunas otimizadas</li>
                 </ul>
               </Card>
             </div>
