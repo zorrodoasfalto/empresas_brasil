@@ -1725,7 +1725,12 @@ const Dashboard = () => {
           {isMobileMenuOpen ? '✕' : '☰'}
         </MobileMenuButton>
         <MobileLogo>
-          <img src={logo} alt="Logo" onClick={handleLogoClick} />
+          <img 
+            src={thumbnail} 
+            alt="Logo" 
+            onClick={handleLogoClick}
+            style={{ cursor: 'pointer' }}
+          />
           <span>DataAtlas</span>
         </MobileLogo>
         <div></div> {/* Spacer for layout */}
@@ -1734,15 +1739,26 @@ const Dashboard = () => {
       <Sidebar isMobileMenuOpen={isMobileMenuOpen} isMinimized={isMenuMinimized}>
         <SidebarContent>
           <SidebarLogo isMinimized={isMenuMinimized}>
-            <Logo 
-              src={isMenuMinimized ? thumbnail : logo} 
-              alt="Logo" 
-              onClick={handleLogoClick} 
-              style={{ 
-                width: isMenuMinimized ? '30px' : 'auto',
-                height: isMenuMinimized ? '30px' : 'auto'
-              }}
-            />
+            {isMenuMinimized ? (
+              <img 
+                src={thumbnail} 
+                alt="Logo" 
+                onClick={handleLogoClick}
+                style={{ 
+                  width: '30px',
+                  height: '30px',
+                  cursor: 'pointer',
+                  filter: 'drop-shadow(0 0 8px rgba(0, 255, 170, 0.4))',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            ) : (
+              <Logo 
+                src={logo} 
+                alt="Logo" 
+                onClick={handleLogoClick}
+              />
+            )}
             {!isMenuMinimized && (
               <MenuToggleButton onClick={() => setIsMenuMinimized(!isMenuMinimized)}>
                 ‹
@@ -1757,13 +1773,12 @@ const Dashboard = () => {
                 position: 'absolute',
                 top: '100px',
                 right: '-16px',
-                background: 'rgba(15, 15, 35, 0.95)',
-                backdropFilter: 'blur(10px)',
                 borderRadius: '0 8px 8px 0',
                 borderLeft: 'none',
                 width: '24px',
                 height: '40px',
-                zIndex: '10'
+                zIndex: '10',
+                fontSize: '16px'
               }}
             >
               ›
