@@ -3446,11 +3446,10 @@ app.post('/api/withdrawals', async (req, res) => {
 });
 
 // GET /api/admin/withdrawals - Listar solicitações de saque (apenas admin)
-app.get('/api/admin/withdrawals', async (req, res) => {
-  console.log('🚨 ENDPOINT /api/admin/withdrawals CHAMADO - DEBUG MODE');
+app.get('/api/admin/withdrawals', (req, res) => {
+  console.log('🚨 ENDPOINT SIMPLES SÍNCRONO');
   
-  // RETORNAR DADOS FAKE IMEDIATAMENTE PARA TESTAR
-  return res.json({
+  res.json({
     success: true,
     withdrawals: [
       {
