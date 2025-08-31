@@ -828,18 +828,24 @@ const Dashboard = () => {
 
   // Função para carregar estatísticas admin
   const loadAdminStats = async () => {
-    if (user?.role !== 'admin' && user?.email !== 'rodyrodrigo@gmail.com') return;
-    
     try {
       setAdminStatsLoading(true);
+      console.log('🔍 Carregando estatísticas admin...');
+      
       const response = await fetch('/api/admin/stats');
+      console.log('📊 Response status:', response.status);
+      
       const data = await response.json();
+      console.log('📊 Data received:', data);
       
       if (data.success) {
         setAdminStats(data.stats);
+        console.log('✅ Stats loaded:', data.stats);
+      } else {
+        console.error('❌ API returned error:', data);
       }
     } catch (error) {
-      console.error('Error loading admin stats:', error);
+      console.error('❌ Error loading admin stats:', error);
     } finally {
       setAdminStatsLoading(false);
     }
@@ -848,6 +854,15 @@ const Dashboard = () => {
   useEffect(() => {
     loadFiltersData();
   }, []);
+
+  // useEffect separado para carregar stats admin quando user estiver disponível
+  useEffect(() => {
+    // Só executa quando user está definido e é admin
+    if (user && (user.role === 'admin' || user.email === 'rodyrodrigo@gmail.com')) {
+      console.log('🔍 User admin detectado, carregando stats:', user);
+      loadAdminStats();
+    }
+  }, [user]);
 
   // Carregar dados de afiliados quando a aba for aberta
   useEffect(() => {
@@ -2559,9 +2574,26 @@ const Dashboard = () => {
             
             <div style={{ padding: '1.5rem 0' }}>
               {/* Cards de Estatísticas de Usuários */}
-              <h4 style={{ color: '#00ffaa', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                👥 Estatísticas de Usuários
-              </h4>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h4 style={{ color: '#00ffaa', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  👥 Estatísticas de Usuários
+                </h4>
+                <button 
+                  onClick={loadAdminStats}
+                  style={{
+                    background: 'linear-gradient(135deg, #00ffaa, #00ccff)',
+                    color: '#000',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🔄 Atualizar
+                </button>
+              </div>
               
               <div style={{ 
                 display: 'grid', 
