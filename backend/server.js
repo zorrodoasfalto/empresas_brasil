@@ -3199,6 +3199,65 @@ app.post('/api/debug/login', async (req, res) => {
   }
 });
 
+// Admin statistics endpoint
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    console.log('📊 Admin stats requested');
+    
+    // Get total users count from simple_users (main auth table)
+    const totalUsers = await pool.query('SELECT COUNT(*) as count FROM simple_users');
+    
+    // Get subscription stats based on plan types
+    const subscriptionStats = await pool.query(`
+      SELECT 
+        CASE 
+          WHEN subscription_plan = 'pro' THEN 'pro'
+          WHEN subscription_plan = 'premium' THEN 'premium'
+          WHEN subscription_plan = 'max' THEN 'max'
+          ELSE 'free'
+        END as plan_type,
+        COUNT(*) as count
+      FROM simple_users 
+      GROUP BY 
+        CASE 
+          WHEN subscription_plan = 'pro' THEN 'pro'
+          WHEN subscription_plan = 'premium' THEN 'premium'
+          WHEN subscription_plan = 'max' THEN 'max'
+          ELSE 'free'
+        END
+    `);
+    
+    // Get trial stats
+    const trialStats = await pool.query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE trial_expires_at > CURRENT_TIMESTAMP) as active_trials
+      FROM simple_users
+    `);
+    
+    // Process subscription data
+    const planStats = {};
+    subscriptionStats.rows.forEach(row => {
+      planStats[row.plan_type] = parseInt(row.count);
+    });
+    
+    const stats = {
+      totalUsers: parseInt(totalUsers.rows[0].count),
+      freeUsers: planStats.free || 0,
+      proUsers: planStats.pro || 0,
+      premiumUsers: planStats.premium || 0,
+      maxUsers: planStats.max || 0,
+      activeTrials: parseInt(trialStats.rows[0].active_trials || 0)
+    };
+    
+    console.log('📊 Admin stats:', stats);
+    res.json({ success: true, stats });
+    
+  } catch (error) {
+    console.error('❌ Admin stats error:', error);
+    res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas' });
+  }
+});
+
 // ROTAS DE PRODUÇÃO PARA WITHDRAWALS (sistema de saques)
 app.get('/api/withdrawals/list', async (req, res) => {
   try {

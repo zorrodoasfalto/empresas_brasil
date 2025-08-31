@@ -2793,6 +2793,20 @@ const Dashboard = () => {
                 </div>
                 
                 <div style={{ 
+                  background: 'rgba(245, 158, 11, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(245, 158, 11, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚡</div>
+                  <div style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '1.1rem' }}>Pro</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStats.proUsers || 0}
+                  </div>
+                </div>
+                
+                <div style={{ 
                   background: 'rgba(168, 85, 247, 0.2)', 
                   padding: '1.5rem', 
                   borderRadius: '8px',
@@ -2803,6 +2817,20 @@ const Dashboard = () => {
                   <div style={{ color: '#a855f7', fontWeight: 'bold', fontSize: '1.1rem' }}>Premium</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
                     {adminStats.premiumUsers}
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  background: 'rgba(239, 68, 68, 0.2)', 
+                  padding: '1.5rem', 
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  border: '1px solid rgba(239, 68, 68, 0.3)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🚀</div>
+                  <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '1.1rem' }}>Max</div>
+                  <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
+                    {adminStats.maxUsers || 0}
                   </div>
                 </div>
                 
