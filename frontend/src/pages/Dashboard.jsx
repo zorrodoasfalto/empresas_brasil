@@ -909,15 +909,28 @@ const Dashboard = () => {
 
   // REFLETE BACKEND SEM COMPLEXIDADE
   const loadAdminWithdrawals = async () => {
-    setAdminWithdrawalsLoading(true);
-    
-    const response = await fetch('/api/admin/withdrawals', {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-    });
-    const data = await response.json();
-    
-    setAdminWithdrawals(data.withdrawals || []);
-    setAdminWithdrawalsLoading(false);
+    try {
+      setAdminWithdrawalsLoading(true);
+      console.log('🔍 Iniciando loadAdminWithdrawals...');
+      
+      const response = await fetch('/api/admin/withdrawals', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📦 Data recebido:', data);
+      
+      setAdminWithdrawals(data.withdrawals || []);
+      console.log('✅ AdminWithdrawals setado:', data.withdrawals?.length || 0, 'items');
+      
+    } catch (error) {
+      console.error('❌ Erro em loadAdminWithdrawals:', error);
+      setAdminWithdrawals([]);
+    } finally {
+      setAdminWithdrawalsLoading(false);
+      console.log('🏁 Loading finalizado');
+    }
   };
 
   // Função para atualizar status de saque (admin) - FUNCIONAL E SIMPLES  
@@ -938,7 +951,17 @@ const Dashboard = () => {
       
       if (data.success) {
         toast.success(`Saque ${status === 'approved' ? 'aprovado' : status === 'rejected' ? 'rejeitado' : 'atualizado'}!`);
-        loadAdminWithdrawals(); // Recarregar lista
+        
+        // Atualizar lista diretamente sem função separada
+        console.log('🔄 Recarregando lista após atualização...');
+        setAdminWithdrawalsLoading(true);
+        
+        const reloadResponse = await fetch('/api/admin/withdrawals', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const reloadData = await reloadResponse.json();
+        setAdminWithdrawals(reloadData.withdrawals || []);
+        setAdminWithdrawalsLoading(false);
       } else {
         toast.error(data.message || 'Erro ao atualizar');
       }
@@ -983,13 +1006,34 @@ const Dashboard = () => {
   useEffect(() => {
     console.log('🚨 useEffect ADMIN executou! activeModal:', activeModal);
     if (activeModal === 'admin') {
-      console.log('🚨 Modal é admin - chamando funções...');
-      loadAdminStats();
-      console.log('🚨 loadAdminStats chamado');
-      loadAdminWithdrawals();
-      console.log('🚨 loadAdminWithdrawals chamado');
-    } else {
-      console.log('🚨 Modal NÃO é admin, activeModal:', activeModal);
+      console.log('🚨 Modal é admin - carregando dados...');
+      
+      // CARREGA DADOS DIRETAMENTE SEM FUNÇÕES SEPARADAS
+      const carregarDadosAdmin = async () => {
+        try {
+          console.log('🔍 Carregando withdrawals diretamente...');
+          setAdminWithdrawalsLoading(true);
+          
+          const response = await fetch('/api/admin/withdrawals', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          
+          console.log('📡 Response direto:', response.status);
+          const data = await response.json();
+          console.log('📦 Data direto:', data);
+          
+          setAdminWithdrawals(data.withdrawals || []);
+          setAdminWithdrawalsLoading(false);
+          
+          console.log('✅ Dados carregados diretamente');
+        } catch (error) {
+          console.error('❌ Erro direto:', error);
+          setAdminWithdrawals([]);
+          setAdminWithdrawalsLoading(false);
+        }
+      };
+      
+      carregarDadosAdmin();
     }
   }, [activeModal]);
 
