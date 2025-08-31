@@ -475,6 +475,17 @@ const Card = styled.div`
   }
 `;
 
+const ToolsGrid = styled.div`
+  display: grid;
+  gap: 2rem;
+  margin-top: 3rem;
+  grid-template-columns: 1fr;
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`;
+
 const CTASection = styled(Section)`
   background: linear-gradient(135deg, #11506e, #36e961);
   color: white;
@@ -827,9 +838,8 @@ const LandingPage = () => {
               </p>
             </div>
 
-            <div style={{ display: 'grid', gap: '2rem', marginTop: '3rem' }}>
-              <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                <Card>
+            <ToolsGrid>
+              <Card>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                     <div style={{ width: '3rem', height: '3rem', background: 'linear-gradient(135deg, #11506e, #36e961)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                       🔍
@@ -908,8 +918,7 @@ const LandingPage = () => {
                     </div>
                   </div>
                 </Card>
-              </div>
-            </div>
+            </ToolsGrid>
           </div>
         </Section>
 
