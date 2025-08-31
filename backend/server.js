@@ -3466,33 +3466,28 @@ app.get('/api/admin/withdrawals', async (req, res) => {
       return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
     }
     
-    // Buscar todas as solicitações de saque com dados do afiliado
+    // SIMPLES: Buscar saques com dados do usuário diretamente
     const withdrawalsQuery = await pool.query(
       `SELECT 
         aw.*,
-        a.affiliate_code,
-        a.total_commissions,
-        su.name as affiliate_name,
-        su.email as affiliate_email
+        su.name as user_name,
+        su.email as user_email
        FROM affiliate_withdrawals aw
-       INNER JOIN affiliates a ON aw.affiliate_id = a.id
-       INNER JOIN simple_users su ON a.user_id = su.id
+       INNER JOIN simple_users su ON aw.user_id = su.id
        ORDER BY aw.created_at DESC`
     );
     
     const withdrawals = withdrawalsQuery.rows.map(row => ({
       id: row.id,
-      affiliateId: row.affiliate_id,
-      affiliateName: row.affiliate_name,
-      affiliateEmail: row.affiliate_email,
-      affiliateCode: row.affiliate_code,
+      userId: row.user_id,
+      affiliateName: row.user_name,
+      affiliateEmail: row.user_email,
       amount: row.amount / 100, // converter para reais
       pixKey: row.pix_key,
       status: row.status,
       adminNotes: row.admin_notes,
       createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      availableCommissions: row.total_commissions / 100 // comissões disponíveis em reais
+      updatedAt: row.updated_at
     }));
     
     console.log(`📋 Admin solicitou lista de saques - ${withdrawals.length} registros encontrados`);
