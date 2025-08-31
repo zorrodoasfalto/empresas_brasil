@@ -2707,8 +2707,8 @@ const Dashboard = () => {
         </Modal>
       )}
 
-      {/* Modal Admin - Apenas para usuários admin */}
-      {activeModal === 'admin' && (user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com') && (
+      {/* Modal Admin - TESTE SEM VALIDAÇÃO DE USER */}
+      {activeModal === 'admin' && (
         <Modal onClick={() => setActiveModal(null)}>
           <ModalContent onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '80vh', overflowY: 'auto' }}>
             <ModalHeader>
