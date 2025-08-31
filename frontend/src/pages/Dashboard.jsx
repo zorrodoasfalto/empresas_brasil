@@ -907,74 +907,24 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar solicitações de saque (admin) - SIMPLES E FUNCIONAL
+  // ENTREGA SIMPLES: BACKEND → FRONTEND
   const loadAdminWithdrawals = async () => {
-    console.log('🔍 loadAdminWithdrawals INICIANDO');
-    
     setAdminWithdrawalsLoading(true);
     
-    // Força timeout para garantir que nunca trave
-    setTimeout(() => {
-      console.log('⏰ TIMEOUT FORÇADO');
-      setAdminWithdrawalsLoading(false);
-    }, 3000);
-    
     try {
-      const token = localStorage.getItem('token');
-      console.log('🔍 Token existe:', !!token);
-      
-      console.log('🔍 Iniciando fetch...');
       const response = await fetch('/api/admin/withdrawals', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      
-      console.log('🔍 Response recebido, status:', response?.status);
-      
-      if (!response?.ok) {
-        throw new Error(`HTTP ${response?.status}`);
-      }
-      
       const data = await response.json();
-      console.log('🔍 Data parsed:', !!data);
       
-      if (data?.success && Array.isArray(data.withdrawals)) {
-        console.log('🔍 Dados válidos, length:', data.withdrawals.length);
+      if (data.success) {
         setAdminWithdrawals(data.withdrawals);
-        setAdminWithdrawalsLoading(false);
-        console.log('✅ SUCESSO TOTAL');
-        return;
       }
-      
     } catch (error) {
-      console.error('❌ ERRO capturado:', error?.message || 'Unknown error');
+      setAdminWithdrawals([]);
+    } finally {
+      setAdminWithdrawalsLoading(false);
     }
-    
-    // Fallback sempre executado se chegou aqui
-    console.log('🔧 EXECUTANDO FALLBACK');
-    setAdminWithdrawals([
-      {
-        id: 3,
-        affiliateName: "Test User",
-        amount: 200,
-        status: "pending",
-        pixKey: "telefone:+5511999887766",
-        createdAt: "2025-08-31T20:39:03.623Z"
-      },
-      {
-        id: 2, 
-        affiliateName: "Test User2",
-        amount: 150,
-        status: "pending", 
-        pixKey: "email:test2@test.com",
-        createdAt: "2025-08-31T20:39:03.138Z"
-      }
-    ]);
-    setAdminWithdrawalsLoading(false);
-    console.log('✅ FALLBACK COMPLETO');
   };
 
   // Função para atualizar status de saque (admin) - FUNCIONAL E SIMPLES  
