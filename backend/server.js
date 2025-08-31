@@ -43,6 +43,39 @@ function cleanNomeFantasia(nomeFantasia) {
 
 const app = express();
 const PORT = process.env.PORT || 6000;
+
+// ROTA TEMPORÁRIA PARA DEBUG - NÃO AFETA NADA EXISTENTE
+app.get('/api/debug/withdrawals-data', (req, res) => {
+  res.json({
+    success: true,
+    withdrawals: [
+      {
+        id: 1,
+        userId: 1,
+        affiliateName: 'Teste Usuario',
+        affiliateEmail: 'teste@test.com',
+        amount: 150,
+        pixKey: 'teste@test.com',
+        status: 'pending',
+        adminNotes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: 2, 
+        userId: 2,
+        affiliateName: 'Rody Rodrigo',
+        affiliateEmail: 'rodyrodrigo@gmail.com',
+        amount: 250,
+        pixKey: 'rodyrodrigo@gmail.com', 
+        status: 'pending',
+        adminNotes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]
+  });
+});
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
 // Configure trust proxy and force HTTPS in production

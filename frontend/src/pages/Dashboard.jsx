@@ -1022,9 +1022,7 @@ const Dashboard = () => {
       const carregarDadosAdmin = async () => {
         console.log('🔍 Fazendo fetch DIRETO...');
         
-        const response = await fetch('/api/admin/withdrawals', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const response = await fetch('/api/debug/withdrawals-data');
         const data = await response.json();
         
         setAdminWithdrawals(data.withdrawals || []);
