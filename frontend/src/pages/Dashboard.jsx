@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
@@ -694,6 +694,7 @@ const PageInfo = styled.div`
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   // const { subscriptionStatus } = useSubscription(); // REMOVIDO - ARQUIVO DELETADO
   
@@ -801,6 +802,17 @@ const Dashboard = () => {
       loadAffiliateData();
     }
   }, [activeModal, settingsTab]);
+
+  // Processar parâmetros da URL para abrir configurações
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tab = searchParams.get('tab');
+    
+    if (tab === 'configuracoes') {
+      setActiveModal('settings');
+      setSettingsTab('affiliate'); // Abre direto na aba de afiliados
+    }
+  }, [location]);
 
   const loadFiltersData = async () => {
     try {
