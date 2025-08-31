@@ -1164,7 +1164,7 @@ const LandingPage = () => {
 
                 <Card>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                    <div style={{ width: '3rem', height: '3rem', background: 'linear-gradient(135deg, #36e961, #92f3a9)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                    <div style={{ width: '3rem', height: '3rem', background: 'linear-gradient(135deg, #11506e, #36e961)', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
                       🗺️
                     </div>
                     <div>
