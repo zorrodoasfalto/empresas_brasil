@@ -22,7 +22,7 @@ const Container = styled.div`
 `;
 
 const Sidebar = styled.div`
-  width: ${props => props.isMinimized ? '70px' : '280px'};
+  width: ${props => props.isMinimized ? '60px' : '240px'};
   min-height: 100vh;
   background: 
     linear-gradient(135deg, rgba(0, 255, 170, 0.1) 0%, rgba(0, 136, 204, 0.1) 100%),
@@ -37,6 +37,16 @@ const Sidebar = styled.div`
   overflow: hidden;
   box-shadow: 2px 0 15px rgba(0, 255, 170, 0.2);
   border: 1px solid rgba(0, 255, 170, 0.3);
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    width: ${props => props.isMinimized ? '50px' : '200px'};
+  }
+  
+  /* Small laptop breakpoint */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    width: ${props => props.isMinimized ? '50px' : '180px'};
+  }
   
   @media (max-width: 768px) {
     width: 100%;
@@ -70,6 +80,16 @@ const SidebarLogo = styled.div`
   height: auto;
   box-sizing: border-box;
   position: relative;
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    padding: 1.2rem 1.5rem;
+  }
+  
+  /* Small laptop breakpoint */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    padding: 1rem 1rem;
+  }
 `;
 
 const MenuToggleButton = styled.button`
@@ -105,15 +125,27 @@ const MenuToggleButton = styled.button`
 `;
 
 const SidebarItem = styled.div`
-  padding: ${props => props.isMinimized ? '15px 10px' : '15px 20px'};
+  padding: ${props => props.isMinimized ? '12px 8px' : '12px 16px'};
   color: #e0e0e0;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: ${props => props.isMinimized ? '0' : '15px'};
+  gap: ${props => props.isMinimized ? '0' : '12px'};
   border-left: 3px solid transparent;
   justify-content: ${props => props.isMinimized ? 'center' : 'flex-start'};
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    padding: ${props => props.isMinimized ? '10px 6px' : '10px 12px'};
+    gap: ${props => props.isMinimized ? '0' : '10px'};
+  }
+  
+  /* Small laptop breakpoint */  
+  @media (max-width: 1200px) and (min-width: 769px) {
+    padding: ${props => props.isMinimized ? '8px 5px' : '8px 10px'};
+    gap: ${props => props.isMinimized ? '0' : '8px'};
+  }
   
   &:hover {
     background: rgba(0, 255, 170, 0.1);
@@ -128,8 +160,13 @@ const SidebarItem = styled.div`
   }
   
   .icon {
-    font-size: 20px;
-    min-width: 20px;
+    font-size: 18px;
+    min-width: 18px;
+    
+    @media (max-width: 1440px) and (min-width: 769px) {
+      font-size: 16px;
+      min-width: 16px;
+    }
   }
   
   .text {
@@ -137,14 +174,36 @@ const SidebarItem = styled.div`
     display: ${props => props.isMinimized ? 'none' : 'block'};
     transition: opacity 0.3s ease;
     white-space: nowrap;
+    font-size: 14px;
+    
+    @media (max-width: 1440px) and (min-width: 769px) {
+      font-size: 13px;
+    }
+    
+    @media (max-width: 1200px) and (min-width: 769px) {
+      font-size: 12px;
+    }
   }
 `;
 
 const MainContent = styled.div`
   flex: 1;
-  margin-left: ${props => props.isMenuMinimized ? '70px' : '280px'};
+  margin-left: ${props => props.isMenuMinimized ? '60px' : '240px'};
   transition: margin-left 0.3s ease;
   min-height: 100vh;
+  padding: 1.5rem;
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    margin-left: ${props => props.isMenuMinimized ? '50px' : '200px'};
+    padding: 1.2rem;
+  }
+  
+  /* Small laptop breakpoint */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    margin-left: ${props => props.isMenuMinimized ? '50px' : '180px'};
+    padding: 1rem;
+  }
   
   @media (max-width: 768px) {
     margin-left: 0;
@@ -307,6 +366,18 @@ const Logo = styled.img`
   filter: drop-shadow(0 0 8px rgba(0, 255, 170, 0.4));
   transition: all 0.3s ease;
   cursor: pointer;
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    height: 38px;
+    max-width: 160px;
+  }
+  
+  /* Small laptop breakpoint */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    height: 35px;
+    max-width: 140px;
+  }
   
   &:hover {
     filter: drop-shadow(0 0 12px rgba(0, 255, 170, 0.6));
