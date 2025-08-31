@@ -213,9 +213,27 @@ app.use(cors(corsOptions));
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
-// ROTAS DEBUG APÓS MIDDLEWARES
-app.get('/api/debug/withdrawals-data', async (req, res) => {
+// ROTAS DE PRODUÇÃO PARA WITHDRAWALS (substitui /api/admin/* problemáticas)
+app.get('/api/withdrawals/list', async (req, res) => {
   try {
+    // Verificar se é admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Verificar se é admin
+    const userQuery = await pool.query(
+      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
+      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
+    );
+    
+    if (userQuery.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    }
+    
     const withdrawalsQuery = await pool.query(
       `SELECT 
         aw.*,
@@ -239,20 +257,38 @@ app.get('/api/debug/withdrawals-data', async (req, res) => {
       updatedAt: row.updated_at
     }));
     
+    console.log(`📋 Admin solicitou lista de saques - ${withdrawals.length} registros encontrados`);
+    
     res.json({
       success: true,
       withdrawals
     });
     
   } catch (error) {
-    console.error('❌ Erro na rota debug:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Erro ao buscar saques:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
 
-app.patch('/api/debug/withdrawals/:id', async (req, res) => {
+app.patch('/api/withdrawals/update/:id', async (req, res) => {
   try {
-    console.log('🚨 PATCH recebido - Body:', req.body, 'Params:', req.params);
+    // Verificar se é admin
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    const userQuery = await pool.query(
+      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
+      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
+    );
+    
+    if (userQuery.rows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    }
+    
     const { id } = req.params;
     const { status, adminNotes } = req.body;
     
@@ -265,11 +301,55 @@ app.patch('/api/debug/withdrawals/:id', async (req, res) => {
       [status, adminNotes || null, id]
     );
     
-    console.log('✅ Status atualizado para:', status);
-    res.json({ success: true, message: 'Status atualizado' });
+    console.log(`✅ Saque ${id} atualizado para status: ${status}`);
+    res.json({ success: true, message: 'Status atualizado com sucesso' });
+    
   } catch (error) {
-    console.error('❌ Erro ao atualizar:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Erro ao atualizar saque:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// ROTA PARA USUÁRIOS SOLICITAREM SAQUES
+app.post('/api/withdrawals/request', async (req, res) => {
+  try {
+    // Verificar se usuário está logado
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { amount, pixKey, pixKeyType } = req.body;
+    
+    // Validações
+    if (!amount || !pixKey) {
+      return res.status(400).json({ success: false, message: 'Valor e chave PIX são obrigatórios' });
+    }
+    
+    const amountInCents = Math.round(parseFloat(amount) * 100);
+    
+    if (amountInCents < 5000) { // R$ 50,00 mínimo
+      return res.status(400).json({ success: false, message: 'Valor mínimo para saque é R$ 50,00' });
+    }
+    
+    // Inserir solicitação de saque
+    await pool.query(
+      `INSERT INTO affiliate_withdrawals (user_id, amount, pix_key, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+      [decoded.id, amountInCents, pixKey, 'pending']
+    );
+    
+    console.log(`💰 Nova solicitação de saque - Usuário ${decoded.id}: R$ ${amount}`);
+    
+    res.json({
+      success: true,
+      message: 'Solicitação de saque enviada com sucesso! Aguarde aprovação do administrador.'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erro ao solicitar saque:', error);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
 

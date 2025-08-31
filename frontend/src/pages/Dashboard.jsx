@@ -870,7 +870,7 @@ const Dashboard = () => {
         pixKeyType: withdrawalForm.pixKeyType
       });
       
-      const response = await fetch('/api/withdrawals', {
+      const response = await fetch('/api/withdrawals/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -934,7 +934,7 @@ const Dashboard = () => {
     console.log(`🔧 Atualizando saque ${withdrawalId} para ${status}`);
     
     try {
-      const response = await fetch(`/api/debug/withdrawals/${withdrawalId}`, {
+      const response = await fetch(`/api/withdrawals/update/${withdrawalId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -951,7 +951,9 @@ const Dashboard = () => {
         // Atualizar lista SEM loading state
         console.log('🔄 Recarregando lista...');
         
-        const reloadResponse = await fetch('/api/debug/withdrawals-data');
+        const reloadResponse = await fetch('/api/withdrawals/list', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
         const reloadData = await reloadResponse.json();
         setAdminWithdrawals(reloadData.withdrawals || []);
         console.log('✅ Lista recarregada:', reloadData.withdrawals?.length || 0);
@@ -1020,7 +1022,9 @@ const Dashboard = () => {
       const carregarDadosAdmin = async () => {
         console.log('🔍 Fazendo fetch DIRETO...');
         
-        const response = await fetch('/api/debug/withdrawals-data');
+        const response = await fetch('/api/withdrawals/list', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
         const data = await response.json();
         
         setAdminWithdrawals(data.withdrawals || []);
