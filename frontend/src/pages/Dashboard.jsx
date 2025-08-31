@@ -909,24 +909,40 @@ const Dashboard = () => {
 
   // Função para carregar solicitações de saque (admin) - FETCH REAL
   const loadAdminWithdrawals = async () => {
+    console.log('🔍 loadAdminWithdrawals INICIOU');
+    console.log('🔍 Current loading state:', adminWithdrawalsLoading);
+    
     setAdminWithdrawalsLoading(true);
+    console.log('🔍 Loading set to TRUE');
     
     try {
       const token = localStorage.getItem('token');
+      console.log('🔍 Token exists:', !!token);
+      
       const response = await fetch('/api/admin/withdrawals', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response ok:', response.ok);
+      
       const data = await response.json();
+      console.log('🔍 Data received:', data);
       
       if (data.success && data.withdrawals) {
+        console.log('🔍 Setting withdrawals:', data.withdrawals.length, 'items');
         setAdminWithdrawals(data.withdrawals);
+        console.log('🔍 Withdrawals set successfully');
+      } else {
+        console.log('🔍 Data not success or no withdrawals');
       }
       
     } catch (error) {
-      console.error('Erro ao carregar saques:', error);
+      console.error('🔍 ERRO:', error);
     } finally {
+      console.log('🔍 FINALLY - setting loading to FALSE');
       setAdminWithdrawalsLoading(false);
+      console.log('🔍 loadAdminWithdrawals CONCLUÍDO');
     }
   };
 
@@ -991,9 +1007,15 @@ const Dashboard = () => {
 
   // Carregar estatísticas admin quando o modal for aberto
   useEffect(() => {
+    console.log('🚨 useEffect ADMIN executou! activeModal:', activeModal);
     if (activeModal === 'admin') {
+      console.log('🚨 Modal é admin - chamando funções...');
       loadAdminStats();
+      console.log('🚨 loadAdminStats chamado');
       loadAdminWithdrawals();
+      console.log('🚨 loadAdminWithdrawals chamado');
+    } else {
+      console.log('🚨 Modal NÃO é admin, activeModal:', activeModal);
     }
   }, [activeModal]);
 
