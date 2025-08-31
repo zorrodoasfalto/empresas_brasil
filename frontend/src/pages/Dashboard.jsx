@@ -798,36 +798,8 @@ const Dashboard = () => {
   });
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   
-  // Estados para admin de saques - DADOS MOCKUP PARA TESTAR BOTÕES
-  const [adminWithdrawals, setAdminWithdrawals] = useState([
-    {
-      id: 1,
-      affiliateName: "Teste Usuario", 
-      affiliateEmail: "teste@empresasbrasil.com",
-      amount: 10000, // R$ 100.00
-      pixKey: "cpf:12345678901",
-      status: "pending",
-      createdAt: "2025-08-31T20:38:20.606Z"
-    },
-    {
-      id: 2, 
-      affiliateName: "João Afiliado",
-      affiliateEmail: "joao@empresasbrasil.com", 
-      amount: 25000, // R$ 250.00
-      pixKey: "email:joao@gmail.com",
-      status: "pending",
-      createdAt: "2025-08-31T21:15:30.123Z"
-    },
-    {
-      id: 3,
-      affiliateName: "Maria Santos",
-      affiliateEmail: "maria@empresasbrasil.com",
-      amount: 18000, // R$ 180.00
-      pixKey: "phone:11987654321", 
-      status: "approved",
-      createdAt: "2025-08-31T19:45:15.789Z"
-    }
-  ]);
+  // Estados para admin de saques
+  const [adminWithdrawals, setAdminWithdrawals] = useState([]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
 
   // Funções para sistema de afiliados
@@ -935,32 +907,44 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar solicitações de saque (admin)
+  // Função para carregar solicitações de saque (admin) - COM DEBUG
   const loadAdminWithdrawals = async () => {
-    console.log('💰 Carregando saques do backend...');
+    console.log('💰 DEBUG: Iniciando loadAdminWithdrawals...');
+    console.log('💰 DEBUG: adminWithdrawalsLoading atual:', adminWithdrawalsLoading);
     setAdminWithdrawalsLoading(true);
+    console.log('💰 DEBUG: setAdminWithdrawalsLoading(true) chamado');
     
     try {
       const token = localStorage.getItem('token');
+      console.log('💰 DEBUG: Token obtido:', token ? 'EXISTS' : 'NULL');
+      
+      console.log('💰 DEBUG: Fazendo fetch para /api/admin/withdrawals...');
       const response = await fetch('/api/admin/withdrawals', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await response.json();
       
-      console.log('🔍 Response withdrawals:', data);
+      console.log('💰 DEBUG: Response status:', response.status);
+      console.log('💰 DEBUG: Response ok:', response.ok);
+      
+      const data = await response.json();
+      console.log('💰 DEBUG: Data recebida:', JSON.stringify(data, null, 2));
       
       if (data.success) {
-        console.log('✅ Saques carregados:', data.withdrawals?.length || 0);
+        console.log('💰 DEBUG: SUCCESS! Withdrawals length:', data.withdrawals?.length || 0);
+        console.log('💰 DEBUG: Chamando setAdminWithdrawals com:', data.withdrawals);
         setAdminWithdrawals(data.withdrawals || []);
+        console.log('💰 DEBUG: setAdminWithdrawals executado');
       } else {
-        console.log('❌ Erro no backend:', data.message);
+        console.log('💰 DEBUG: ERRO! Backend retornou:', data.message);
         setAdminWithdrawals([]);
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar saques:', error);
+      console.error('💰 DEBUG: ERRO CATCH:', error);
       setAdminWithdrawals([]);
     } finally {
+      console.log('💰 DEBUG: Finally - chamando setAdminWithdrawalsLoading(false)');
       setAdminWithdrawalsLoading(false);
+      console.log('💰 DEBUG: loadAdminWithdrawals FINALIZADO');
     }
   };
 
@@ -1025,13 +1009,15 @@ const Dashboard = () => {
 
   // Carregar estatísticas admin quando o modal for aberto - ÚNICO useEffect
   useEffect(() => {
-    console.log('🔍 Admin modal useEffect - activeModal:', activeModal, 'user:', user?.email);
+    console.log('🔍 DEBUG: Admin modal useEffect EXECUTOU - activeModal:', activeModal, 'user:', user?.email);
     
     if (activeModal === 'admin') {
-      console.log('🔍 Modal admin aberto - carregando dados...');
-      // Carrega independentemente se user está disponível ou não
+      console.log('🔍 DEBUG: Modal admin detectado - FORÇANDO carregamento...');
+      console.log('🔍 DEBUG: Chamando loadAdminStats...');
       loadAdminStats();
+      console.log('🔍 DEBUG: Chamando loadAdminWithdrawals...');
       loadAdminWithdrawals();
+      console.log('🔍 DEBUG: Ambas funções chamadas!');
     }
   }, [activeModal]);
 
