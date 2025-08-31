@@ -487,6 +487,258 @@ const ToolsGrid = styled.div`
   }
 `;
 
+const AffiliateSection = styled(Section)`
+  background: linear-gradient(135deg, #f0fdff 0%, #e6fffa 100%);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 100%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(54, 233, 97, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .affiliate-grid {
+    display: grid;
+    gap: 4rem;
+    align-items: center;
+    position: relative;
+    z-index: 1;
+    
+    @media (min-width: 1024px) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  
+  .affiliate-content {
+    animation: ${fadeInUp} 0.8s ease-out;
+    
+    h2 {
+      font-size: 2.25rem;
+      font-weight: bold;
+      color: #0a3042;
+      margin-bottom: 1rem;
+      
+      @media (min-width: 640px) {
+        font-size: 2.5rem;
+      }
+      
+      .highlight {
+        color: #36e961;
+      }
+    }
+    
+    p {
+      font-size: 1.25rem;
+      color: #6b7280;
+      margin-bottom: 2.5rem;
+      line-height: 1.6;
+    }
+  }
+  
+  .benefits-list {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+    
+    @media (min-width: 640px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  .benefit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: white;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+    
+    .benefit-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .benefit-text {
+      .title {
+        font-weight: 600;
+        color: #0a3042;
+        margin-bottom: 0.25rem;
+      }
+      
+      .description {
+        font-size: 0.875rem;
+        color: #6b7280;
+      }
+    }
+  }
+  
+  .affiliate-cta {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    
+    @media (min-width: 640px) {
+      flex-direction: row;
+    }
+    
+    .primary-btn {
+      background: linear-gradient(135deg, #11506e, #36e961);
+      color: white;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 9999px;
+      font-size: 1.125rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        box-shadow: 0 20px 40px rgba(54, 233, 97, 0.4);
+        transform: scale(1.05);
+      }
+    }
+  }
+  
+  .affiliate-visual {
+    display: none;
+    
+    @media (min-width: 1024px) {
+      display: block;
+      position: relative;
+      
+      .visual-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        position: relative;
+        animation: ${float} 6s ease-in-out infinite;
+        
+        &::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(135deg, #36e961, #64ee85);
+          border-radius: 1.5rem;
+          opacity: 0.1;
+          transform: rotate(-3deg);
+          z-index: -1;
+        }
+        
+        .earnings-header {
+          display: flex;
+          justify-content: between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          
+          h3 {
+            color: #0a3042;
+            font-weight: 600;
+            margin: 0;
+          }
+          
+          .status-dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            background: #36e961;
+            border-radius: 50%;
+            animation: ${glow} 2s ease-in-out infinite;
+          }
+        }
+        
+        .big-earnings {
+          font-size: 2rem;
+          font-weight: bold;
+          color: #36e961;
+          margin-bottom: 0.5rem;
+        }
+        
+        .earnings-label {
+          color: #6b7280;
+          font-size: 0.875rem;
+          margin-bottom: 2rem;
+        }
+        
+        .stats-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 1.5rem;
+          
+          .stat-item {
+            text-align: center;
+            
+            .stat-number {
+              font-size: 1.25rem;
+              font-weight: bold;
+              color: #0a3042;
+              margin-bottom: 0.25rem;
+            }
+            
+            .stat-label {
+              font-size: 0.75rem;
+              color: #6b7280;
+            }
+          }
+        }
+        
+        .growth-chart {
+          height: 3rem;
+          background: linear-gradient(90deg, #e5e7eb 0%, #36e961 100%);
+          border-radius: 0.5rem;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 1rem;
+          
+          &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 75%;
+            height: 100%;
+            background: linear-gradient(135deg, #11506e, #36e961);
+            animation: growthAnimation 3s ease-in-out infinite alternate;
+          }
+        }
+        
+        .referral-badges {
+          display: flex;
+          gap: 0.5rem;
+          justify-content: center;
+          flex-wrap: wrap;
+          
+          .badge {
+            background: rgba(54, 233, 97, 0.1);
+            color: #36e961;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
+`;
+
+const growthAnimation = keyframes`
+  0% { width: 60%; }
+  100% { width: 85%; }
+`;
+
 const CTASection = styled(Section)`
   background: linear-gradient(135deg, #11506e, #36e961);
   color: white;
@@ -655,6 +907,7 @@ const LandingPage = () => {
             <div className="nav-links">
               <a href="#beneficios" onClick={(e) => { e.preventDefault(); scrollToSection('beneficios'); }}>Benefícios</a>
               <a href="#ferramentas" onClick={(e) => { e.preventDefault(); scrollToSection('ferramentas'); }}>Ferramentas</a>
+              <a href="#afiliados" onClick={(e) => { e.preventDefault(); scrollToSection('afiliados'); }}>Afiliados</a>
               <a href="#trial" onClick={(e) => { e.preventDefault(); scrollToSection('trial'); }}>Trial</a>
               <CTAButton onClick={handleStartTrial}>
                 Teste Grátis
@@ -932,6 +1185,115 @@ const LandingPage = () => {
           </div>
         </Section>
 
+        <AffiliateSection id="afiliados">
+          <div className="section-content">
+            <div className="affiliate-grid">
+              <div className="affiliate-content">
+                <h2>
+                  Programa de <span className="highlight">Afiliados</span>
+                </h2>
+                <p>
+                  Transforme sua rede em renda extra. Ganhe comissões recorrentes compartilhando a maior base de dados empresariais do Brasil.
+                </p>
+                
+                <div className="benefits-list">
+                  <div className="benefit-item">
+                    <div className="benefit-icon">💰</div>
+                    <div className="benefit-text">
+                      <div className="title">15% de comissão</div>
+                      <div className="description">Para cada mensalidade dos seus referidos</div>
+                    </div>
+                  </div>
+                  
+                  <div className="benefit-item">
+                    <div className="benefit-icon">🎁</div>
+                    <div className="benefit-text">
+                      <div className="title">10% de desconto</div>
+                      <div className="description">Para quem usa seu link de afiliado</div>
+                    </div>
+                  </div>
+                  
+                  <div className="benefit-item">
+                    <div className="benefit-icon">📈</div>
+                    <div className="benefit-text">
+                      <div className="title">Renda recorrente</div>
+                      <div className="description">Comissões mensais automáticas</div>
+                    </div>
+                  </div>
+                  
+                  <div className="benefit-item">
+                    <div className="benefit-icon">🔗</div>
+                    <div className="benefit-text">
+                      <div className="title">Link personalizado</div>
+                      <div className="description">Fácil de compartilhar e rastrear</div>
+                    </div>
+                  </div>
+                  
+                  <div className="benefit-item">
+                    <div className="benefit-icon">📊</div>
+                    <div className="benefit-text">
+                      <div className="title">Dashboard completo</div>
+                      <div className="description">Acompanhe ganhos em tempo real</div>
+                    </div>
+                  </div>
+                  
+                  <div className="benefit-item">
+                    <div className="benefit-icon">⚡</div>
+                    <div className="benefit-text">
+                      <div className="title">Pagamento automático</div>
+                      <div className="description">Sem burocracia, direto na conta</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="affiliate-cta">
+                  <button 
+                    className="primary-btn"
+                    onClick={() => navigate('/afiliados')}
+                  >
+                    Tornar-me Afiliado
+                  </button>
+                </div>
+              </div>
+
+              <div className="affiliate-visual">
+                <div className="visual-card">
+                  <div className="earnings-header">
+                    <h3>Ganhos do Afiliado</h3>
+                    <div className="status-dot"></div>
+                  </div>
+                  
+                  <div className="big-earnings">R$ 2.450</div>
+                  <div className="earnings-label">Este mês</div>
+                  
+                  <div className="stats-row">
+                    <div className="stat-item">
+                      <div className="stat-number">47</div>
+                      <div className="stat-label">Referidos</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-number">15%</div>
+                      <div className="stat-label">Comissão</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-number">R$ 523</div>
+                      <div className="stat-label">Próxima</div>
+                    </div>
+                  </div>
+                  
+                  <div className="growth-chart"></div>
+                  
+                  <div className="referral-badges">
+                    <div className="badge">Ativo</div>
+                    <div className="badge">Top 10%</div>
+                    <div className="badge">Premium</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </AffiliateSection>
+
         <CTASection id="trial">
           <div className="cta-content">
             <h2>Ative seu trial de 30 dias</h2>
@@ -970,6 +1332,7 @@ const LandingPage = () => {
               <ul>
                 <li><a href="#ferramentas" onClick={(e) => { e.preventDefault(); scrollToSection('ferramentas'); }}>Ferramentas</a></li>
                 <li><a href="#beneficios" onClick={(e) => { e.preventDefault(); scrollToSection('beneficios'); }}>Benefícios</a></li>
+                <li><a href="#afiliados" onClick={(e) => { e.preventDefault(); scrollToSection('afiliados'); }}>Afiliados</a></li>
                 <li><a href="#trial" onClick={(e) => { e.preventDefault(); scrollToSection('trial'); }}>Trial Gratuito</a></li>
               </ul>
             </div>
