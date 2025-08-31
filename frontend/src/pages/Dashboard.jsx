@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
 import logo from '../assets/images/logo.png';
-import thumbnail from '../assets/images/thumbnail.png';
+import thumbnail from '../assets/images/logo thumbnail symbol.png';
 // import SubscriptionGate from '../components/SubscriptionGate'; // TODO: Restaurar controle de assinatura
 // import { useSubscription } from '../hooks/useSubscription'; // TODO: Restaurar controle de assinatura
 
@@ -1769,7 +1769,6 @@ const Dashboard = () => {
               ›
             </MenuToggleButton>
           )}
-          </SidebarLogo>
           <SidebarItem 
             isMinimized={isMenuMinimized}
             className="active"
