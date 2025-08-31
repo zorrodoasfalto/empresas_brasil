@@ -798,12 +798,8 @@ const Dashboard = () => {
   });
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   
-  // Estados para admin de saques - DADOS IMEDIATOS
-  const [adminWithdrawals, setAdminWithdrawals] = useState([
-    { id: 1, affiliateName: "Test User", amount: 200, status: "pending", pixKey: "test@example.com", createdAt: "2025-08-31T20:00:00Z" },
-    { id: 2, affiliateName: "Test User 2", amount: 150, status: "pending", pixKey: "test2@example.com", createdAt: "2025-08-31T20:00:00Z" },
-    { id: 3, affiliateName: "Test User 3", amount: 100, status: "approved", pixKey: "test3@example.com", createdAt: "2025-08-31T20:00:00Z" }
-  ]);
+  // Estados para admin de saques
+  const [adminWithdrawals, setAdminWithdrawals] = useState([]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
 
   // Funções para sistema de afiliados
@@ -911,10 +907,17 @@ const Dashboard = () => {
     }
   };
 
-  // DADOS JÁ ESTÃO NO USESTATE - NÃO FAZER NADA
-  const loadAdminWithdrawals = () => {
-    console.log('loadAdminWithdrawals chamada - dados já estão no state');
-    // Não fazer nada - dados já estão no useState inicial
+  // REFLETE BACKEND SEM COMPLEXIDADE
+  const loadAdminWithdrawals = async () => {
+    setAdminWithdrawalsLoading(true);
+    
+    const response = await fetch('/api/admin/withdrawals', {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    });
+    const data = await response.json();
+    
+    setAdminWithdrawals(data.withdrawals || []);
+    setAdminWithdrawalsLoading(false);
   };
 
   // Função para atualizar status de saque (admin) - FUNCIONAL E SIMPLES  
