@@ -1556,10 +1556,7 @@ app.delete('/api/crm/leads/:leadId', checkUserAccess, async (req, res) => {
 
     const leadName = leadCheck.rows[0].nome;
 
-    // Deletar das tabelas relacionadas primeiro
-    await pool.query('DELETE FROM lead_funil WHERE lead_id = $1', [leadId]);
-    
-    // Deletar o lead principal
+    // Deletar o lead
     await pool.query('DELETE FROM leads WHERE id = $1', [leadId]);
 
     console.log(`🗑️ Lead deletado: ID ${leadId} - ${leadName}`);
