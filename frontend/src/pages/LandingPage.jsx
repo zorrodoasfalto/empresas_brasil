@@ -451,6 +451,11 @@ const Card = styled.div`
     color: #0a3042;
     margin-bottom: 1rem;
     text-align: center;
+    line-height: 1.3;
+    
+    &.long-title {
+      font-size: 1.1rem;
+    }
   }
   
   .card-list {
@@ -785,7 +790,7 @@ const LandingPage = () => {
                 <h3 className="card-title">Base massiva, insights reais</h3>
                 <ul className="card-list">
                   <li><strong>66.000.000+</strong> empresas brasileiras</li>
-                  <li>Cobertura nacional: <strong>27 estados + DF</strong></li>
+                  <li><strong>Cobertura nacional</strong>: 27 estados + DF</li>
                   <li><strong>20</strong> segmentos mapeados</li>
                   <li><strong>Dados de sócios</strong>: 3+ por empresa</li>
                   <li><strong>Dados de contato</strong>: telefone, email, endereço</li>
@@ -799,7 +804,7 @@ const LandingPage = () => {
                 <ul className="card-list">
                   <li><strong>Instagram Email Scraper</strong>: extração de emails</li>
                   <li><strong>LinkedIn Company Scraper</strong>: dados empresariais</li>
-                  <li><strong>Google Maps Business</strong>: prospecção local</li>
+                  <li><strong>Google Maps</strong>: prospecção local</li>
                   <li><strong>Busca Empresarial Inteligente</strong>: filtros avançados</li>
                   <li><strong>Processamento em tempo real</strong>: com progresso</li>
                   <li><strong>Múltiplos canais</strong>: prospecção integrada</li>
@@ -808,7 +813,7 @@ const LandingPage = () => {
 
               <Card>
                 <div className="card-icon">📈</div>
-                <h3 className="card-title">CRM que destrava conversão</h3>
+                <h3 className="card-title long-title">Um CRM conectado a maior base de dados do mundo</h3>
                 <ul className="card-list">
                   <li><strong>Pipeline Kanban</strong>: visual e drag & drop</li>
                   <li><strong>Gestão de Leads</strong>: histórico completo</li>
