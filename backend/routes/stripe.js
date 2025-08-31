@@ -10,7 +10,7 @@ const pool = new Pool({
 });
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'sua_chave_jwt_super_secreta_aqui_2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
 // Middleware for JWT authentication
 const authenticateToken = (req, res, next) => {

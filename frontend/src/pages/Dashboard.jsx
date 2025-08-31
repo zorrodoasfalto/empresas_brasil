@@ -798,8 +798,36 @@ const Dashboard = () => {
   });
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   
-  // Estados para admin de saques
-  const [adminWithdrawals, setAdminWithdrawals] = useState([]);
+  // Estados para admin de saques - DADOS MOCKUP PARA TESTAR BOTÕES
+  const [adminWithdrawals, setAdminWithdrawals] = useState([
+    {
+      id: 1,
+      affiliateName: "Teste Usuario", 
+      affiliateEmail: "teste@empresasbrasil.com",
+      amount: 10000, // R$ 100.00
+      pixKey: "cpf:12345678901",
+      status: "pending",
+      createdAt: "2025-08-31T20:38:20.606Z"
+    },
+    {
+      id: 2, 
+      affiliateName: "João Afiliado",
+      affiliateEmail: "joao@empresasbrasil.com", 
+      amount: 25000, // R$ 250.00
+      pixKey: "email:joao@gmail.com",
+      status: "pending",
+      createdAt: "2025-08-31T21:15:30.123Z"
+    },
+    {
+      id: 3,
+      affiliateName: "Maria Santos",
+      affiliateEmail: "maria@empresasbrasil.com",
+      amount: 18000, // R$ 180.00
+      pixKey: "phone:11987654321", 
+      status: "approved",
+      createdAt: "2025-08-31T19:45:15.789Z"
+    }
+  ]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
 
   // Funções para sistema de afiliados
@@ -909,40 +937,38 @@ const Dashboard = () => {
 
   // Função para carregar solicitações de saque (admin)
   const loadAdminWithdrawals = async () => {
+    console.log('💰 Carregando saques do backend...');
+    setAdminWithdrawalsLoading(true);
+    
     try {
-      setAdminWithdrawalsLoading(true);
-      console.log('💰 Admin carregando solicitações de saque...');
-      
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/admin/withdrawals', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      
       const data = await response.json();
-      console.log('💰 Saques recebidos:', data);
+      
+      console.log('🔍 Response withdrawals:', data);
       
       if (data.success) {
-        setAdminWithdrawals(data.withdrawals);
-        console.log('✅ Saques carregados:', data.withdrawals.length);
+        console.log('✅ Saques carregados:', data.withdrawals?.length || 0);
+        setAdminWithdrawals(data.withdrawals || []);
       } else {
-        console.error('❌ Erro ao carregar saques:', data.message);
-        toast.error(data.message || 'Erro ao carregar solicitações');
+        console.log('❌ Erro no backend:', data.message);
+        setAdminWithdrawals([]);
       }
-      
     } catch (error) {
-      console.error('❌ Erro ao carregar saques admin:', error);
-      toast.error('Erro interno ao carregar saques');
+      console.error('❌ Erro ao carregar saques:', error);
+      setAdminWithdrawals([]);
     } finally {
       setAdminWithdrawalsLoading(false);
     }
   };
 
-  // Função para atualizar status de saque (admin)
+  // Função para atualizar status de saque (admin) - FUNCIONAL E SIMPLES  
   const updateWithdrawalStatus = async (withdrawalId, status, adminNotes = '') => {
+    console.log(`🔧 Atualizando saque ${withdrawalId} para ${status}`);
+    
     try {
-      console.log(`🔧 Admin atualizando saque ${withdrawalId} para ${status}`);
-      
       const response = await fetch(`/api/admin/withdrawals/${withdrawalId}`, {
         method: 'PATCH',
         headers: {
@@ -955,16 +981,14 @@ const Dashboard = () => {
       const data = await response.json();
       
       if (data.success) {
-        toast.success(data.message);
-        // Recarregar lista de saques
-        loadAdminWithdrawals();
+        toast.success(`Saque ${status === 'approved' ? 'aprovado' : status === 'rejected' ? 'rejeitado' : 'atualizado'}!`);
+        loadAdminWithdrawals(); // Recarregar lista
       } else {
-        toast.error(data.message || 'Erro ao atualizar saque');
+        toast.error(data.message || 'Erro ao atualizar');
       }
-      
     } catch (error) {
-      console.error('❌ Erro ao atualizar saque:', error);
-      toast.error('Erro interno ao atualizar saque');
+      toast.error('Erro na operação');
+      console.error('❌ Erro:', error);
     }
   };
 
@@ -977,6 +1001,11 @@ const Dashboard = () => {
   useEffect(() => {
     console.log('🔍 adminStats changed:', adminStats);
   }, [adminStats]);
+
+  // Debug: Monitor adminWithdrawals changes  
+  useEffect(() => {
+    console.log('🔍 adminWithdrawals changed:', adminWithdrawals, 'length:', adminWithdrawals.length);
+  }, [adminWithdrawals]);
 
   // useEffect separado para carregar stats admin quando user estiver disponível
   useEffect(() => {
