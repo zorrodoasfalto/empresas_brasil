@@ -952,16 +952,15 @@ const Dashboard = () => {
       if (data.success) {
         toast.success(`Saque ${status === 'approved' ? 'aprovado' : status === 'rejected' ? 'rejeitado' : 'atualizado'}!`);
         
-        // Atualizar lista diretamente sem função separada
-        console.log('🔄 Recarregando lista após atualização...');
-        setAdminWithdrawalsLoading(true);
+        // Atualizar lista SEM loading state
+        console.log('🔄 Recarregando lista...');
         
         const reloadResponse = await fetch('/api/admin/withdrawals', {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         const reloadData = await reloadResponse.json();
         setAdminWithdrawals(reloadData.withdrawals || []);
-        setAdminWithdrawalsLoading(false);
+        console.log('✅ Lista recarregada:', reloadData.withdrawals?.length || 0);
       } else {
         toast.error(data.message || 'Erro ao atualizar');
       }
@@ -1008,29 +1007,17 @@ const Dashboard = () => {
     if (activeModal === 'admin') {
       console.log('🚨 Modal é admin - carregando dados...');
       
-      // CARREGA DADOS DIRETAMENTE SEM FUNÇÕES SEPARADAS
+      // CARREGA DADOS SEM LOADING STATE - MÁXIMA SIMPLICIDADE
       const carregarDadosAdmin = async () => {
-        try {
-          console.log('🔍 Carregando withdrawals diretamente...');
-          setAdminWithdrawalsLoading(true);
-          
-          const response = await fetch('/api/admin/withdrawals', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          
-          console.log('📡 Response direto:', response.status);
-          const data = await response.json();
-          console.log('📦 Data direto:', data);
-          
-          setAdminWithdrawals(data.withdrawals || []);
-          setAdminWithdrawalsLoading(false);
-          
-          console.log('✅ Dados carregados diretamente');
-        } catch (error) {
-          console.error('❌ Erro direto:', error);
-          setAdminWithdrawals([]);
-          setAdminWithdrawalsLoading(false);
-        }
+        console.log('🔍 Fazendo fetch DIRETO...');
+        
+        const response = await fetch('/api/admin/withdrawals', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await response.json();
+        
+        setAdminWithdrawals(data.withdrawals || []);
+        console.log('✅ Dados setados:', data.withdrawals?.length || 0);
       };
       
       carregarDadosAdmin();
@@ -2851,16 +2838,8 @@ const Dashboard = () => {
                 </div>
                 
                 {/* Lista dinâmica de solicitações com dados reais */}
-                {adminWithdrawalsLoading ? (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    color: '#999', 
-                    padding: '2rem'
-                  }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-                    <div>Carregando solicitações de saque...</div>
-                  </div>
-                ) : adminWithdrawals.length > 0 ? (
+                {/* Lista com fallback correto */}
+                {adminWithdrawals.length > 0 ? (
                   adminWithdrawals.map(withdrawal => (
                     <div key={withdrawal.id} style={{ 
                       display: 'grid', 
@@ -2996,7 +2975,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
                   <div style={{ color: '#28a745', fontWeight: 'bold' }}>Aprovados</div>
                   <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
-                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'approved' || w.status === 'paid').length}
+                    {adminWithdrawals.filter(w => w.status === 'approved' || w.status === 'paid').length}
                   </div>
                 </div>
                 
@@ -3010,7 +2989,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
                   <div style={{ color: '#ffc107', fontWeight: 'bold' }}>Pendentes</div>
                   <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
-                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'pending').length}
+                    {adminWithdrawals.filter(w => w.status === 'pending').length}
                   </div>
                 </div>
                 
@@ -3024,7 +3003,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>❌</div>
                   <div style={{ color: '#dc3545', fontWeight: 'bold' }}>Rejeitados</div>
                   <div style={{ color: '#e0e0e0', fontSize: '1.2rem' }}>
-                    {adminWithdrawalsLoading ? '...' : adminWithdrawals.filter(w => w.status === 'rejected').length}
+                    {adminWithdrawals.filter(w => w.status === 'rejected').length}
                   </div>
                 </div>
               </div>
