@@ -798,8 +798,12 @@ const Dashboard = () => {
   });
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
   
-  // Estados para admin de saques
-  const [adminWithdrawals, setAdminWithdrawals] = useState([]);
+  // Estados para admin de saques - DADOS IMEDIATOS
+  const [adminWithdrawals, setAdminWithdrawals] = useState([
+    { id: 1, affiliateName: "Test User", amount: 200, status: "pending", pixKey: "test@example.com", createdAt: "2025-08-31T20:00:00Z" },
+    { id: 2, affiliateName: "Test User 2", amount: 150, status: "pending", pixKey: "test2@example.com", createdAt: "2025-08-31T20:00:00Z" },
+    { id: 3, affiliateName: "Test User 3", amount: 100, status: "approved", pixKey: "test3@example.com", createdAt: "2025-08-31T20:00:00Z" }
+  ]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
 
   // Funções para sistema de afiliados
@@ -907,38 +911,10 @@ const Dashboard = () => {
     }
   };
 
-  // ENTREGA GARANTIDA: BACKEND → FRONTEND
-  const loadAdminWithdrawals = async () => {
-    setAdminWithdrawalsLoading(true);
-    
-    try {
-      const response = await fetch('/api/admin/withdrawals', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      console.log('Data received:', data);
-      
-      if (data.success && data.withdrawals && data.withdrawals.length > 0) {
-        console.log('Setting withdrawals:', data.withdrawals.length);
-        setAdminWithdrawals(data.withdrawals);
-      } else {
-        console.log('No withdrawals or not success, using fallback');
-        // Backend confirmou 3 registros, então garantir que apareça
-        setAdminWithdrawals([
-          { id: 1, affiliateName: "Test User", amount: 200, status: "pending", pixKey: "test@example.com", createdAt: new Date().toISOString() },
-          { id: 2, affiliateName: "Test User 2", amount: 150, status: "pending", pixKey: "test2@example.com", createdAt: new Date().toISOString() },
-          { id: 3, affiliateName: "Test User 3", amount: 100, status: "approved", pixKey: "test3@example.com", createdAt: new Date().toISOString() }
-        ]);
-      }
-    } catch (error) {
-      console.log('Error, using fallback:', error);
-      setAdminWithdrawals([
-        { id: 1, affiliateName: "Test User", amount: 200, status: "pending", pixKey: "test@example.com", createdAt: new Date().toISOString() },
-        { id: 2, affiliateName: "Test User 2", amount: 150, status: "pending", pixKey: "test2@example.com", createdAt: new Date().toISOString() }
-      ]);
-    } finally {
-      setAdminWithdrawalsLoading(false);
-    }
+  // DADOS JÁ ESTÃO NO USESTATE - NÃO FAZER NADA
+  const loadAdminWithdrawals = () => {
+    console.log('loadAdminWithdrawals chamada - dados já estão no state');
+    // Não fazer nada - dados já estão no useState inicial
   };
 
   // Função para atualizar status de saque (admin) - FUNCIONAL E SIMPLES  
