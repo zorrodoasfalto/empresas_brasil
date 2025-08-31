@@ -1113,10 +1113,10 @@ const Dashboard = () => {
     setProgress(5);
     toast.info(`Buscando ${companyLimit.toLocaleString()} empresas...`);
 
-    // Simulate realistic progress
+    // Progress bar simulation - mais agressiva e rápida
     progressInterval = setInterval(() => {
         setProgress(prev => {
-          if (prev >= 85) {
+          if (prev > 90) {
             return Math.min(prev + 0.5, 98); // Mais lento perto do fim, mas não trava em 95%
           }
           return Math.min(prev + Math.random() * 8 + 3, 85);
@@ -1209,7 +1209,7 @@ const Dashboard = () => {
       }
       
       if (error.name === 'AbortError') {
-        toast.error(`Consulta cancelada - limite de tempo excedido (${companyLimit >= 25000 ? '3' : '2'} minutos). Tente filtros mais específicos.`);
+        toast.error(`Consulta cancelada - limite de tempo excedido (${companyLimit >= 50000 ? '5' : companyLimit >= 25000 ? '4' : '2'} minutos). Tente filtros mais específicos.`);
       } else {
         toast.error('Erro na busca: ' + (error.message || 'Erro desconhecido'));
       }
@@ -1935,8 +1935,8 @@ const Dashboard = () => {
               }
             </ProgressText>
             <ProgressSubtext>
-              {progress >= 95 && progress < 100 && companyLimit >= 5000
-                ? '⏳ Finalizando busca... (carregando dados dos sócios)'
+              {progress >= 95 && progress < 100
+                ? '⏳ Os últimos 5% podem levar até 1 minuto (carregando dados dos sócios)'
                 : `Buscando ${companyLimit.toLocaleString()} empresas na base de dados`
               }
             </ProgressSubtext>

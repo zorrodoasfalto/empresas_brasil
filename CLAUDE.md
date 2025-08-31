@@ -259,3 +259,25 @@ curl -X POST http://localhost:6000/api/companies/filtered \
 10. **NUNCA alterar** animações e keyframes (linhas 18-40)
 11. **NUNCA alterar** navegação dos CTAs (onClick navigate)
 12. **NUNCA alterar** contadores animados (useEffect linhas 338-367)
+
+---
+**⚠️ CORREÇÃO CRÍTICA DE PERFORMANCE - v6.4 (31/08/2025)**
+
+#### 🐛 Problema Reportado:
+- **Usuário**: "deu consulta cancelada procurando por transportadora em SP ativas e com contato e apenas 1000 empresas"
+- **Performance frontend**: +1 minuto vs 5 segundos no curl
+- **Sistema havia regredido** da configuração otimizada v6.1
+
+#### ✅ Diagnóstico e Correção:
+- **Causa real**: Limite de sócios havia aumentado de 3 para 4 por empresa
+- **JSON**: 1.6MB causando lentidão no navegador (vs terminal)
+- **Configuração correta restaurada**: 3 sócios/empresa, 3000 total para 1k empresas
+
+#### 📊 Performance Confirmada (31/08/2025):
+- **API curl**: 4.9 segundos ✅
+- **Configuração**: 3 sócios/empresa (v6.1 restaurada) ✅
+- **Frontend**: Deve funcionar na mesma velocidade que curl ✅
+
+#### 🔒 REGRA CRÍTICA REFORÇADA:
+13. **NUNCA aumentar** limite de sócios acima de 3 para consultas de 1k empresas
+14. **SEMPRE manter** configuração v6.1 para performance otimizada

@@ -45,26 +45,6 @@ const app = express();
 const PORT = process.env.PORT || 6000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
 
-// Configure trust proxy and force HTTPS in production
-app.set('trust proxy', 1);
-
-// Security headers for HTTPS
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV === 'production') {
-    // Force HTTPS redirect
-    if (!req.secure) {
-      return res.redirect(`https://${req.headers.host}${req.url}`);
-    }
-    
-    // Security headers
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-  }
-  next();
-});
-
 // Middleware para verificar acesso do usuário (trial ou assinatura ativa)
 async function checkUserAccess(req, res, next) {
   try {
@@ -180,12 +160,11 @@ if (APIFY_API_KEY) {
 console.log('✅ Ghost Genius API configured for LinkedIn');
 
 // Import routes
-const stripeRoutes = require('./routes/stripe');
+// const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
 const authRoutes = require('./routes/auth');
 
 // Import database initialization
 const { createUsersTable } = require('./database/init-users');
-const { initStripeAndAffiliates } = require('./database/init-stripe-affiliates');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
@@ -197,161 +176,16 @@ const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
         process.env.FRONTEND_URL || 'https://your-frontend.railway.app',
-        'https://*.railway.app',
-        /https:\/\/.*\.railway\.app$/,
-        // Add your custom domain here when you know it
-        process.env.CUSTOM_DOMAIN || 'https://yourdomain.com'
+        'https://*.railway.app'
       ]
     : ['http://localhost:4001', 'http://localhost:3000'],
   credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
-
-// ROTAS DE PRODUÇÃO PARA WITHDRAWALS (substitui /api/admin/* problemáticas)
-app.get('/api/withdrawals/list', async (req, res) => {
-  try {
-    // Verificar se é admin
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Verificar se é admin
-    const userQuery = await pool.query(
-      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
-      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
-    );
-    
-    if (userQuery.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
-    }
-    
-    const withdrawalsQuery = await pool.query(
-      `SELECT 
-        aw.*,
-        su.name as user_name,
-        su.email as user_email
-       FROM affiliate_withdrawals aw
-       INNER JOIN simple_users su ON aw.user_id = su.id
-       ORDER BY aw.created_at DESC`
-    );
-    
-    const withdrawals = withdrawalsQuery.rows.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      affiliateName: row.user_name,
-      affiliateEmail: row.user_email,
-      amount: row.amount / 100,
-      pixKey: row.pix_key,
-      status: row.status,
-      adminNotes: row.admin_notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    }));
-    
-    console.log(`📋 Admin solicitou lista de saques - ${withdrawals.length} registros encontrados`);
-    
-    res.json({
-      success: true,
-      withdrawals
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao buscar saques:', error);
-    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
-  }
-});
-
-app.patch('/api/withdrawals/update/:id', async (req, res) => {
-  try {
-    // Verificar se é admin
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    
-    const userQuery = await pool.query(
-      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
-      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
-    );
-    
-    if (userQuery.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
-    }
-    
-    const { id } = req.params;
-    const { status, adminNotes } = req.body;
-    
-    if (!status) {
-      return res.status(400).json({ success: false, message: 'Status é obrigatório' });
-    }
-    
-    await pool.query(
-      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = NOW() WHERE id = $3',
-      [status, adminNotes || null, id]
-    );
-    
-    console.log(`✅ Saque ${id} atualizado para status: ${status}`);
-    res.json({ success: true, message: 'Status atualizado com sucesso' });
-    
-  } catch (error) {
-    console.error('❌ Erro ao atualizar saque:', error);
-    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
-  }
-});
-
-// ROTA PARA USUÁRIOS SOLICITAREM SAQUES
-app.post('/api/withdrawals/request', async (req, res) => {
-  try {
-    // Verificar se usuário está logado
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const { amount, pixKey, pixKeyType } = req.body;
-    
-    // Validações
-    if (!amount || !pixKey) {
-      return res.status(400).json({ success: false, message: 'Valor e chave PIX são obrigatórios' });
-    }
-    
-    const amountInCents = Math.round(parseFloat(amount) * 100);
-    
-    if (amountInCents < 5000) { // R$ 50,00 mínimo
-      return res.status(400).json({ success: false, message: 'Valor mínimo para saque é R$ 50,00' });
-    }
-    
-    // Inserir solicitação de saque
-    await pool.query(
-      `INSERT INTO affiliate_withdrawals (user_id, amount, pix_key, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, NOW(), NOW())`,
-      [decoded.id, amountInCents, pixKey, 'pending']
-    );
-    
-    console.log(`💰 Nova solicitação de saque - Usuário ${decoded.id}: R$ ${amount}`);
-    
-    res.json({
-      success: true,
-      message: 'Solicitação de saque enviada com sucesso! Aguarde aprovação do administrador.'
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao solicitar saque:', error);
-    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
-  }
-});
 
 // JWT Authentication Middleware (strict)
 const authenticateToken = (req, res, next) => {
@@ -394,7 +228,7 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-app.use('/api/stripe', stripeRoutes);
+// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
 // DEBUG: Check if user ID 1 exists and generate token
@@ -633,7 +467,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const result = await pool.query('SELECT id, email, password, name, role FROM simple_users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, email, password, name FROM simple_users WHERE email = $1', [email]);
     
     if (result.rows.length === 0) {
       return res.json({ success: false, message: 'Usuário não encontrado' });
@@ -656,7 +490,7 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       message: 'Login realizado com sucesso',
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role || 'user' }
+      user: { id: user.id, email: user.email, name: user.name }
     });
     
   } catch (error) {
@@ -1195,40 +1029,6 @@ app.post('/api/debug/create-victor', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao criar usuário Victor',
-      error: error.message
-    });
-  }
-});
-
-// DEBUG: Reset Victor's password (temporary)
-app.post('/api/debug/reset-victor', async (req, res) => {
-  try {
-    const email = 'victormagalhaesg@gmail.com';
-    const newPassword = 'victor123';
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    
-    const result = await pool.query(
-      'UPDATE simple_users SET password = $1 WHERE email = $2 RETURNING id, email',
-      [hashedPassword, email]
-    );
-    
-    if (result.rows.length === 0) {
-      return res.json({
-        success: false,
-        message: 'Usuário Victor não encontrado'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Senha do Victor resetada para: victor123',
-      user: result.rows[0]
-    });
-  } catch (error) {
-    console.error('❌ Error resetting Victor password:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao resetar senha do Victor',
       error: error.message
     });
   }
@@ -2985,8 +2785,8 @@ app.post('/api/companies/filtered', async (req, res) => {
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);
       
-      // QUERY ULTRA-OTIMIZADA: Sempre usa ROW_NUMBER para limitar sócios por empresa
-      const sociosQuery = `
+      // Optimized socios query with all fields - performance focused
+      const sociosQuery = companyLimit >= 25000 ? `
         SELECT 
           cnpj_basico,
           identificador_de_socio,
@@ -2998,35 +2798,43 @@ app.post('/api/companies/filtered', async (req, res) => {
           representante_legal,
           nome_representante,
           qualificacao_representante_legal,
-          faixa_etaria,
-          rn
+          faixa_etaria
+        FROM socios s
+        WHERE cnpj_basico = ANY($1)
+          AND nome_socio IS NOT NULL
+          AND nome_socio != ''
+        ORDER BY cnpj_basico, identificador_de_socio
+        LIMIT $2
+      ` : `
+        SELECT DISTINCT ON (socios.cnpj_basico, socios.identificador_de_socio)
+          socios.cnpj_basico,
+          socios.identificador_de_socio,
+          socios.nome_socio,
+          socios.cnpj_cpf_socio,
+          socios.qualificacao_socio,
+          socios.data_entrada_sociedade,
+          socios.pais,
+          socios.representante_legal,
+          socios.nome_representante,
+          socios.qualificacao_representante_legal,
+          socios.faixa_etaria
         FROM (
-          SELECT 
-            cnpj_basico,
-            identificador_de_socio,
-            nome_socio,
-            cnpj_cpf_socio,
-            qualificacao_socio,
-            data_entrada_sociedade,
-            pais,
-            representante_legal,
-            nome_representante,
-            qualificacao_representante_legal,
-            faixa_etaria,
-            ROW_NUMBER() OVER (PARTITION BY cnpj_basico ORDER BY identificador_de_socio) as rn
+          SELECT *, ROW_NUMBER() OVER (PARTITION BY cnpj_basico ORDER BY identificador_de_socio) as rn
           FROM socios
           WHERE cnpj_basico = ANY($1)
-            AND nome_socio IS NOT NULL
-            AND nome_socio != ''
-        ) ranked_socios
+          AND nome_socio IS NOT NULL
+          AND nome_socio != ''
+        ) socios
         WHERE rn <= $2
-        ORDER BY cnpj_basico, identificador_de_socio
+        ORDER BY socios.cnpj_basico, socios.identificador_de_socio
         LIMIT $3
       `;
       
       try {
-        // Agora sempre usa os mesmos parâmetros: CNPJ array, max sócios por empresa, total limit
-        const queryParams = [cnpjBasicos, maxSociosPerCompany, totalSociosLimit];
+        // Different parameters for optimized vs full query
+        const queryParams = companyLimit >= 50000 
+          ? [cnpjBasicos, totalSociosLimit] // Simple query: only array and limit
+          : [cnpjBasicos, maxSociosPerCompany, totalSociosLimit]; // Full query: array, per-company limit, total limit
           
         const sociosResult = await pool.query(sociosQuery, queryParams);
         console.log(`📊 Found ${sociosResult.rows.length} socios records`);
@@ -3037,8 +2845,19 @@ app.post('/api/companies/filtered', async (req, res) => {
             sociosData[socio.cnpj_basico] = [];
           }
           
-          // Agora sempre usa estrutura completa (todos os campos disponíveis)
-          const socioData = {
+          // For 50k+ queries (simplified structure) vs normal queries (full structure)
+          const socioData = companyLimit >= 50000 ? {
+            identificador: socio.identificador_de_socio || 1,
+            nome: socio.nome_socio,
+            cpf_cnpj: null, // Not available in fast query
+            qualificacao: socio.qualificacao_socio,
+            data_entrada: null, // Not available in fast query
+            pais: null, // Not available in fast query
+            representante_legal_cpf: null,
+            representante_legal_nome: null,
+            representante_legal_qualificacao: null,
+            faixa_etaria: null
+          } : {
             identificador: socio.identificador_de_socio,
             nome: socio.nome_socio,
             cpf_cnpj: socio.cnpj_cpf_socio,
@@ -3238,67 +3057,8 @@ app.post('/api/companies/count', async (req, res) => {
   }
 });
 
-// Serve favicon files (both dev and production)
-const path = require('path');
-
-// Favicon routes - serve from project root (guaranteed to exist)
-app.get('/favicon.ico', (req, res) => {
-  const faviconPath = path.join(__dirname, '../favicon.ico');
-  res.setHeader('Content-Type', 'image/x-icon');
-  res.setHeader('Cache-Control', 'public, max-age=86400');
-  res.sendFile(faviconPath, (err) => {
-    if (err) {
-      console.log('❌ Favicon not found at:', faviconPath);
-      res.status(404).send('Favicon not found');
-    } else {
-      console.log('✅ Favicon served successfully');
-    }
-  });
-});
-
-app.get('/favicon-96x96.png', (req, res) => {
-  const faviconPath = path.join(__dirname, '../favicon-96x96.png');
-  res.sendFile(faviconPath, (err) => {
-    if (err) {
-      console.log('❌ Favicon PNG not found at:', faviconPath);
-      res.status(404).send('Favicon PNG not found');
-    } else {
-      console.log('✅ Favicon PNG served successfully');
-    }
-  });
-});
-
-app.get('/favicon.svg', (req, res) => {
-  const faviconPath = path.join(__dirname, '../favicon.svg');
-  res.sendFile(faviconPath, (err) => {
-    if (err) {
-      console.log('❌ Favicon SVG not found at:', faviconPath);
-      res.status(404).send('Favicon SVG not found');
-    }
-  });
-});
-
-app.get('/apple-touch-icon.png', (req, res) => {
-  const faviconPath = path.join(__dirname, '../apple-touch-icon.png');
-  res.sendFile(faviconPath, (err) => {
-    if (err) {
-      console.log('❌ Apple touch icon not found at:', faviconPath);
-      res.status(404).send('Apple touch icon not found');
-    }
-  });
-});
-
-app.get('/site.webmanifest', (req, res) => {
-  const faviconPath = path.join(__dirname, '../site.webmanifest');
-  res.sendFile(faviconPath, (err) => {
-    if (err) {
-      console.log('❌ Web manifest not found at:', faviconPath);
-      res.status(404).send('Web manifest not found');
-    }
-  });
-});
-
 // Serve React frontend in production
+const path = require('path');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
@@ -3439,339 +3199,120 @@ app.post('/api/debug/login', async (req, res) => {
   }
 });
 
-// Admin statistics endpoint
-app.get('/api/admin/stats', async (req, res) => {
+// ROTAS DE PRODUÇÃO PARA WITHDRAWALS (sistema de saques)
+app.get('/api/withdrawals/list', async (req, res) => {
   try {
-    console.log('📊 Admin stats requested');
-    
-    // Get total users count
-    const totalUsers = await pool.query('SELECT COUNT(*) as count FROM users');
-    
-    // Get subscription stats from simple_users (main table for auth)
-    const subscriptionStats = await pool.query(`
-      SELECT 
-        COALESCE(subscription_active, false) as is_active,
-        COUNT(*) as count
-      FROM simple_users 
-      GROUP BY COALESCE(subscription_active, false)
-    `);
-    
-    // Get trial stats
-    const trialStats = await pool.query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE trial_expires_at > CURRENT_TIMESTAMP) as active_trials,
-        COUNT(*) FILTER (WHERE trial_expires_at <= CURRENT_TIMESTAMP OR trial_expires_at IS NULL) as inactive_trials
-      FROM simple_users
-    `);
-    
-    // Process subscription data
-    const subscriptionMap = {};
-    subscriptionStats.rows.forEach(row => {
-      subscriptionMap[row.is_active ? 'premium' : 'free'] = parseInt(row.count);
-    });
-    
-    const stats = {
-      totalUsers: parseInt(totalUsers.rows[0].count),
-      freeUsers: subscriptionMap.free || 0,
-      premiumUsers: subscriptionMap.premium || 0,
-      proUsers: 0, // Not implemented yet
-      maxUsers: 0, // Not implemented yet
-      activeTrials: parseInt(trialStats.rows[0].active_trials || 0),
-      expiredTrials: parseInt(trialStats.rows[0].inactive_trials || 0)
-    };
-    
-    console.log('📊 Admin stats:', stats);
-    res.json({ success: true, stats });
-    
-  } catch (error) {
-    console.error('❌ Admin stats error:', error);
-    res.status(500).json({ success: false, message: 'Erro ao buscar estatísticas' });
-  }
-});
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
 
-// ===========================================
-// WITHDRAWAL ENDPOINTS - Sistema de Saques
-// ===========================================
-
-// POST /api/withdrawals - Solicitar saque (apenas afiliados)
-app.post('/api/withdrawals', async (req, res) => {
-  try {
-    const { amount, pixKey, pixKeyType } = req.body;
-    
-    // Verificar autenticação
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const userId = decoded.id;
-    
-    // Verificar se o usuário é afiliado
-    const affiliateQuery = await pool.query(
-      'SELECT * FROM affiliates WHERE user_id = $1',
-      [userId]
-    );
-    
-    if (affiliateQuery.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Usuário não é afiliado' });
-    }
-    
-    const affiliate = affiliateQuery.rows[0];
-    const availableAmount = affiliate.total_commissions; // já em centavos
-    const requestedAmount = Math.round(amount * 100); // converter para centavos
-    
-    // Validações
-    if (requestedAmount < 5000) { // R$ 50,00 mínimo
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Valor mínimo para saque é R$ 50,00' 
-      });
-    }
-    
-    if (requestedAmount > availableAmount) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Valor solicitado superior ao disponível para saque' 
-      });
-    }
-    
-    if (!pixKey || !pixKeyType) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Chave PIX é obrigatória' 
-      });
-    }
-    
-    // Verificar se não há saque pendente
-    const pendingWithdrawal = await pool.query(
-      'SELECT * FROM affiliate_withdrawals WHERE affiliate_id = $1 AND status = $2',
-      [affiliate.id, 'pending']
-    );
-    
-    if (pendingWithdrawal.rows.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Você já possui uma solicitação de saque pendente' 
-      });
-    }
-    
-    // Criar solicitação de saque
-    const withdrawalQuery = await pool.query(
-      `INSERT INTO affiliate_withdrawals (affiliate_id, amount, pix_key, status) 
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [affiliate.id, requestedAmount, `${pixKeyType}:${pixKey}`, 'pending']
-    );
-    
-    const withdrawal = withdrawalQuery.rows[0];
-    
-    console.log(`💰 Nova solicitação de saque - Afiliado ID: ${affiliate.id}, Valor: R$ ${(requestedAmount/100).toFixed(2)}`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Solicitação de saque criada com sucesso! Você receberá o pagamento em até 7 dias úteis.',
-      withdrawal: {
-        id: withdrawal.id,
-        amount: withdrawal.amount / 100, // converter para reais
-        status: withdrawal.status,
-        createdAt: withdrawal.created_at
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Erro ao criar solicitação de saque:', error);
-    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
-  }
-});
-
-// GET /api/admin/withdrawals - Listar solicitações de saque (apenas admin)
-app.get('/api/admin/withdrawals', (req, res) => {
-  console.log('🚨 ENDPOINT SIMPLES SÍNCRONO');
-  
-  res.json({
-    success: true,
-    withdrawals: [
-      {
-        id: 1,
-        userId: 1,
-        affiliateName: 'Teste Usuario',
-        affiliateEmail: 'teste@test.com',
-        amount: 150,
-        pixKey: 'teste@test.com',
-        status: 'pending',
-        adminNotes: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        id: 2, 
-        userId: 2,
-        affiliateName: 'Rody Rodrigo',
-        affiliateEmail: 'rodyrodrigo@gmail.com',
-        amount: 250,
-        pixKey: 'rodyrodrigo@gmail.com', 
-        status: 'pending',
-        adminNotes: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]
-  });
-
-/* CÓDIGO ANTIGO COMENTADO:
-  try {
-    // Verificar se é admin
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    
+    const token = authHeader.substring(7);
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Verificar se é admin (role ou email específico)
-    const userQuery = await pool.query(
-      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
-      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
-    );
-    
-    if (userQuery.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    const user = await pool.query('SELECT role FROM simple_users WHERE id = $1', [decoded.id]);
+    if (user.rows.length === 0 || user.rows[0].role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas admins' });
     }
-    
-    // SIMPLES: Buscar saques com dados do usuário diretamente
-    const withdrawalsQuery = await pool.query(
-      `SELECT 
-        aw.*,
-        su.name as user_name,
-        su.email as user_email
-       FROM affiliate_withdrawals aw
-       INNER JOIN simple_users su ON aw.user_id = su.id
-       ORDER BY aw.created_at DESC`
-    );
-    
+
+    const withdrawalsQuery = await pool.query(`
+      SELECT aw.*, su.name as user_name, su.email as user_email
+      FROM affiliate_withdrawals aw
+      INNER JOIN simple_users su ON aw.user_id = su.id
+      ORDER BY aw.created_at DESC
+    `);
+
     const withdrawals = withdrawalsQuery.rows.map(row => ({
       id: row.id,
-      userId: row.user_id,
       affiliateName: row.user_name,
       affiliateEmail: row.user_email,
-      amount: row.amount / 100, // converter para reais
+      amount: row.amount,
       pixKey: row.pix_key,
       status: row.status,
       adminNotes: row.admin_notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      createdAt: row.created_at
     }));
-    
-    console.log(`📋 Admin solicitou lista de saques - ${withdrawals.length} registros encontrados`);
-    
-    res.json({ 
-      success: true, 
-      withdrawals 
+
+    console.log(`✅ Retornando ${withdrawals.length} saques para admin`);
+
+    res.json({
+      success: true,
+      withdrawals
     });
-    
+
   } catch (error) {
-    console.error('❌ Erro ao buscar solicitações de saque:', error);
+    console.error('❌ Erro ao buscar saques:', error.message);
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
-*/
 });
 
-// PATCH /api/admin/withdrawals/:id - Aprovar/rejeitar saque (apenas admin)
-app.patch('/api/admin/withdrawals/:id', async (req, res) => {
+app.patch('/api/withdrawals/update/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, adminNotes } = req.body;
-    
-    // Verificar se é admin
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
     }
-    
+
+    const token = authHeader.substring(7);
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Verificar se é admin (role ou email específico)
-    const userQuery = await pool.query(
-      'SELECT * FROM simple_users WHERE id = $1 AND (role = $2 OR email = $3)',
-      [decoded.id, 'admin', 'rodyrodrigo@gmail.com']
-    );
-    
-    if (userQuery.rows.length === 0) {
-      return res.status(403).json({ success: false, message: 'Acesso negado - apenas administradores' });
+    const user = await pool.query('SELECT role FROM simple_users WHERE id = $1', [decoded.id]);
+    if (user.rows.length === 0 || user.rows[0].role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Acesso negado - apenas admins' });
     }
-    
-    // Validar status
-    const validStatuses = ['approved', 'rejected', 'paid'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Status inválido. Use: approved, rejected ou paid' 
-      });
-    }
-    
-    // Buscar a solicitação atual
-    const currentWithdrawal = await pool.query(
-      'SELECT * FROM affiliate_withdrawals WHERE id = $1',
-      [id]
-    );
-    
-    if (currentWithdrawal.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Solicitação de saque não encontrada' });
-    }
-    
-    const withdrawal = currentWithdrawal.rows[0];
-    
-    // Se estiver aprovando, verificar se afiliado ainda tem saldo
-    if (status === 'approved' && withdrawal.status === 'pending') {
-      const affiliateQuery = await pool.query(
-        'SELECT total_commissions FROM affiliates WHERE id = $1',
-        [withdrawal.affiliate_id]
-      );
-      
-      const affiliate = affiliateQuery.rows[0];
-      if (withdrawal.amount > affiliate.total_commissions) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Afiliado não possui saldo suficiente para aprovação' 
-        });
-      }
-      
-      // Deduzir valor das comissões do afiliado
-      await pool.query(
-        'UPDATE affiliates SET total_commissions = total_commissions - $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        [withdrawal.amount, withdrawal.affiliate_id]
-      );
-    }
-    
-    // Atualizar solicitação
-    const updateQuery = await pool.query(
-      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *',
+
+    await pool.query(
+      'UPDATE affiliate_withdrawals SET status = $1, admin_notes = $2 WHERE id = $3',
       [status, adminNotes, id]
     );
-    
-    const updatedWithdrawal = updateQuery.rows[0];
-    
-    console.log(`🔧 Admin atualizou saque ID ${id} - Status: ${status}`);
-    
-    res.json({ 
-      success: true, 
-      message: `Solicitação ${status === 'approved' ? 'aprovada' : status === 'rejected' ? 'rejeitada' : 'marcada como paga'} com sucesso!`,
-      withdrawal: {
-        id: updatedWithdrawal.id,
-        status: updatedWithdrawal.status,
-        adminNotes: updatedWithdrawal.admin_notes,
-        updatedAt: updatedWithdrawal.updated_at
-      }
+
+    console.log(`✅ Saque ${id} atualizado para status: ${status}`);
+
+    res.json({
+      success: true,
+      message: `Saque ${status === 'approved' ? 'aprovado' : 'negado'} com sucesso`
     });
-    
+
   } catch (error) {
-    console.error('❌ Erro ao atualizar solicitação de saque:', error);
+    console.error('❌ Erro ao atualizar saque:', error.message);
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
   }
 });
 
-Promise.all([initDB(), createUsersTable(), initStripeAndAffiliates(pool)]).then(() => {
+app.post('/api/withdrawals/request', async (req, res) => {
+  try {
+    const { amount, pixKey } = req.body;
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    await pool.query(
+      'INSERT INTO affiliate_withdrawals (user_id, amount, pix_key, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+      [decoded.id, amount, pixKey, 'pending']
+    );
+
+    console.log(`✅ Novo saque solicitado por user ${decoded.id}: R$ ${(amount / 100).toFixed(2)}`);
+
+    res.json({
+      success: true,
+      message: 'Solicitação de saque enviada com sucesso'
+    });
+
+  } catch (error) {
+    console.error('❌ Erro ao solicitar saque:', error.message);
+    res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+Promise.all([initDB(), createUsersTable()]).then(() => {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');
