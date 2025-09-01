@@ -1168,6 +1168,36 @@ const GoogleMapsScraper = () => {
         </div>
       </Card>
 
+      {/* Progress Bar - Show immediately when running */}
+      {isRunning && (
+        <ResultsCard>
+          <div style={{ 
+            margin: '1rem 0', 
+            padding: '1rem',
+            background: 'rgba(66, 133, 244, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(66, 133, 244, 0.3)'
+          }}>
+            <ProgressText>
+              {progress.found > 0 
+                ? `📊 ${progress.found} empresas encontradas (${progress.percentage}%)`
+                : '🔍 Procurando empresas...'}
+            </ProgressText>
+            <ProgressBar>
+              <ProgressFill percentage={Math.max(progress.percentage, 5)} />
+            </ProgressBar>
+            <div style={{ 
+              fontSize: '0.8rem', 
+              color: '#00ccff', 
+              textAlign: 'center', 
+              marginTop: '0.5rem' 
+            }}>
+              Atualizando a cada 5 segundos...
+            </div>
+          </div>
+        </ResultsCard>
+      )}
+
       {currentRun && (
         <ResultsCard>
           <StatusBadge status={currentRun.status}>
@@ -1175,33 +1205,6 @@ const GoogleMapsScraper = () => {
             {currentRun.status === 'SUCCEEDED' && '✅ Concluído'}
             {currentRun.status === 'FAILED' && '❌ Falhou'}
           </StatusBadge>
-
-          {isRunning && (
-            <div style={{ 
-              margin: '1rem 0', 
-              padding: '1rem',
-              background: 'rgba(66, 133, 244, 0.1)',
-              borderRadius: '8px',
-              border: '1px solid rgba(66, 133, 244, 0.3)'
-            }}>
-              <ProgressText>
-                {progress.found > 0 
-                  ? `📊 ${progress.found} empresas encontradas (${progress.percentage}%)`
-                  : '🔍 Procurando empresas...'}
-              </ProgressText>
-              <ProgressBar>
-                <ProgressFill percentage={Math.max(progress.percentage, 5)} />
-              </ProgressBar>
-              <div style={{ 
-                fontSize: '0.8rem', 
-                color: '#00ccff', 
-                textAlign: 'center', 
-                marginTop: '0.5rem' 
-              }}>
-                Atualizando a cada 5 segundos...
-              </div>
-            </div>
-          )}
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>
             <div><strong>Busca:</strong> {currentRun.searchTerms} em {currentRun.locationQuery}</div>
