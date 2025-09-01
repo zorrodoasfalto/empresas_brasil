@@ -899,33 +899,32 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Simple incremental progress - always advance
-        if (data.results && data.results.length > 0) {
-          // Real progress from results
-          const found = data.results.length;
-          const percentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
-          setProgress(prev => ({ 
-            ...prev, 
-            found, 
-            percentage,
-            phase: 'collecting'
-          }));
-          console.log('📊 Real progress:', { found, percentage });
-        } else {
-          // Increment progress every poll - never stuck
-          setProgress(prev => {
-            const newPercentage = Math.min(prev.percentage + 3, 90); // Add 3% each poll
-            const phase = newPercentage < 20 ? 'searching' : 
-                         newPercentage < 60 ? 'crawling' : 'finalizing';
-            
+        // ALWAYS increment progress - never stuck
+        setProgress(prev => {
+          let newPercentage, found, phase;
+          
+          if (data.results && data.results.length > 0) {
+            // Use real data when available
+            found = data.results.length;
+            newPercentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
+            phase = 'collecting';
+            console.log('📊 Real progress:', { found, percentage: newPercentage });
+          } else {
+            // Simulate progress when no data yet
+            found = prev.found;
+            newPercentage = Math.min(prev.percentage + 5, 85); // Add 5% each poll
+            phase = newPercentage < 25 ? 'searching' : 
+                   newPercentage < 65 ? 'crawling' : 'finalizing';
             console.log('⏰ Simulated progress:', { percentage: newPercentage, phase });
-            return {
-              ...prev,
-              percentage: newPercentage,
-              phase
-            };
-          });
-        }
+          }
+          
+          return {
+            ...prev,
+            found,
+            percentage: newPercentage,
+            phase
+          };
+        });
         
         if (data.status === 'RUNNING') {
           setTimeout(() => pollResults(runId), 5000);
