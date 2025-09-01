@@ -910,7 +910,7 @@ const LandingPage = () => {
               <a href="#afiliados" onClick={(e) => { e.preventDefault(); scrollToSection('afiliados'); }}>Afiliados</a>
               <a href="#trial" onClick={(e) => { e.preventDefault(); scrollToSection('trial'); }}>Trial</a>
               <CTAButton onClick={handleStartTrial}>
-                Teste Grátis
+                Entrar na plataforma
               </CTAButton>
             </div>
 
