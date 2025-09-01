@@ -342,6 +342,78 @@ const ExportButton = styled.button`
   }
 `;
 
+const SelectionBar = styled.div`
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(15, 15, 35, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(66, 133, 244, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  
+  .selection-info {
+    color: #4285f4;
+    font-weight: bold;
+  }
+  
+  .selection-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+`;
+
+const SelectionButton = styled.button`
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  
+  &.save {
+    background: linear-gradient(135deg, #00ffaa, #00cc88);
+    color: #000;
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 255, 170, 0.3);
+    }
+  }
+  
+  &.clear {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+`;
+
+const SavedLeadsCounter = styled.div`
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #00ffaa, #00cc88);
+  color: #000;
+  padding: 0.75rem 1rem;
+  border-radius: 25px;
+  font-weight: bold;
+  box-shadow: 0 4px 20px rgba(0, 255, 170, 0.3);
+  z-index: 1000;
+  
+  .count {
+    font-size: 1.2em;
+  }
+`;
 
 const GoogleMapsScraper = () => {
   const [formData, setFormData] = useState({
@@ -363,7 +435,60 @@ const GoogleMapsScraper = () => {
     requestsMade: 0,
     currentStatus: ''
   });
+  const [selectedLeads, setSelectedLeads] = useState(new Set());
+  const [savedLeads, setSavedLeads] = useState([]);
   const { user } = useAuth();
+
+  // Load saved leads on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedLeads');
+    if (saved) {
+      setSavedLeads(JSON.parse(saved));
+    }
+  }, []);
+
+  // Toggle lead selection
+  const toggleLeadSelection = (leadId) => {
+    setSelectedLeads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  };
+
+  // Save selected leads
+  const saveSelectedLeads = () => {
+    const leadsToSave = filteredResults.filter(lead => 
+      selectedLeads.has(lead.placeId || lead.url || lead.title)
+    );
+    
+    const updatedSavedLeads = [...savedLeads, ...leadsToSave];
+    const uniqueLeads = updatedSavedLeads.filter((lead, index, self) => 
+      index === self.findIndex(l => (l.placeId || l.url || l.title) === (lead.placeId || lead.url || lead.title))
+    );
+    
+    setSavedLeads(uniqueLeads);
+    localStorage.setItem('savedLeads', JSON.stringify(uniqueLeads));
+    
+    setSelectedLeads(new Set());
+    toast.success(`${leadsToSave.length} leads salvos! Total: ${uniqueLeads.length}`);
+  };
+
+  // Clear all selections
+  const clearSelection = () => {
+    setSelectedLeads(new Set());
+  };
+
+  // Clear all saved leads
+  const clearSavedLeads = () => {
+    setSavedLeads([]);
+    localStorage.removeItem('savedLeads');
+    toast.success('Todos os leads salvos foram removidos');
+  };
 
   // Remove internal duplicates from scraping results
   const removeDuplicatesFromResults = (results) => {
@@ -1039,6 +1164,13 @@ const GoogleMapsScraper = () => {
 
   return (
     <Container>
+      {/* Saved Leads Counter */}
+      {savedLeads.length > 0 && (
+        <SavedLeadsCounter>
+          💾 <span className="count">{savedLeads.length}</span> leads salvos
+        </SavedLeadsCounter>
+      )}
+      
       {/* Botão Voltar */}
       <div style={{ marginBottom: '2rem' }}>
         <button
@@ -1239,6 +1371,23 @@ const GoogleMapsScraper = () => {
                 </ExportButton>
               </ExportButtonsContainer>
               
+              {/* Selection Bar */}
+              {selectedLeads.size > 0 && (
+                <SelectionBar>
+                  <div className="selection-info">
+                    🎯 {selectedLeads.size} leads selecionados
+                  </div>
+                  <div className="selection-actions">
+                    <SelectionButton className="save" onClick={saveSelectedLeads}>
+                      💾 Salvar Selecionados
+                    </SelectionButton>
+                    <SelectionButton className="clear" onClick={clearSelection}>
+                      ❌ Limpar Seleção
+                    </SelectionButton>
+                  </div>
+                </SelectionBar>
+              )}
+              
               <div style={{ 
                 maxHeight: '400px', 
                 overflowY: 'auto',
@@ -1246,25 +1395,58 @@ const GoogleMapsScraper = () => {
                 padding: '1rem',
                 borderRadius: '8px'
               }}>
-                {filteredResults.slice(0, 20).map((place, index) => (
-                  <div key={index} style={{
-                    background: 'rgba(0,255,170,0.1)',
-                    border: '1px solid rgba(0,255,170,0.2)',
-                    borderRadius: '6px',
-                    padding: '1rem',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {place.title || place.name}
+                {filteredResults.slice(0, 20).map((place, index) => {
+                  const leadId = place.placeId || place.url || place.title || `lead-${index}`;
+                  const isSelected = selectedLeads.has(leadId);
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      onClick={() => toggleLeadSelection(leadId)}
+                      style={{
+                        background: isSelected ? 'rgba(0,255,170,0.2)' : 'rgba(0,255,170,0.1)',
+                        border: isSelected ? '2px solid #00ffaa' : '1px solid rgba(0,255,170,0.2)',
+                        borderRadius: '6px',
+                        padding: '1rem',
+                        marginBottom: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        position: 'relative',
+                        userSelect: 'none'
+                      }}
+                    >
+                      {/* Selection Indicator */}
+                      <div style={{
+                        position: 'absolute',
+                        top: '1rem',
+                        right: '1rem',
+                        width: '20px',
+                        height: '20px',
+                        border: `2px solid ${isSelected ? '#00ffaa' : 'rgba(255,255,255,0.3)'}`,
+                        borderRadius: '4px',
+                        background: isSelected ? '#00ffaa' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#000',
+                        fontWeight: 'bold',
+                        fontSize: '12px'
+                      }}>
+                        {isSelected && '✓'}
+                      </div>
+                      
+                      <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem', marginRight: '30px' }}>
+                        {place.title || place.name}
+                      </div>
+                      <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
+                        {place.address && <div>📍 {place.address}</div>}
+                        {place.phone && <div>📞 {place.phone}</div>}
+                        {place.website && <div>🌐 {place.website}</div>}
+                        {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
+                      </div>
                     </div>
-                    <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-                      {place.address && <div>📍 {place.address}</div>}
-                      {place.phone && <div>📞 {place.phone}</div>}
-                      {place.website && <div>🌐 {place.website}</div>}
-                      {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               {filteredResults.length > 20 && (
