@@ -8,6 +8,25 @@ const Container = styled.div`
   max-width: 1400px;
   margin: 2rem auto;
   padding: 2rem;
+  
+  /* Notebook optimization: Apply 80% zoom effect APENAS para notebooks */
+  @media (max-width: 1600px) and (min-width: 1200px) {
+    transform: scale(0.9);
+    transform-origin: top left;
+    width: 111.11%; /* Compensate for 90% scale */
+  }
+  
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    transform: scale(0.85);
+    transform-origin: top left;
+    width: 117.65%; /* Compensate for 85% scale */
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    transform: scale(0.8);
+    transform-origin: top left;
+    width: 125%; /* Compensate for 80% scale */
+  }
 `;
 
 const Header = styled.div`
