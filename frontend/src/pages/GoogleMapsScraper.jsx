@@ -811,8 +811,11 @@ const GoogleMapsScraper = () => {
 
   const pollResults = async (runId) => {
     try {
+      console.log('🔄 Polling results for run:', runId);
       const response = await fetch(`/api/apify/runs/${runId}`);
       const data = await response.json();
+      
+      console.log('📈 Poll response:', { status: data.status, resultsCount: data.results?.length });
       
       if (data.success) {
         setCurrentRun(prev => ({
@@ -821,11 +824,15 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Update progress if we have partial results
+        // Update progress - always update when running
         if (data.results && data.results.length > 0) {
           const found = data.results.length;
           const percentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
           setProgress({ found, percentage });
+          console.log('📊 Progress updated:', { found, percentage });
+        } else {
+          // Show some progress even without results
+          setProgress(prev => ({ found: prev.found, percentage: Math.min(prev.percentage + 5, 95) }));
         }
         
         if (data.status === 'RUNNING') {
@@ -866,8 +873,9 @@ const GoogleMapsScraper = () => {
       }
     } catch (error) {
       console.error('Polling error:', error);
-      setIsRunning(false);
-      toast.error('❌ Erro ao verificar status do scraping');
+      // Don't immediately stop - could be temporary network issue
+      toast.error('⚠️ Erro temporário no monitoramento, tentando novamente...');
+      setTimeout(() => pollResults(runId), 10000); // Retry in 10s
     }
   };
 
@@ -1170,15 +1178,29 @@ const GoogleMapsScraper = () => {
           </StatusBadge>
 
           {currentRun.status === 'RUNNING' && (
-            <div style={{ margin: '1rem 0' }}>
+            <div style={{ 
+              margin: '1rem 0', 
+              padding: '1rem',
+              background: 'rgba(66, 133, 244, 0.1)',
+              borderRadius: '8px',
+              border: '1px solid rgba(66, 133, 244, 0.3)'
+            }}>
               <ProgressText>
                 {progress.found > 0 
-                  ? `${progress.found} empresas encontradas (${progress.percentage}%)`
-                  : 'Procurando empresas...'}
+                  ? `📊 ${progress.found} empresas encontradas (${progress.percentage}%)`
+                  : '🔍 Procurando empresas...'}
               </ProgressText>
               <ProgressBar>
-                <ProgressFill percentage={progress.percentage} />
+                <ProgressFill percentage={Math.max(progress.percentage, 5)} />
               </ProgressBar>
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: '#00ccff', 
+                textAlign: 'center', 
+                marginTop: '0.5rem' 
+              }}>
+                Atualizando a cada 5 segundos...
+              </div>
             </div>
           )}
           
