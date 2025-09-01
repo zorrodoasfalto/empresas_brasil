@@ -5,26 +5,34 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
   max-width: 1600px;
-  margin: 2rem auto;
-  padding: 2rem;
+  margin: 1rem auto;
+  padding: 1.5rem;
   
   /* Notebook optimization: Apply 80% zoom effect APENAS para notebooks */
   @media (max-width: 1600px) and (min-width: 1200px) {
     transform: scale(0.9);
-    transform-origin: top left;
-    width: 111.11%; /* Compensate for 90% scale */
+    transform-origin: top center;
   }
   
   @media (max-width: 1440px) and (min-width: 1200px) {
     transform: scale(0.85);
-    transform-origin: top left;
-    width: 117.65%; /* Compensate for 85% scale */
+    transform-origin: top center;
   }
   
   @media (max-width: 1366px) and (min-width: 1200px) {
     transform: scale(0.8);
-    transform-origin: top left;
-    width: 125%; /* Compensate for 80% scale */
+    transform-origin: top center;
+  }
+  
+  /* Tablet and smaller notebook responsiveness */
+  @media (max-width: 1199px) and (min-width: 1024px) {
+    transform: scale(0.95);
+    transform-origin: top center;
+  }
+  
+  @media (max-width: 1023px) and (min-width: 769px) {
+    padding: 1rem;
+    max-width: 100%;
   }
   
   /* Mobile responsiveness */
@@ -83,8 +91,8 @@ const FunnelContainer = styled.div`
   display: flex;
   gap: 1.5rem;
   overflow-x: auto;
-  padding-bottom: 2rem;
-  min-height: 600px;
+  padding-bottom: 1rem;
+  min-height: auto;
 `;
 
 const FunnelColumn = styled.div`
@@ -498,11 +506,11 @@ const Funil = () => {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center',
-        marginTop: '2rem',
+        marginTop: '1.5rem',
         flexDirection: 'column',
         gap: '1rem'
       }}>
-        <h2 style={{ color: '#00ccff', fontSize: '1.8rem', textAlign: 'center', marginBottom: '3rem' }}>
+        <h2 style={{ color: '#00ccff', fontSize: '1.8rem', textAlign: 'center', marginBottom: '2rem' }}>
           🌪️ Funil de Conversão Visual
         </h2>
         
@@ -602,7 +610,7 @@ const Funil = () => {
 
         {/* Taxa de Conversão */}
         <div style={{
-          marginTop: '3rem',
+          marginTop: '2rem',
           background: 'rgba(0, 136, 204, 0.1)',
           border: '1px solid rgba(0, 204, 255, 0.3)',
           borderRadius: '12px',
@@ -631,8 +639,8 @@ const Funil = () => {
       </div>
 
       {/* Lista Detalhada de Leads por Fase */}
-      <div style={{ marginTop: '4rem' }}>
-        <h2 style={{ color: '#00ffaa', fontSize: '1.8rem', textAlign: 'center', marginBottom: '3rem' }}>
+      <div style={{ marginTop: '2rem' }}>
+        <h2 style={{ color: '#00ffaa', fontSize: '1.8rem', textAlign: 'center', marginBottom: '2rem' }}>
           📋 Leads Detalhados por Fase
         </h2>
         
