@@ -434,36 +434,101 @@ const GoogleMapsScraper = () => {
   // Toggle lead selection
   const toggleLeadSelection = (leadId) => {
     setSelectedLeads(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(leadId)) {
-        newSet.delete(leadId);
+      if (prev.includes(leadId)) {
+        return prev.filter(id => id !== leadId);
       } else {
-        newSet.add(leadId);
+        return [...prev, leadId];
       }
-      return newSet;
     });
   };
 
   // Save selected leads
-  const saveSelectedLeads = () => {
-    const leadsToSave = filteredResults.filter(lead => 
-      selectedLeads.has(lead.placeId || lead.url || lead.title)
-    );
-    
-    const updatedSavedLeads = [...savedLeads, ...leadsToSave];
-    const uniqueLeads = updatedSavedLeads.filter((lead, index, self) => 
-      index === self.findIndex(l => (l.placeId || l.url || l.title) === (lead.placeId || lead.url || lead.title))
-    );
-    
-    setSavedLeads(uniqueLeads);
-    localStorage.setItem('savedLeads', JSON.stringify(uniqueLeads));
-    setSelectedLeads(new Set());
-    toast.success(`${leadsToSave.length} leads salvos! Total: ${uniqueLeads.length}`);
+  const saveSelectedLeads = async () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Nenhum lead selecionado para salvar');
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Você precisa estar logado para salvar leads');
+      return;
+    }
+
+    // Find selected leads
+    const leadsToSave = filteredResults.filter(place => {
+      const leadId = `${place.title || place.name}-${place.address || ''}`;
+      return selectedLeads.includes(leadId);
+    });
+
+    if (leadsToSave.length === 0) {
+      toast.error('Nenhum lead válido selecionado');
+      return;
+    }
+
+    try {
+      let savedCount = 0;
+      let errorCount = 0;
+      
+      for (const place of leadsToSave) {
+        const lead = {
+          nome: place.title || place.name || 'Empresa sem nome',
+          empresa: place.title || place.name || 'Empresa sem nome',
+          telefone: place.phone || '',
+          email: place.email || '',
+          endereco: place.address || '',
+          website: place.website || '',
+          categoria: place.categoryName || 'Google Maps Lead',
+          rating: place.rating || null,
+          reviews_count: place.reviewsCount || 0,
+          fonte: 'Google Maps Scraping (Selecionado)',
+          dados_originais: place,
+          notas: `Busca: ${formData.searchTerms} em ${formData.locationQuery} (Lead selecionado manualmente)`
+        };
+        
+        try {
+          const response = await fetch('/api/crm/leads', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(lead)
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            savedCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+          console.error('Error saving lead:', error);
+        }
+      }
+      
+      // Clear selection and show results
+      setSelectedLeads([]);
+      
+      if (savedCount > 0) {
+        const message = errorCount > 0 
+          ? `✅ ${savedCount} leads selecionados salvos | ❌ ${errorCount} erros`
+          : `✅ ${savedCount} leads selecionados salvos com sucesso!`;
+        toast.success(message);
+      } else {
+        toast.error('Erro ao salvar leads selecionados');
+      }
+      
+    } catch (error) {
+      console.error('Error in saveSelectedLeads:', error);
+      toast.error('Erro ao salvar leads selecionados: ' + error.message);
+    }
   };
 
   // Clear selection
   const clearSelection = () => {
-    setSelectedLeads(new Set());
+    setSelectedLeads([]);
   };
 
   // Remove internal duplicates from scraping results
