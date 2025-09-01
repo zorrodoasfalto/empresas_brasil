@@ -2069,12 +2069,6 @@ const Dashboard = () => {
             <span className="text">Funil</span>
           </SidebarItem>
           <SidebarItem 
-            onClick={() => setActiveModal('settings')}
-          >
-            <span className="icon">⚙️</span>
-            <span className="text">Configurações</span>
-          </SidebarItem>
-          <SidebarItem 
             onClick={logout}
           >
             <span className="icon">🚪</span>
