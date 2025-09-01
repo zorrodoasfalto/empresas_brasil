@@ -366,6 +366,14 @@ const ProgressText = styled.div`
   margin-bottom: 0.5rem;
 `;
 
+const GlobalStyle = styled.div`
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+`;
+
 const GoogleMapsScraper = () => {
   const [formData, setFormData] = useState({
     searchTerms: '',
@@ -380,7 +388,13 @@ const GoogleMapsScraper = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [autoSearching, setAutoSearching] = useState(false);
   const [searchAttempts, setSearchAttempts] = useState(0);
-  const [progress, setProgress] = useState({ found: 0, percentage: 0 });
+  const [progress, setProgress] = useState({ 
+    found: 0, 
+    percentage: 0, 
+    startTime: null,
+    estimatedTotal: 0,
+    phase: 'starting'
+  });
   const { user } = useAuth();
 
   // Remove internal duplicates from scraping results
@@ -795,8 +809,17 @@ const GoogleMapsScraper = () => {
           locationQuery: formData.locationQuery
         });
         
-        // Reset progress
-        setProgress({ found: 0, percentage: 0 });
+        // Reset progress with timing
+        const estimatedMinutes = Math.ceil(formData.maxResults / 50); // ~50 empresas por minuto
+        setProgress({ 
+          found: 0, 
+          percentage: 0, 
+          startTime: Date.now(),
+          estimatedTotal: formData.maxResults,
+          phase: 'searching'
+        });
+        
+        console.log(`🎯 Starting scraping: ${formData.maxResults} empresas, estimated ${estimatedMinutes} minutes`);
         pollResults(data.runId);
       } else {
         toast.error('Erro ao iniciar scraper: ' + data.message);
@@ -824,15 +847,39 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Update progress - always update when running
+        // Smart progress update
+        const now = Date.now();
+        
         if (data.results && data.results.length > 0) {
+          // Real progress from results
           const found = data.results.length;
           const percentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
-          setProgress({ found, percentage });
-          console.log('📊 Progress updated:', { found, percentage });
+          setProgress(prev => ({ 
+            ...prev, 
+            found, 
+            percentage,
+            phase: 'collecting'
+          }));
+          console.log('📊 Real progress:', { found, percentage });
         } else {
-          // Show some progress even without results
-          setProgress(prev => ({ found: prev.found, percentage: Math.min(prev.percentage + 5, 95) }));
+          // Time-based simulated progress
+          setProgress(prev => {
+            if (!prev.startTime) return prev;
+            
+            const elapsed = now - prev.startTime;
+            const estimatedDuration = prev.estimatedTotal * 60 * 1000; // 1 minute per 50 empresas
+            const timeBasedProgress = Math.min((elapsed / estimatedDuration) * 100, 85); // Max 85% on time
+            
+            const newPercentage = Math.max(prev.percentage, Math.min(timeBasedProgress, 90));
+            const phase = newPercentage < 20 ? 'searching' : 
+                         newPercentage < 60 ? 'crawling' : 'finalizing';
+            
+            return {
+              ...prev,
+              percentage: newPercentage,
+              phase
+            };
+          });
         }
         
         if (data.status === 'RUNNING') {
@@ -1048,7 +1095,9 @@ const GoogleMapsScraper = () => {
   };
 
   return (
-    <Container>
+    <>
+      <GlobalStyle />
+      <Container>
       {/* Botão Voltar */}
       <div style={{ marginBottom: '2rem' }}>
         <button
@@ -1188,11 +1237,24 @@ const GoogleMapsScraper = () => {
             </ProgressBar>
             <div style={{ 
               fontSize: '0.8rem', 
-              color: '#00ccff', 
+              color: progress.found > 0 ? '#00ffaa' : '#00ccff', 
               textAlign: 'center', 
-              marginTop: '0.5rem' 
+              marginTop: '0.5rem',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '0.5rem'
             }}>
-              Atualizando a cada 5 segundos...
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: progress.found > 0 ? '#00ffaa' : '#00ccff',
+                animation: 'pulse 1.5s infinite ease-in-out'
+              }}></div>
+              {progress.found > 0 
+                ? `Dados reais encontrados`
+                : `Progresso estimado por tempo`}
             </div>
           </div>
         </ResultsCard>
@@ -1336,7 +1398,8 @@ const GoogleMapsScraper = () => {
           
         </ResultsCard>
       )}
-    </Container>
+      </Container>
+    </>
   );
 };
 
