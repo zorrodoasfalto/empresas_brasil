@@ -758,7 +758,9 @@ const ResultsSection = styled.section`
   border-radius: 12px;
   padding: 2rem;
   border: 1px solid rgba(0, 255, 170, 0.2);
-  overflow-x: auto;
+  /* Remove overflow-x from parent to prevent interference */
+  width: 100%;
+  max-width: none;
   
   @media (max-width: 768px) {
     padding: 1rem;
@@ -860,17 +862,17 @@ const SaveLeadButton = styled.button`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 2800px; /* Increased to ensure all columns are visible */
+  min-width: 3200px; /* Increased to show all columns including expanded Sócios */
   font-size: 0.85rem;
   background: transparent;
   
   @media (max-width: 768px) {
-    min-width: 2000px; /* Maintain minimum width on mobile */
+    min-width: 2200px; /* Maintain minimum width on mobile */
     font-size: 0.7rem;
   }
   
   @media (max-width: 480px) {
-    min-width: 1800px;
+    min-width: 2200px;
     font-size: 0.65rem;
   }
 `;
@@ -965,8 +967,6 @@ const TableWrapper = styled.div`
   border: 1px solid rgba(0, 255, 170, 0.2);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.1);
-  
-  /* Ensure full horizontal scroll */
   width: 100%;
   position: relative;
   
@@ -2485,7 +2485,7 @@ const Dashboard = () => {
                         {empresa.opcaoMei === 'S' ? '✅ Sim' : empresa.opcaoMei === 'N' ? '❌ Não' : '-'}
                         {empresa.dataOpcaoMei && <div style={{fontSize: '0.7rem'}}>Desde: {empresa.dataOpcaoMei}</div>}
                       </Td>
-                      <Td style={{maxWidth: '250px'}}>
+                      <Td>
                         {empresa.socios && empresa.socios.length > 0 ? (
                           <div>
                             <div 
@@ -2525,7 +2525,7 @@ const Dashboard = () => {
                           <div style={{color: '#666'}}>Sem dados</div>
                         )}
                       </Td>
-                      <Td style={{maxWidth: '200px'}}>
+                      <Td>
                         {empresa.socios && empresa.socios.some(s => s.representante_legal_nome) ? (
                           <div>
                             {(() => {
