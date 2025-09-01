@@ -790,6 +790,142 @@ const CTASection = styled(Section)`
   }
 `;
 
+// Cookie Banner Styles - Following Landing Page Design
+const CookieBanner = styled.div`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  border-top: 2px solid #36e961;
+  padding: 1.5rem;
+  z-index: 1000;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1);
+  transform: ${props => props.show ? 'translateY(0)' : 'translateY(100%)'};
+  transition: transform 0.4s ease-in-out;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+`;
+
+const CookieContent = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+`;
+
+const CookieText = styled.div`
+  flex: 1;
+  color: #374151;
+  
+  h3 {
+    color: #11506e;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #6b7280;
+  }
+  
+  a {
+    color: #11506e;
+    text-decoration: none;
+    font-weight: 500;
+    
+    &:hover {
+      text-decoration: underline;
+      color: #36e961;
+    }
+  }
+`;
+
+const CookieButtons = styled.div`
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  
+  @media (max-width: 768px) {
+    justify-content: center;
+    width: 100%;
+  }
+`;
+
+const CookieButton = styled.button`
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  
+  ${props => {
+    switch (props.variant) {
+      case 'accept':
+        return `
+          background: linear-gradient(135deg, #36e961, #11506e);
+          color: white;
+          border: none;
+          
+          &:hover {
+            background: linear-gradient(135deg, #11506e, #36e961);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(54, 233, 97, 0.3);
+          }
+        `;
+      case 'essential':
+        return `
+          background: #11506e;
+          color: white;
+          border: none;
+          
+          &:hover {
+            background: #0f4a5e;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(17, 80, 110, 0.3);
+          }
+        `;
+      case 'reject':
+        return `
+          background: transparent;
+          color: #6b7280;
+          border: 1px solid #d1d5db;
+          
+          &:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+            color: #374151;
+            transform: translateY(-2px);
+          }
+        `;
+      default:
+        return '';
+    }
+  }}
+  
+  @media (max-width: 480px) {
+    padding: 0.625rem 1rem;
+    font-size: 0.8rem;
+  }
+`;
+
 const Footer = styled.footer`
   background: #0a3042;
   color: white;
@@ -877,6 +1013,7 @@ const Footer = styled.footer`
 const LandingPage = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showCookieBanner, setShowCookieBanner] = useState(false);
 
   // Meta tags
   useEffect(() => {
@@ -886,6 +1023,62 @@ const LandingPage = () => {
       metaDescription.content = "Acesso instantâneo a 66+ milhões de empresas, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 30 dias.";
     }
   }, []);
+
+  // Cookie banner logic
+  useEffect(() => {
+    const cookieConsent = localStorage.getItem('cookieConsent');
+    if (!cookieConsent) {
+      // Show banner after 2 seconds for better UX
+      const timer = setTimeout(() => {
+        setShowCookieBanner(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCookieConsent = (type) => {
+    const timestamp = new Date().toISOString();
+    
+    switch (type) {
+      case 'accept-all':
+        localStorage.setItem('cookieConsent', JSON.stringify({
+          type: 'accept-all',
+          analytics: true,
+          marketing: true,
+          functional: true,
+          timestamp
+        }));
+        break;
+      case 'essential':
+        localStorage.setItem('cookieConsent', JSON.stringify({
+          type: 'essential',
+          analytics: false,
+          marketing: false,
+          functional: true,
+          timestamp
+        }));
+        break;
+      case 'reject-all':
+        localStorage.setItem('cookieConsent', JSON.stringify({
+          type: 'reject-all',
+          analytics: false,
+          marketing: false,
+          functional: false,
+          timestamp
+        }));
+        break;
+    }
+    
+    setShowCookieBanner(false);
+    
+    // Optional: Send analytics event
+    if (typeof gtag !== 'undefined') {
+      gtag('event', 'cookie_consent', {
+        consent_type: type,
+        timestamp
+      });
+    }
+  };
 
   const handleStartTrial = () => {
     navigate('/register');
@@ -1363,6 +1556,40 @@ const LandingPage = () => {
           </div>
         </div>
       </Footer>
+
+      {/* Cookie Consent Banner */}
+      <CookieBanner show={showCookieBanner}>
+        <CookieContent>
+          <CookieText>
+            <h3>🍪 Política de Cookies</h3>
+            <p>
+              Utilizamos cookies para melhorar sua experiência, analisar tráfego e personalizar conteúdo. 
+              Ao continuar navegando, você concorda com nossa <a href="#politica-cookies">Política de Cookies</a> e 
+              <a href="#politica-privacidade"> Política de Privacidade</a>.
+            </p>
+          </CookieText>
+          <CookieButtons>
+            <CookieButton 
+              variant="accept" 
+              onClick={() => handleCookieConsent('accept-all')}
+            >
+              ✅ Aceitar Todos
+            </CookieButton>
+            <CookieButton 
+              variant="essential" 
+              onClick={() => handleCookieConsent('essential')}
+            >
+              ⚙️ Apenas Essenciais
+            </CookieButton>
+            <CookieButton 
+              variant="reject" 
+              onClick={() => handleCookieConsent('reject-all')}
+            >
+              ❌ Rejeitar Todos
+            </CookieButton>
+          </CookieButtons>
+        </CookieContent>
+      </CookieBanner>
     </Container>
   );
 };

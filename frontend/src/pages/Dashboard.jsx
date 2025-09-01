@@ -61,21 +61,24 @@ const Sidebar = styled.div`
   
   /* Notebook optimization: Ajustar altura para telas com zoom 80% */
   @media (max-width: 1366px) and (min-width: 1200px) {
-    width: ${props => props.isMinimized ? '50px' : '180px'};
+    width: ${props => props.isMinimized ? '60px' : '180px'};
     height: 400px; /* Altura fixa para eliminar espaço vazio */
     min-height: 400px;
+    max-width: ${props => props.isMinimized ? '60px' : 'none'};
   }
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 1200px) {
-    width: ${props => props.isMinimized ? '50px' : '200px'};
+    width: ${props => props.isMinimized ? '60px' : '200px'};
     height: 450px; /* Altura ligeiramente maior para telas maiores */
     min-height: 450px;
+    max-width: ${props => props.isMinimized ? '60px' : 'none'};
   }
   
   /* Small laptop breakpoint */
   @media (max-width: 1200px) and (min-width: 769px) {
-    width: ${props => props.isMinimized ? '50px' : '180px'};
+    width: ${props => props.isMinimized ? '60px' : '180px'};
+    max-width: ${props => props.isMinimized ? '60px' : 'none'};
   }
   
   @media (max-width: 768px) {
@@ -170,6 +173,8 @@ const SidebarItem = styled.div`
   gap: ${props => props.isMinimized ? '0' : '12px'};
   border-left: 3px solid transparent;
   justify-content: ${props => props.isMinimized ? 'center' : 'flex-start'};
+  overflow: ${props => props.isMinimized ? 'hidden' : 'visible'};
+  width: 100%;
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 769px) {
@@ -207,8 +212,11 @@ const SidebarItem = styled.div`
   
   .text {
     opacity: ${props => props.isMinimized ? '0' : '1'};
-    display: ${props => props.isMinimized ? 'none' : 'block'};
-    transition: opacity 0.3s ease;
+    display: ${props => props.isMinimized ? 'none !important' : 'block'};
+    visibility: ${props => props.isMinimized ? 'hidden' : 'visible'};
+    width: ${props => props.isMinimized ? '0' : 'auto'};
+    overflow: hidden;
+    transition: all 0.3s ease;
     white-space: nowrap;
     font-size: 14px;
     
