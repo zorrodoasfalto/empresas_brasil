@@ -860,15 +860,18 @@ const SaveLeadButton = styled.button`
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
-  min-width: 2500px;
+  min-width: 2800px; /* Increased to ensure all columns are visible */
   font-size: 0.85rem;
+  background: transparent;
   
   @media (max-width: 768px) {
-    min-width: auto;
-    font-size: 0.75rem;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+    min-width: 2000px; /* Maintain minimum width on mobile */
+    font-size: 0.7rem;
+  }
+  
+  @media (max-width: 480px) {
+    min-width: 1800px;
+    font-size: 0.65rem;
   }
 `;
 
@@ -956,16 +959,23 @@ const FiltersTitle = styled.h3`
 
 const TableWrapper = styled.div`
   overflow-x: auto;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  max-height: 600px;
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  
+  /* Ensure full horizontal scroll */
+  width: 100%;
+  position: relative;
   
   @media (max-width: 768px) {
-    margin: -1rem;
-    padding: 1rem;
+    max-height: 500px;
   }
   
   @media (max-width: 480px) {
-    margin: -0.5rem;
-    padding: 0.5rem;
+    max-height: 400px;
   }
 `;
 
@@ -2391,14 +2401,7 @@ const Dashboard = () => {
               </ExportButtonsContainer>
             </ResultsHeader>
 
-            <div style={{ 
-              overflowX: 'auto', 
-              maxHeight: '600px',
-              overflowY: 'auto',
-              border: '1px solid rgba(0, 255, 170, 0.2)',
-              borderRadius: '8px'
-            }}>
-              <TableWrapper>
+            <TableWrapper>
             <Table>
                 <thead>
                   <tr>
@@ -2573,7 +2576,6 @@ const Dashboard = () => {
                 </tbody>
               </Table>
             </TableWrapper>
-            </div>
 
             {totalPages > 1 && (
               <PaginationContainer>
