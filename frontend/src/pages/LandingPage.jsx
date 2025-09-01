@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
+import { LandingPageSEO } from '../components/SEOHead';
+import { SoftwareApplicationSchema, OrganizationSchema } from '../components/StructuredData';
 import logo from '../assets/images/logo.png';
 
 // Animations
@@ -1090,6 +1092,9 @@ const LandingPage = () => {
 
   return (
     <Container>
+      <LandingPageSEO />
+      <SoftwareApplicationSchema />
+      <OrganizationSchema />
       <Header>
         <nav>
           <div className="nav-content">

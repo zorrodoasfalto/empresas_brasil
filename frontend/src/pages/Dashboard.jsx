@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import empresaService from '../services/empresaService';
 import * as XLSX from 'xlsx';
+import { DashboardSEO } from '../components/SEOHead';
+import Breadcrumb from '../components/Breadcrumb';
 import logo from '../assets/images/logo.png';
 import thumbnail from '../assets/images/logo thumbnail symbol.png';
 // import SubscriptionGate from '../components/SubscriptionGate'; // TODO: Restaurar controle de assinatura
@@ -2090,6 +2092,7 @@ const Dashboard = () => {
 
   return (
     <Container>
+      <DashboardSEO />
       <MobileHeader>
         <MobileMenuButton onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
           {isMobileMenuOpen ? '✕' : '☰'}
@@ -2227,6 +2230,7 @@ const Dashboard = () => {
       </Sidebar>
 
       <MainContent isMenuMinimized={isMenuMinimized}>
+        <Breadcrumb />
         <Header isMenuMinimized={isMenuMinimized}>
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
