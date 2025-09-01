@@ -821,7 +821,7 @@ const GoogleMapsScraper = () => {
     setCurrentRun(null);
     setProgress({ 
       found: 0, 
-      percentage: 0, 
+      percentage: 5, // Start at 5% so it's visible
       startTime: Date.now(),
       estimatedTotal: formData.maxResults,
       phase: 'starting'
@@ -861,17 +861,8 @@ const GoogleMapsScraper = () => {
           locationQuery: formData.locationQuery
         });
         
-        // Reset progress with timing
-        const estimatedMinutes = Math.ceil(formData.maxResults / 50); // ~50 empresas por minuto
-        setProgress({ 
-          found: 0, 
-          percentage: 0, 
-          startTime: Date.now(),
-          estimatedTotal: formData.maxResults,
-          phase: 'searching'
-        });
-        
-        console.log(`🎯 Starting scraping: ${formData.maxResults} empresas, estimated ${estimatedMinutes} minutes`);
+        // Progress already reset in runScraper - just start polling
+        console.log(`🎯 Starting scraping: ${formData.maxResults} empresas`);
         pollResults(data.runId);
       } else {
         toast.error('Erro ao iniciar scraper: ' + data.message);
@@ -910,12 +901,16 @@ const GoogleMapsScraper = () => {
             phase = 'collecting';
             console.log('📊 Real progress:', { found, percentage: newPercentage });
           } else {
-            // Simulate progress when no data yet
+            // Simulate progress when no data yet - ALWAYS increment
             found = prev.found;
-            newPercentage = Math.min(prev.percentage + 5, 85); // Add 5% each poll
+            newPercentage = Math.max(Math.min(prev.percentage + 5, 85), 5); // Never below 5%
             phase = newPercentage < 25 ? 'searching' : 
                    newPercentage < 65 ? 'crawling' : 'finalizing';
-            console.log('⏰ Simulated progress:', { percentage: newPercentage, phase });
+            console.log('⏰ Simulated progress - FORCED INCREMENT:', { 
+              prevPercentage: prev.percentage, 
+              newPercentage, 
+              phase 
+            });
           }
           
           return {
