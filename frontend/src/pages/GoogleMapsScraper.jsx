@@ -1174,7 +1174,6 @@ const GoogleMapsScraper = () => {
             {currentRun.status === 'RUNNING' && '🔄 Processando...'}
             {currentRun.status === 'SUCCEEDED' && '✅ Concluído'}
             {currentRun.status === 'FAILED' && '❌ Falhou'}
-            {currentRun.status}
           </StatusBadge>
 
           {isRunning && (
