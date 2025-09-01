@@ -4,6 +4,14 @@ import styled, { keyframes } from 'styled-components';
 import { LandingPageSEO } from '../components/SEOHead';
 import { SoftwareApplicationSchema, OrganizationSchema } from '../components/StructuredData';
 import logo from '../assets/images/logo.png';
+import dashboard1 from '../assets/images/Dashboard 1.png';
+import dashboardGoogleMaps from '../assets/images/dashboard_google_maps.png';
+import dashboardLinkedin from '../assets/images/dashboard linkedin.png';
+import dashboardInstagram from '../assets/images/dashboard instagram.png';
+import dashboardBuscaEmpresas from '../assets/images/dashboard busca empresas.png';
+import dashboardLeads from '../assets/images/dashboard leads.png';
+import dashboardKanban from '../assets/images/dashboard kanbam.png';
+import dashboardFunil from '../assets/images/dashboard funil.png';
 
 // Animations
 const float = keyframes`
@@ -344,6 +352,205 @@ const HeroSection = styled(Section)`
             }
           }
         }
+      }
+    }
+  }
+`;
+
+const ShowcaseSection = styled(Section)`
+  background: linear-gradient(135deg, 
+    rgba(248, 250, 252, 1) 0%,
+    rgba(241, 245, 249, 1) 100%
+  );
+  padding: 6rem 0;
+  
+  .showcase-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+  
+  .showcase-header {
+    text-align: center;
+    margin-bottom: 4rem;
+    
+    h2 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #0a3042;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    
+    p {
+      font-size: 1.25rem;
+      color: #64748b;
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+  }
+  
+  .showcase-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6rem;
+    margin-bottom: 8rem;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(50px);
+    transition: all 0.8s ease;
+    
+    &.animate-in {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    &:nth-child(even) {
+      .showcase-content-text {
+        order: 2;
+      }
+      .showcase-image {
+        order: 1;
+      }
+    }
+    
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+      gap: 3rem;
+      margin-bottom: 4rem;
+      
+      &:nth-child(even) {
+        .showcase-content-text {
+          order: 1;
+        }
+        .showcase-image {
+          order: 2;
+        }
+      }
+    }
+  }
+  
+  .showcase-content-text {
+    padding: 2rem 0;
+    
+    h3 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #0a3042;
+      margin-bottom: 1.5rem;
+      line-height: 1.3;
+    }
+    
+    p {
+      font-size: 1.1rem;
+      color: #475569;
+      line-height: 1.7;
+      margin-bottom: 1.5rem;
+    }
+    
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin: 2rem 0;
+      
+      li {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        color: #374151;
+        
+        &:before {
+          content: "✓";
+          color: #10b981;
+          font-weight: bold;
+          margin-right: 1rem;
+          font-size: 1.2rem;
+        }
+      }
+    }
+    
+    .cta-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: linear-gradient(135deg, #36e961, #00cc51);
+      color: white;
+      padding: 1rem 2rem;
+      border-radius: 25px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(54, 233, 97, 0.3);
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(54, 233, 97, 0.4);
+        background: linear-gradient(135deg, #00cc51, #36e961);
+      }
+    }
+  }
+  
+  .showcase-image {
+    position: relative;
+    
+    img {
+      width: 100%;
+      height: auto;
+      border-radius: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+      transition: all 0.6s ease;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      
+      &:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+      }
+    }
+    
+    &:before {
+      content: '';
+      position: absolute;
+      top: -20px;
+      left: -20px;
+      right: 20px;
+      bottom: 20px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+      border-radius: 25px;
+      z-index: -1;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    padding: 4rem 0;
+    
+    .showcase-content {
+      padding: 0 1rem;
+    }
+    
+    .showcase-header {
+      h2 {
+        font-size: 2rem;
+      }
+      
+      p {
+        font-size: 1.1rem;
+      }
+    }
+    
+    .showcase-item {
+      gap: 2rem;
+    }
+    
+    .showcase-content-text {
+      h3 {
+        font-size: 1.5rem;
+      }
+      
+      p {
+        font-size: 1rem;
       }
     }
   }
@@ -1090,6 +1297,26 @@ const LandingPage = () => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Scroll animation for showcase items
+  useEffect(() => {
+    const handleScroll = () => {
+      const showcaseItems = document.querySelectorAll('.showcase-item');
+      const windowHeight = window.innerHeight;
+      
+      showcaseItems.forEach(item => {
+        const itemTop = item.getBoundingClientRect().top;
+        if (itemTop < windowHeight * 0.8) {
+          item.classList.add('animate-in');
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check on mount
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <Container>
       <LandingPageSEO />
@@ -1198,6 +1425,127 @@ const LandingPage = () => {
             </div>
           </div>
         </HeroSection>
+
+        <ShowcaseSection>
+          <div className="showcase-content">
+            <div className="showcase-header">
+              <h2>Conheça todas as funcionalidades da plataforma</h2>
+              <p>
+                Explore cada ferramenta desenvolvida para maximizar sua produtividade e acelerar seus resultados comerciais
+              </p>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>Dashboard Principal - Busca Empresarial Avançada</h3>
+                <p>
+                  Acesse mais de 66 milhões de empresas brasileiras com filtros inteligentes por segmento, localização, porte e situação cadastral. Interface moderna e intuitiva para consultas rápidas e precisas.
+                </p>
+                <ul className="feature-list">
+                  <li>Filtros por 20 segmentos de negócio mapeados</li>
+                  <li>Busca por 27 estados + Distrito Federal</li>
+                  <li>Dados completos de sócios e representantes</li>
+                  <li>Informações de contato verificadas</li>
+                  <li>Exportação em Excel e CSV</li>
+                </ul>
+                <a href="/dashboard" className="cta-button">
+                  Explorar Dashboard 🚀
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboard1} alt="Dashboard Principal Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>Google Maps Scraper - Prospecção Geolocalizada</h3>
+                <p>
+                  Extraia dados completos de empresas diretamente do Google Maps. Encontre prospects qualificados por localização, categoria de negócio e palavras-chave específicas.
+                </p>
+                <ul className="feature-list">
+                  <li>Busca por palavras-chave e localização</li>
+                  <li>Dados de contato e avaliações</li>
+                  <li>Seleção individual de leads</li>
+                  <li>Integração direta com CRM</li>
+                  <li>Até 500 empresas por busca</li>
+                </ul>
+                <a href="/google-maps-scraper" className="cta-button">
+                  Testar Google Maps 🗺️
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardGoogleMaps} alt="Google Maps Scraper Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>LinkedIn Scraper - Prospecção Profissional</h3>
+                <p>
+                  Automatize a prospecção no LinkedIn com nossa ferramenta avançada. Encontre decisores, conecte-se com prospects qualificados e expanda sua rede profissional.
+                </p>
+                <ul className="feature-list">
+                  <li>Busca por cargos e empresas específicas</li>
+                  <li>Extração de perfis completos</li>
+                  <li>Dados de contato profissional</li>
+                  <li>Filtros por localização e setor</li>
+                  <li>Automação responsável</li>
+                </ul>
+                <a href="/linkedin-scraper" className="cta-button">
+                  Explorar LinkedIn 💼
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardLinkedin} alt="LinkedIn Scraper Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>Instagram Scraper - Marketing Digital</h3>
+                <p>
+                  Descubra influenciadores, analise concorrentes e encontre oportunidades no Instagram. Extraia dados de perfis, engagement e informações de contato.
+                </p>
+                <ul className="feature-list">
+                  <li>Análise de perfis e hashtags</li>
+                  <li>Métricas de engagement</li>
+                  <li>Dados de biografia e contato</li>
+                  <li>Identificação de influenciadores</li>
+                  <li>Relatórios de performance</li>
+                </ul>
+                <a href="/instagram" className="cta-button">
+                  Descobrir Instagram 📸
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardInstagram} alt="Instagram Scraper Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>CRM Integrado - Gestão de Leads</h3>
+                <p>
+                  Gerencie todos os leads capturados em um CRM completo. Organize, acompanhe e converta seus prospects com ferramentas profissionais de vendas.
+                </p>
+                <ul className="feature-list">
+                  <li>Gestão centralizada de leads</li>
+                  <li>Funil de vendas customizável</li>
+                  <li>Sistema Kanban visual</li>
+                  <li>Histórico de interações</li>
+                  <li>Relatórios de conversão</li>
+                </ul>
+                <a href="/leads" className="cta-button">
+                  Acessar CRM 📊
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardLeads} alt="CRM Integrado Data Atlas" />
+              </div>
+            </div>
+          </div>
+        </ShowcaseSection>
 
         <StatsSection>
           <div className="section-content">
