@@ -847,9 +847,7 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Smart progress update
-        const now = Date.now();
-        
+        // Simple incremental progress - always advance
         if (data.results && data.results.length > 0) {
           // Real progress from results
           const found = data.results.length;
@@ -862,18 +860,13 @@ const GoogleMapsScraper = () => {
           }));
           console.log('📊 Real progress:', { found, percentage });
         } else {
-          // Time-based simulated progress
+          // Increment progress every poll - never stuck
           setProgress(prev => {
-            if (!prev.startTime) return prev;
-            
-            const elapsed = now - prev.startTime;
-            const estimatedDuration = prev.estimatedTotal * 60 * 1000; // 1 minute per 50 empresas
-            const timeBasedProgress = Math.min((elapsed / estimatedDuration) * 100, 85); // Max 85% on time
-            
-            const newPercentage = Math.max(prev.percentage, Math.min(timeBasedProgress, 90));
+            const newPercentage = Math.min(prev.percentage + 3, 90); // Add 3% each poll
             const phase = newPercentage < 20 ? 'searching' : 
                          newPercentage < 60 ? 'crawling' : 'finalizing';
             
+            console.log('⏰ Simulated progress:', { percentage: newPercentage, phase });
             return {
               ...prev,
               percentage: newPercentage,
