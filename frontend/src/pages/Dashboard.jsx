@@ -1971,7 +1971,9 @@ const Dashboard = () => {
                   height: '35px',
                   cursor: 'pointer',
                   filter: 'drop-shadow(0 0 8px rgba(0, 255, 170, 0.4))',
-                  transition: 'all 0.3s ease'
+                  transition: 'all 0.3s ease',
+                  marginLeft: 'auto',
+                  marginRight: '10px'
                 }}
               />
             ) : (
