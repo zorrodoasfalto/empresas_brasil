@@ -1660,7 +1660,27 @@ app.get('/api/apify/actors', async (req, res) => {
 app.post('/api/apify/run/:actorId', async (req, res) => {
   try {
     const { actorId } = req.params;
-    const inputData = req.body;
+    let inputData = req.body;
+    
+    // Optimize input for compass/crawler-google-places
+    if (actorId === 'compass~crawler-google-places') {
+      inputData = {
+        ...inputData,
+        // Performance optimizations
+        maxConcurrency: inputData.maxCrawledPlacesPerSearch > 200 ? 10 : 5,
+        pageLoadTimeoutSecs: 30,
+        maxPageRetries: 2,
+        // Ensure proper structure
+        searchStringsArray: Array.isArray(inputData.searchStringsArray) 
+          ? inputData.searchStringsArray 
+          : [inputData.searchQuery || inputData.searchStringsArray],
+        locationQuery: inputData.locationQuery,
+        maxCrawledPlacesPerSearch: parseInt(inputData.maxCrawledPlacesPerSearch) || 50
+      };
+      
+      // Remove old format keys
+      delete inputData.searchQuery;
+    }
     
     console.log(`🚀 Running Apify actor: ${actorId}`);
     console.log('📋 Input data:', JSON.stringify(inputData, null, 2));
@@ -1712,24 +1732,44 @@ app.get('/api/apify/runs/:runId', async (req, res) => {
     console.log(`📈 Run status: ${run.status}`);
     
     let results = null;
-    if (run.status === 'SUCCEEDED' && run.defaultDatasetId) {
+    let partialResults = null;
+    
+    // Always try to get partial results for progress tracking
+    if (run.defaultDatasetId) {
       try {
         console.log(`📂 Fetching results from dataset: ${run.defaultDatasetId}`);
         const { items } = await apifyClient.dataset(run.defaultDatasetId).listItems();
-        results = items;
-        console.log(`✅ Found ${results.length} results`);
+        
+        if (run.status === 'SUCCEEDED') {
+          results = items;
+          console.log(`✅ Final results: ${results.length} items`);
+        } else {
+          partialResults = items;
+          console.log(`📊 Partial results: ${partialResults.length} items`);
+        }
       } catch (resultsError) {
         console.log('❌ Could not fetch results:', resultsError.message);
       }
     }
     
-    res.json({
+    // Calculate progress stats
+    const stats = run.stats || {};
+    const responseData = {
       success: true,
       status: run.status,
       startedAt: run.startedAt,
       finishedAt: run.finishedAt,
-      results: results
-    });
+      stats: {
+        itemsOutputted: stats.itemsOutputted || partialResults?.length || 0,
+        requestsFinished: stats.requestsFinished || 0,
+        requestsFailed: stats.requestsFailed || 0,
+        requestsTotal: stats.requestsTotal || 0,
+        crawlerRuntimeMillis: stats.crawlerRuntimeMillis || 0
+      },
+      results: results || partialResults
+    };
+    
+    res.json(responseData);
   } catch (error) {
     console.error('❌ Apify run status error:', error.message);
     res.status(500).json({

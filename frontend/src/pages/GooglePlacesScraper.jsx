@@ -219,6 +219,53 @@ const ResultInfo = styled.div`
   }
 `;
 
+const ProgressContainer = styled.div`
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 255, 170, 0.2);
+  border-radius: 8px;
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #00ffaa, #00ccff);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: ${props => props.percentage}%;
+`;
+
+const ProgressStats = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  font-size: 0.9rem;
+  
+  .stat {
+    text-align: center;
+  }
+  
+  .stat-value {
+    color: #00ffaa;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+  
+  .stat-label {
+    color: #e0e0e0;
+    opacity: 0.8;
+  }
+`;
+
 const ExampleQueries = styled.div`
   background: rgba(0, 136, 204, 0.1);
   border: 1px solid rgba(0, 204, 255, 0.3);
@@ -255,12 +302,66 @@ const GooglePlacesScraper = () => {
     language: 'pt-BR',
     includeClosed: false,
     includePhotos: true,
-    includeReviews: false
+    includeReviews: false,
+    minStars: '',
+    maxReviews: 0,
+    scrapeContacts: true,
+    scrapeWebsites: true
   });
   
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState(null);
   const [results, setResults] = useState([]);
+  const [progress, setProgress] = useState({
+    percentage: 0,
+    crawledPlaces: 0,
+    requestsMade: 0,
+    currentStatus: ''
+  });
+
+  const exportToCSV = () => {
+    if (results.length === 0) {
+      toast.error('Nenhum resultado para exportar');
+      return;
+    }
+
+    const headers = [
+      'Nome',
+      'Endereço', 
+      'Telefone',
+      'Website',
+      'Avaliação',
+      'Total de Avaliações',
+      'Categoria',
+      'Status',
+      'Latitude',
+      'Longitude'
+    ];
+
+    const csvContent = [
+      headers.join(';'),
+      ...results.map(place => [
+        `"${(place.title || place.name || '').replace(/"/g, '""')}"`,
+        `"${(place.address || '').replace(/"/g, '""')}"`,
+        `"${place.phone || ''}"`,
+        `"${place.website || ''}"`,
+        place.rating || '',
+        place.reviewsCount || place.totalScore || '',
+        `"${(place.category || place.categoryName || '').replace(/"/g, '""')}"`,
+        place.isAdvertisement ? 'Publicidade' : 'Orgânico',
+        place.location?.lat || place.latitude || '',
+        place.location?.lng || place.longitude || ''
+      ].join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `google-places-${formData.searchQuery}-${Date.now()}.csv`;
+    link.click();
+    
+    toast.success(`${results.length} lugares exportados com sucesso!`);
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -293,13 +394,17 @@ const GooglePlacesScraper = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          searchQuery: formData.searchQuery,
+          searchStringsArray: [formData.searchQuery],
           locationQuery: formData.location,
-          maxResults: parseInt(formData.maxResults),
+          maxCrawledPlacesPerSearch: parseInt(formData.maxResults),
           language: formData.language,
-          includeClosed: formData.includeClosed,
-          includeImages: formData.includePhotos,
-          includeReviews: formData.includeReviews
+          skipClosedPlaces: !formData.includeClosed,
+          scrapePlaceDetailPage: formData.includePhotos,
+          maxReviews: formData.includeReviews ? parseInt(formData.maxReviews) || 5 : 0,
+          placeMinimumStars: formData.minStars || '',
+          scrapeContacts: formData.scrapeContacts,
+          website: formData.scrapeWebsites ? 'allPlaces' : 'none',
+          searchMatching: 'all'
         })
       });
       
@@ -313,7 +418,8 @@ const GooglePlacesScraper = () => {
           startedAt: new Date()
         });
         
-        // Start polling for results
+        // Start polling for results with reset progress
+        setProgress({ percentage: 0, crawledPlaces: 0, requestsMade: 0, currentStatus: 'RUNNING' });
         pollResults(data.runId);
       } else {
         toast.error('Erro ao iniciar scraper');
@@ -324,7 +430,7 @@ const GooglePlacesScraper = () => {
     }
   };
 
-  const pollResults = async (runId) => {
+  const pollResults = async (runId, pollCount = 0) => {
     try {
       const response = await fetch(`/api/apify/runs/${runId}`);
       const data = await response.json();
@@ -336,11 +442,33 @@ const GooglePlacesScraper = () => {
           finishedAt: data.finishedAt
         }));
         
+        // Update progress if available
+        if (data.stats || data.results) {
+          const stats = data.stats || {};
+          const itemCount = stats.itemsOutputted || data.results?.length || 0;
+          const percentage = Math.min(Math.round((itemCount / parseInt(formData.maxResults)) * 100), 100);
+          
+          setProgress({
+            percentage: percentage,
+            crawledPlaces: itemCount,
+            requestsMade: stats.requestsFinished || 0,
+            currentStatus: data.status
+          });
+        }
+        
+        // Stream partial results
+        if (data.results && data.results.length > results.length) {
+          setResults(data.results);
+        }
+        
         if (data.status === 'RUNNING') {
-          setTimeout(() => pollResults(runId), 5000);
+          // Aggressive polling - check every 1.5s initially
+          const interval = pollCount < 30 ? 1500 : 3000;
+          setTimeout(() => pollResults(runId, pollCount + 1), interval);
         } else if (data.status === 'SUCCEEDED' && data.results) {
           setResults(data.results);
-          toast.success('Scraping concluído com sucesso!');
+          setProgress(prev => ({ ...prev, percentage: 100 }));
+          toast.success(`Scraping concluído! ${data.results.length} lugares encontrados`);
           setIsRunning(false);
         } else if (data.status === 'FAILED') {
           toast.error('Scraping falhou');
@@ -349,7 +477,7 @@ const GooglePlacesScraper = () => {
       }
     } catch (error) {
       console.error('Polling error:', error);
-      setTimeout(() => pollResults(runId), 10000); // Retry in 10s
+      setTimeout(() => pollResults(runId, pollCount + 1), 10000);
     }
   };
 
@@ -416,11 +544,25 @@ const GooglePlacesScraper = () => {
               value={formData.maxResults}
               onChange={handleInputChange}
             >
-              <option value={20}>20 resultados</option>
-              <option value={50}>50 resultados</option>
-              <option value={100}>100 resultados</option>
-              <option value={200}>200 resultados</option>
-              <option value={500}>500 resultados</option>
+              <option value={20}>20 resultados (~30-60s)</option>
+              <option value={50}>50 resultados (~1-2min)</option>
+              <option value={100}>100 resultados (~2-4min)</option>
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Avaliação Mínima</Label>
+            <Select
+              name="minStars"
+              value={formData.minStars}
+              onChange={handleInputChange}
+            >
+              <option value="">Qualquer avaliação</option>
+              <option value="1">1+ estrelas</option>
+              <option value="2">2+ estrelas</option>
+              <option value="3">3+ estrelas</option>
+              <option value="4">4+ estrelas</option>
+              <option value="4.5">4.5+ estrelas</option>
             </Select>
           </FormGroup>
 
@@ -461,7 +603,35 @@ const GooglePlacesScraper = () => {
                 onChange={handleInputChange}
                 style={{ marginRight: '0.5rem' }}
               />
-              Incluir fotos dos estabelecimentos
+              Incluir detalhes e fotos (reduz velocidade 3x)
+            </Label>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>
+              <input
+                type="checkbox"
+                name="scrapeContacts"
+                checked={formData.scrapeContacts}
+                onChange={handleInputChange}
+                style={{ marginRight: '0.5rem' }}
+              />
+              Extrair contatos (telefone/email)
+            </Label>
+          </FormGroup>
+        </FormGrid>
+
+        <FormGrid>
+          <FormGroup>
+            <Label>
+              <input
+                type="checkbox"
+                name="scrapeWebsites"
+                checked={formData.scrapeWebsites}
+                onChange={handleInputChange}
+                style={{ marginRight: '0.5rem' }}
+              />
+              Extrair websites
             </Label>
           </FormGroup>
 
@@ -474,9 +644,25 @@ const GooglePlacesScraper = () => {
                 onChange={handleInputChange}
                 style={{ marginRight: '0.5rem' }}
               />
-              Incluir avaliações (mais lento)
+              Incluir avaliações (reduz velocidade 10x)
             </Label>
           </FormGroup>
+
+          {formData.includeReviews && (
+            <FormGroup>
+              <Label>Máximo de Avaliações por Local</Label>
+              <Select
+                name="maxReviews"
+                value={formData.maxReviews}
+                onChange={handleInputChange}
+              >
+                <option value="5">5 avaliações</option>
+                <option value="10">10 avaliações</option>
+                <option value="20">20 avaliações</option>
+                <option value="50">50 avaliações</option>
+              </Select>
+            </FormGroup>
+          )}
         </FormGrid>
 
         <RunButton
@@ -502,6 +688,35 @@ const GooglePlacesScraper = () => {
               <div>Finalizado: {new Date(currentRun.finishedAt).toLocaleString()}</div>
             )}
           </div>
+
+          {currentRun.status === 'RUNNING' && (
+            <ProgressContainer>
+              <div style={{ color: '#00ccff', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                Progresso do Scraping
+              </div>
+              <ProgressBar>
+                <ProgressFill percentage={progress.percentage} />
+              </ProgressBar>
+              <ProgressStats>
+                <div className="stat">
+                  <div className="stat-value">{progress.percentage}%</div>
+                  <div className="stat-label">Progresso</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-value">{progress.crawledPlaces}</div>
+                  <div className="stat-label">Lugares Encontrados</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-value">{progress.requestsMade}</div>
+                  <div className="stat-label">Requisições</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-value">{formData.maxResults}</div>
+                  <div className="stat-label">Meta</div>
+                </div>
+              </ProgressStats>
+            </ProgressContainer>
+          )}
 
           {results.length > 0 && (
             <div>
@@ -547,6 +762,18 @@ const GooglePlacesScraper = () => {
                   ... e mais {results.length - 10} resultados
                 </div>
               )}
+              
+              <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                <RunButton
+                  onClick={exportToCSV}
+                  style={{ 
+                    background: 'linear-gradient(135deg, #00ccff, #0088cc)',
+                    maxWidth: '300px'
+                  }}
+                >
+                  📄 Exportar {results.length} Lugares (CSV)
+                </RunButton>
+              </div>
             </div>
           )}
         </ResultsCard>
