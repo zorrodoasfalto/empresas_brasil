@@ -2775,10 +2775,10 @@ app.post('/api/companies/filtered', async (req, res) => {
         orderByClause = 'ORDER BY est.data_inicio_atividades DESC NULLS LAST';
         break;
       case 'largest':
-        // Optimized: First filter by capital_social > 0, then sort for better performance
-        orderByClause = 'ORDER BY COALESCE(emp.capital_social::NUMERIC, 0) DESC';
-        // Add filter to focus on companies with meaningful capital_social values
-        conditions.push(`emp.capital_social IS NOT NULL AND emp.capital_social::NUMERIC > 0`);
+        // Super optimized for capital social: First get companies with capital > 0, limit results
+        orderByClause = 'ORDER BY (CASE WHEN emp.capital_social IS NOT NULL AND emp.capital_social::TEXT ~ \'^[0-9]+$\' THEN emp.capital_social::BIGINT ELSE 0 END) DESC';
+        // Add WHERE condition to pre-filter companies with meaningful capital
+        conditions.push(`emp.capital_social IS NOT NULL AND emp.capital_social != '0' AND emp.capital_social::TEXT ~ '^[0-9]+$'`);
         break;
       case 'reverse':
         orderByClause = 'ORDER BY est.cnpj_basico DESC';
