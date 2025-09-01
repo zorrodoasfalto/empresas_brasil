@@ -91,19 +91,30 @@ const FunnelContainer = styled.div`
   display: flex;
   justify-content: center;
   gap: 1.5rem;
-  overflow-x: auto;
   padding-bottom: 1rem;
   min-height: auto;
+  flex-wrap: wrap;
+  
+  @media (max-width: 1200px) {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
 `;
 
 const FunnelColumn = styled.div`
   background: linear-gradient(135deg, rgba(15, 15, 35, 0.9), rgba(26, 26, 46, 0.8));
   border: 2px solid ${props => props.color || '#3B82F6'};
   border-radius: 12px;
-  min-width: 300px;
+  flex: 1;
+  min-width: 280px;
   max-width: 350px;
   padding: 1.5rem;
   position: relative;
+  
+  @media (max-width: 1200px) {
+    flex: none;
+    min-width: 300px;
+  }
 `;
 
 const ColumnHeader = styled.div`

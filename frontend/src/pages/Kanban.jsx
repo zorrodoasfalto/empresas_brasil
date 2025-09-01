@@ -11,20 +11,28 @@ const Container = styled.div`
   /* Notebook optimization: Apply 80% zoom effect APENAS para notebooks */
   @media (max-width: 1600px) and (min-width: 1200px) {
     transform: scale(0.9);
-    transform-origin: top left;
-    width: 111.11%; /* Compensate for 90% scale */
+    transform-origin: top center;
   }
   
   @media (max-width: 1440px) and (min-width: 1200px) {
     transform: scale(0.85);
-    transform-origin: top left;
-    width: 117.65%; /* Compensate for 85% scale */
+    transform-origin: top center;
   }
   
   @media (max-width: 1366px) and (min-width: 1200px) {
     transform: scale(0.8);
-    transform-origin: top left;
-    width: 125%; /* Compensate for 80% scale */
+    transform-origin: top center;
+  }
+  
+  /* Tablet and smaller notebook responsiveness */
+  @media (max-width: 1199px) and (min-width: 1024px) {
+    transform: scale(0.95);
+    transform-origin: top center;
+  }
+  
+  @media (max-width: 1023px) and (min-width: 769px) {
+    padding: 1.5rem;
+    max-width: 100%;
   }
   
   /* Mobile responsiveness */
@@ -81,20 +89,32 @@ const StatLabel = styled.div`
 
 const FunnelContainer = styled.div`
   display: flex;
+  justify-content: center;
   gap: 1.5rem;
-  overflow-x: auto;
-  padding-bottom: 2rem;
-  min-height: 600px;
+  padding-bottom: 1rem;
+  min-height: auto;
+  flex-wrap: wrap;
+  
+  @media (max-width: 1200px) {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
 `;
 
 const FunnelColumn = styled.div`
   background: linear-gradient(135deg, rgba(15, 15, 35, 0.9), rgba(26, 26, 46, 0.8));
   border: 2px solid ${props => props.color || '#3B82F6'};
   border-radius: 12px;
-  min-width: 300px;
+  flex: 1;
+  min-width: 280px;
   max-width: 350px;
   padding: 1.5rem;
   position: relative;
+  
+  @media (max-width: 1200px) {
+    flex: none;
+    min-width: 300px;
+  }
 `;
 
 const ColumnHeader = styled.div`
