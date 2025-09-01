@@ -389,12 +389,36 @@ const GoogleMapsScraper = () => {
   const [autoSearching, setAutoSearching] = useState(false);
   const [searchAttempts, setSearchAttempts] = useState(0);
   const [progress, setProgress] = useState({ 
-    found: 0, 
     percentage: 0, 
-    startTime: null,
-    estimatedTotal: 0,
-    phase: 'starting'
+    crawledPlaces: 0, 
+    requestsMade: 0, 
+    currentStatus: 'IDLE' 
   });
+  
+  // Timer automático para progresso quando scraping está rodando
+  useEffect(() => {
+    let progressTimer;
+    
+    if (currentRun && currentRun.status === 'RUNNING') {
+      progressTimer = setInterval(() => {
+        setProgress(prev => {
+          const newPercentage = Math.min(prev.percentage + 2, 90); // +2% a cada segundo
+          const estimatedPlaces = Math.floor((newPercentage / 100) * formData.maxResults);
+          
+          return {
+            ...prev,
+            percentage: newPercentage,
+            crawledPlaces: estimatedPlaces,
+            requestsMade: Math.floor(estimatedPlaces / 2)
+          };
+        });
+      }, 1000); // Atualiza a cada 1 segundo
+    }
+    
+    return () => {
+      if (progressTimer) clearInterval(progressTimer);
+    };
+  }, [currentRun?.status, formData.maxResults]);
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [savedLeads, setSavedLeads] = useState([]);
   const { user } = useAuth();
@@ -820,11 +844,10 @@ const GoogleMapsScraper = () => {
     setResults([]);
     setCurrentRun(null);
     setProgress({ 
-      found: 0, 
-      percentage: 5, // Start at 5% so it's visible
-      startTime: Date.now(),
-      estimatedTotal: formData.maxResults,
-      phase: 'starting'
+      percentage: 0, 
+      crawledPlaces: 0, 
+      requestsMade: 0, 
+      currentStatus: 'RUNNING' 
     });
 
     console.log('🚀 Iniciando scraping com:', {
@@ -890,41 +913,31 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // ALWAYS increment progress - never stuck
-        setProgress(prev => {
-          let newPercentage, found, phase;
+        // Progress is handled by timer - just update when we have real results
+        if (data.results && data.results.length > 0) {
+          const realCount = data.results.length;
+          const realPercentage = Math.min(Math.round((realCount / formData.maxResults) * 100), 100);
           
-          if (data.results && data.results.length > 0) {
-            // Use real data when available
-            found = data.results.length;
-            newPercentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
-            phase = 'collecting';
-            console.log('📊 Real progress:', { found, percentage: newPercentage });
-          } else {
-            // Simulate progress when no data yet - ALWAYS increment
-            found = prev.found;
-            newPercentage = Math.max(Math.min(prev.percentage + 5, 85), 5); // Never below 5%
-            phase = newPercentage < 25 ? 'searching' : 
-                   newPercentage < 65 ? 'crawling' : 'finalizing';
-            console.log('⏰ Simulated progress - FORCED INCREMENT:', { 
-              prevPercentage: prev.percentage, 
-              newPercentage, 
-              phase 
-            });
-          }
-          
-          return {
+          setProgress(prev => ({
             ...prev,
-            found,
-            percentage: newPercentage,
-            phase
-          };
-        });
+            crawledPlaces: realCount,
+            percentage: Math.max(prev.percentage, realPercentage) // Never go backwards
+          }));
+          
+          console.log('📊 Real results found:', realCount);
+        }
         
         if (data.status === 'RUNNING') {
           setTimeout(() => pollResults(runId), 5000);
         } else if (data.status === 'SUCCEEDED') {
           setIsRunning(false);
+          
+          // Set progress to 100% when completed
+          setProgress(prev => ({
+            ...prev,
+            percentage: 100,
+            crawledPlaces: data.results?.length || prev.crawledPlaces
+          }));
           
           if (data.results && data.results.length > 0) {
             const uniqueResults = removeDuplicatesFromResults(data.results);
@@ -1256,44 +1269,45 @@ const GoogleMapsScraper = () => {
         </div>
       </Card>
 
-      {/* Progress Bar - Show immediately when running */}
-      {isRunning && (
+      {/* Progress Bar - Show when currentRun is RUNNING */}
+      {currentRun && currentRun.status === 'RUNNING' && (
         <ResultsCard>
           <div style={{ 
             margin: '1rem 0', 
             padding: '1rem',
-            background: 'rgba(66, 133, 244, 0.1)',
-            borderRadius: '8px',
-            border: '1px solid rgba(66, 133, 244, 0.3)'
+            background: 'rgba(0, 0, 0, 0.2)',
+            borderRadius: '8px'
           }}>
-            <ProgressText>
-              {progress.found > 0 
-                ? `📊 ${progress.found} empresas encontradas (${progress.percentage}%)`
-                : '🔍 Procurando empresas...'}
-            </ProgressText>
+            <div style={{ color: '#00ccff', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+              Progresso do Scraping
+            </div>
             <ProgressBar>
-              <ProgressFill percentage={Math.max(progress.percentage, 5)} />
+              <ProgressFill percentage={progress.percentage} />
             </ProgressBar>
-            <div style={{ 
-              fontSize: '0.8rem', 
-              color: progress.found > 0 ? '#00ffaa' : '#00ccff', 
-              textAlign: 'center', 
-              marginTop: '0.5rem',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem'
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '1rem',
+              marginTop: '1rem',
+              color: '#e0e0e0',
+              fontSize: '0.9rem'
             }}>
-              <div style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: progress.found > 0 ? '#00ffaa' : '#00ccff',
-                animation: 'pulse 1.5s infinite ease-in-out'
-              }}></div>
-              {progress.found > 0 
-                ? `Dados reais encontrados`
-                : `Progresso estimado por tempo`}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#00ffaa' }}>{progress.percentage}%</div>
+                <div>Progresso</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#00ffaa' }}>{progress.crawledPlaces}</div>
+                <div>Lugares Encontrados</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#00ffaa' }}>{progress.requestsMade}</div>
+                <div>Requisições</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#00ffaa' }}>{formData.maxResults}</div>
+                <div>Meta</div>
+              </div>
             </div>
           </div>
         </ResultsCard>
