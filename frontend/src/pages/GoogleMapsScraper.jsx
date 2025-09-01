@@ -357,6 +357,12 @@ const GoogleMapsScraper = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [autoSearching, setAutoSearching] = useState(false);
   const [searchAttempts, setSearchAttempts] = useState(0);
+  const [progress, setProgress] = useState({
+    percentage: 0,
+    crawledPlaces: 0,
+    requestsMade: 0,
+    currentStatus: ''
+  });
   const { user } = useAuth();
 
   // Remove internal duplicates from scraping results
@@ -771,6 +777,8 @@ const GoogleMapsScraper = () => {
           locationQuery: formData.locationQuery
         });
         
+        // Reset progress and start polling
+        setProgress({ percentage: 0, crawledPlaces: 0, requestsMade: 0, currentStatus: 'INICIANDO' });
         pollResults(data.runId);
       } else {
         toast.error('Erro ao iniciar scraper: ' + data.message);
@@ -783,7 +791,7 @@ const GoogleMapsScraper = () => {
     }
   };
 
-  const pollResults = async (runId) => {
+  const pollResults = async (runId, pollCount = 0) => {
     try {
       const response = await fetch(`/api/apify/runs/${runId}`);
       const data = await response.json();
@@ -795,9 +803,32 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
+        // Update progress if available
+        if (data.stats || data.results) {
+          const stats = data.stats || {};
+          const itemCount = stats.itemsOutputted || data.results?.length || 0;
+          const percentage = Math.min(Math.round((itemCount / parseInt(formData.maxResults)) * 100), 100);
+          
+          setProgress({
+            percentage: percentage,
+            crawledPlaces: itemCount,
+            requestsMade: stats.requestsFinished || 0,
+            currentStatus: data.status
+          });
+        }
+        
+        // Stream partial results
+        if (data.results && data.results.length > results.length) {
+          const uniqueResults = removeDuplicatesFromResults(data.results);
+          setResults(uniqueResults);
+        }
+        
         if (data.status === 'RUNNING') {
-          setTimeout(() => pollResults(runId), 5000);
+          // Aggressive polling - check every 1.5s initially
+          const interval = pollCount < 30 ? 1500 : 3000;
+          setTimeout(() => pollResults(runId, pollCount + 1), interval);
         } else if (data.status === 'SUCCEEDED') {
+          setProgress(prev => ({ ...prev, percentage: 100, currentStatus: 'FINALIZADO' }));
           setIsRunning(false);
           
           if (data.results && data.results.length > 0) {
@@ -1086,12 +1117,12 @@ const GoogleMapsScraper = () => {
             value={formData.maxResults}
             onChange={handleInputChange}
           >
-            <option value={10}>10 empresas</option>
-            <option value={25}>25 empresas</option>
-            <option value={50}>50 empresas (padrão)</option>
-            <option value={100}>100 empresas</option>
-            <option value={200}>200 empresas</option>
-            <option value={500}>500 empresas</option>
+            <option value={10}>10 empresas (~30 segundos)</option>
+            <option value={25}>25 empresas (~1 minuto)</option>
+            <option value={50}>50 empresas (~2 minutos)</option>
+            <option value={100}>100 empresas (~4 minutos)</option>
+            <option value={200}>200 empresas (~8 minutos)</option>
+            <option value={500}>500 empresas (~20 minutos)</option>
           </Select>
         </FormGroup>
 
@@ -1135,6 +1166,40 @@ const GoogleMapsScraper = () => {
             {currentRun.status === 'FAILED' && '❌ Falhou'}
             {currentRun.status}
           </StatusBadge>
+
+          {currentRun.status === 'RUNNING' && (
+            <ProgressContainer>
+              <ProgressMessage>
+                <span className="status-emoji">🔍</span>
+                {progress.currentStatus === 'INICIANDO' && 'Iniciando scraping...'}
+                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 && `Coletando dados... ${progress.crawledPlaces} empresas encontradas`}
+                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces === 0 && 'Procurando empresas na região...'}
+              </ProgressMessage>
+              
+              <ProgressBar>
+                <ProgressFill percentage={progress.percentage} />
+              </ProgressBar>
+              
+              <ProgressStats>
+                <div className="stat">
+                  <span className="stat-value">{progress.percentage}%</span>
+                  <span className="stat-label">Progresso</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-value">{progress.crawledPlaces}</span>
+                  <span className="stat-label">Encontradas</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-value">{formData.maxResults}</span>
+                  <span className="stat-label">Meta</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-value">{progress.requestsMade}</span>
+                  <span className="stat-label">Requisições</span>
+                </div>
+              </ProgressStats>
+            </ProgressContainer>
+          )}
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>
             <div><strong>Busca:</strong> {currentRun.searchTerms} em {currentRun.locationQuery}</div>
