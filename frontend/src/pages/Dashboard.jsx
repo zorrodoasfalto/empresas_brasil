@@ -73,45 +73,51 @@ const SidebarContent = styled.div`
 
 const SidebarLogo = styled.div`
   display: flex;
-  justify-content: center;
+  justify-content: ${props => props.isMinimized ? 'center' : 'center'};
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: ${props => props.isMinimized ? '1.5rem 0.5rem' : '1.5rem 2rem'};
   border-bottom: 1px solid rgba(0, 255, 170, 0.2);
-  height: auto;
+  height: 80px;
   box-sizing: border-box;
   position: relative;
+  min-height: 80px;
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 769px) {
-    padding: 1.2rem 1.5rem;
+    padding: ${props => props.isMinimized ? '1.2rem 0.4rem' : '1.2rem 1.5rem'};
+    height: 68px;
+    min-height: 68px;
   }
   
   /* Small laptop breakpoint */
   @media (max-width: 1200px) and (min-width: 769px) {
-    padding: 1rem 1rem;
+    padding: ${props => props.isMinimized ? '1rem 0.3rem' : '1rem 1rem'};
+    height: 64px;
+    min-height: 64px;
   }
 `;
 
 const MenuToggleButton = styled.button`
-  background: rgba(0, 255, 170, 0.1);
-  border: 1px solid rgba(0, 255, 170, 0.3);
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.2), rgba(0, 136, 204, 0.2));
+  border: 1px solid rgba(0, 255, 170, 0.4);
   color: #00ffaa;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 8px;
+  height: 24px;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 10px;
+  font-weight: 600;
   backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 255, 170, 0.2);
   
   &:hover {
-    background: rgba(0, 255, 170, 0.2);
-    border-color: rgba(0, 255, 170, 0.5);
-    box-shadow: 0 4px 12px rgba(0, 255, 170, 0.3);
+    background: linear-gradient(135deg, rgba(0, 255, 170, 0.3), rgba(0, 136, 204, 0.3));
+    border-color: rgba(0, 255, 170, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 255, 170, 0.4);
     transform: translateY(-1px);
   }
   
@@ -332,8 +338,23 @@ const Header = styled.header`
   box-shadow: 
     0 4px 20px rgba(0, 255, 170, 0.1),
     0 0 0 1px rgba(0, 255, 170, 0.1);
-  position: relative;
+  position: sticky;
+  top: 0;
   min-height: 80px;
+  height: 80px;
+  z-index: 100;
+  
+  /* Laptop/Notebook breakpoint */
+  @media (max-width: 1440px) and (min-width: 769px) {
+    height: 68px;
+    min-height: 68px;
+  }
+  
+  /* Small laptop breakpoint */
+  @media (max-width: 1200px) and (min-width: 769px) {
+    height: 64px;
+    min-height: 64px;
+  }
   
   @media (max-width: 768px) {
     padding: 1rem;
@@ -1813,11 +1834,11 @@ const Dashboard = () => {
             {isMenuMinimized ? (
               <img 
                 src={thumbnail} 
-                alt="Logo" 
+                alt="Logo Thumbnail" 
                 onClick={handleLogoClick}
                 style={{ 
-                  width: '30px',
-                  height: '30px',
+                  width: '35px',
+                  height: '35px',
                   cursor: 'pointer',
                   filter: 'drop-shadow(0 0 8px rgba(0, 255, 170, 0.4))',
                   transition: 'all 0.3s ease'
@@ -1830,18 +1851,18 @@ const Dashboard = () => {
                 onClick={handleLogoClick}
               />
             )}
-            {/* Botão toggle sempre no mesmo local */}
+            {/* Botão toggle pequeno cilindro */}
             <MenuToggleButton 
               onClick={() => setIsMenuMinimized(!isMenuMinimized)}
               style={{ 
                 position: 'absolute',
                 top: '50%',
-                right: '10px',
+                right: isMenuMinimized ? '12px' : '10px',
                 transform: 'translateY(-50%)',
                 zIndex: '10'
               }}
             >
-              {isMenuMinimized ? '›' : '‹'}
+              {isMenuMinimized ? '' : ''}
             </MenuToggleButton>
           </SidebarLogo>
           <SidebarItem 
