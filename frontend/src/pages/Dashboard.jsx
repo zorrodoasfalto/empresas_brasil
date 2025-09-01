@@ -385,6 +385,14 @@ const Title = styled.h1`
   cursor: pointer;
   transition: all 0.3s ease;
   
+  @media (max-width: 768px) {
+    font-size: 1.2rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 1rem;
+  }
+  
   &:hover {
     color: #00ccff;
     text-shadow: 0 0 15px rgba(0, 204, 255, 0.7);
@@ -425,12 +433,32 @@ const UserInfo = styled.div`
   flex-shrink: 0;
   min-width: 0;
   
+  @media (max-width: 768px) {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  
+  @media (max-width: 480px) {
+    gap: 0.3rem;
+    font-size: 0.8rem;
+  }
+  
   span {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 200px;
     font-size: 0.9rem;
+    
+    @media (max-width: 768px) {
+      font-size: 0.8rem;
+      max-width: 120px;
+    }
+    
+    @media (max-width: 480px) {
+      font-size: 0.7rem;
+      max-width: 100px;
+    }
   }
 `;
 
@@ -443,6 +471,16 @@ const LogoutButton = styled.button`
   cursor: pointer;
   font-weight: 500;
   transition: all 0.3s ease;
+  
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
   
   &:hover {
     background: linear-gradient(135deg, #ff3742, #ff5722);
@@ -460,6 +498,16 @@ const UpgradeButton = styled.button`
   cursor: pointer;
   font-weight: 500;
   transition: all 0.3s ease;
+  
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+  }
   
   &:hover {
     background: linear-gradient(135deg, #1e40af, #3b82f6);
@@ -519,6 +567,14 @@ const Content = styled.div`
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+  }
 `;
 
 const SearchSection = styled.section`
@@ -528,6 +584,17 @@ const SearchSection = styled.section`
   padding: 2rem;
   margin-bottom: 2rem;
   border: 1px solid rgba(0, 255, 170, 0.2);
+  
+  @media (max-width: 768px) {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+  }
 `;
 
 
@@ -558,6 +625,16 @@ const Label = styled.label`
   margin-bottom: 0.5rem;
   font-weight: 500;
   font-size: 0.9rem;
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 0.75rem;
+    margin-bottom: 0.3rem;
+  }
 `;
 
 const Select = styled.select`
@@ -681,6 +758,16 @@ const ResultsSection = styled.section`
   border-radius: 12px;
   padding: 2rem;
   border: 1px solid rgba(0, 255, 170, 0.2);
+  overflow-x: auto;
+  
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
 `;
 
 const ResultsHeader = styled.div`
@@ -849,6 +936,37 @@ const CnaeTitle = styled.h4`
   color: #00ffaa;
   margin: 0 0 0.5rem 0;
   font-size: 0.9rem;
+`;
+
+const FiltersTitle = styled.h3`
+  color: #00ffaa;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 1rem;
+    margin-bottom: 0.8rem;
+  }
+`;
+
+const TableWrapper = styled.div`
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  
+  @media (max-width: 768px) {
+    margin: -1rem;
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    margin: -0.5rem;
+    padding: 0.5rem;
+  }
 `;
 
 const CnaeList = styled.div`
@@ -1979,7 +2097,7 @@ const Dashboard = () => {
 
         <Content>
         <SearchSection>
-          <h3 style={{ color: '#00ffaa', marginBottom: '1.5rem' }}>Filtros de Busca</h3>
+          <FiltersTitle>Filtros de Busca</FiltersTitle>
           
           <FiltersGrid>
             <FormGroup>
@@ -2284,7 +2402,8 @@ const Dashboard = () => {
               border: '1px solid rgba(0, 255, 170, 0.2)',
               borderRadius: '8px'
             }}>
-              <Table>
+              <TableWrapper>
+            <Table>
                 <thead>
                   <tr>
                     <Th style={{position: 'sticky', left: 0, zIndex: 10, background: 'rgba(15, 15, 35, 0.95)'}}>Ações</Th>
@@ -2457,6 +2576,7 @@ const Dashboard = () => {
                   ))}
                 </tbody>
               </Table>
+            </TableWrapper>
             </div>
 
             {totalPages > 1 && (
