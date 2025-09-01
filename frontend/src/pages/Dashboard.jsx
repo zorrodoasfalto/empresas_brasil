@@ -2209,6 +2209,7 @@ const Dashboard = () => {
             <span className="text">Funil</span>
           </SidebarItem>
           <SidebarItem 
+            isMinimized={isMenuMinimized}
             onClick={logout}
           >
             <span className="icon">🚪</span>
@@ -3025,7 +3026,7 @@ const Dashboard = () => {
                   </div>
 
                   <button
-                    onClick={() => window.open('https://wa.me/5511999999999', '_blank')}
+                    onClick={() => window.open('https://wa.me/5519992753157', '_blank')}
                     style={{
                       background: 'linear-gradient(135deg, #25D366, #128C7E)',
                       border: 'none',
