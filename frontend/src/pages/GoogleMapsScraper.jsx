@@ -938,8 +938,14 @@ const GoogleMapsScraper = () => {
             percentage: percentage,
             crawledPlaces: itemCount,
             requestsMade: stats.requestsFinished || 0,
-            currentStatus: data.status
+            currentStatus: 'RUNNING' // Force RUNNING status for progress display
           });
+        } else if (data.status === 'RUNNING') {
+          // Even without stats, show we're running
+          setProgress(prev => ({
+            ...prev,
+            currentStatus: 'RUNNING'
+          }));
         }
         
         // Stream partial results
@@ -989,8 +995,13 @@ const GoogleMapsScraper = () => {
       }
     } catch (error) {
       console.error('Polling error:', error);
-      setIsRunning(false);
-      toast.error('❌ Erro ao verificar status do scraping');
+      // Don't break polling immediately - retry a few times
+      if (pollCount < 10) {
+        setTimeout(() => pollResults(runId, pollCount + 1), 5000);
+      } else {
+        setIsRunning(false);
+        toast.error('❌ Erro persistente no monitoramento');
+      }
     }
   };
 
@@ -1320,34 +1331,31 @@ const GoogleMapsScraper = () => {
               <ProgressMessage>
                 <span className="status-emoji">🔍</span>
                 {progress.currentStatus === 'INICIANDO' && 'Iniciando scraping...'}
-                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 && (
-                  <>
+                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 ? (
+                  <div>
                     Coletando dados... {progress.crawledPlaces} empresas encontradas
-                    {progress.percentage > 80 && (
+                    {progress.percentage > 80 ? (
                       <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
                         ⏱️ Últimos 20% podem demorar mais (dados detalhados)
                       </div>
-                    )}
-                    {progress.percentage > 50 && progress.percentage <= 80 && (
+                    ) : progress.percentage > 50 ? (
                       <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
                         ⚡ Processamento acelerado ativo
                       </div>
-                    )}
-                    {formData.maxResults >= 300 && progress.percentage < 30 && (
+                    ) : formData.maxResults >= 300 ? (
                       <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
                         🔥 Volume alto: processo pode levar {Math.ceil(formData.maxResults/50)} minutos
                       </div>
-                    )}
-                  </>
-                )}
-                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces === 0 && (
-                  <>
+                    ) : null}
+                  </div>
+                ) : progress.currentStatus === 'RUNNING' ? (
+                  <div>
                     Procurando empresas na região...
                     <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
                       🎯 Tempo estimado: ~{Math.ceil(formData.maxResults/50)} minutos
                     </div>
-                  </>
-                )}
+                  </div>
+                ) : 'Iniciando scraping...'}
               </ProgressMessage>
               
               <ProgressBar>
