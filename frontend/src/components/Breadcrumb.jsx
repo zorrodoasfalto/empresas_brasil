@@ -72,7 +72,7 @@ const Breadcrumb = () => {
   };
 
   // Rotas que não devem mostrar breadcrumb
-  const hiddenRoutes = ['/', '/login', '/register'];
+  const hiddenRoutes = ['/', '/login', '/register', '/dashboard', '/app'];
   
   if (hiddenRoutes.includes(location.pathname)) {
     return null;
