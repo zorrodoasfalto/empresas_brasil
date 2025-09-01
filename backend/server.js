@@ -467,7 +467,7 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    const result = await pool.query('SELECT id, email, password, name FROM simple_users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, email, password, name, role FROM simple_users WHERE email = $1', [email]);
     
     if (result.rows.length === 0) {
       return res.json({ success: false, message: 'Usuário não encontrado' });
@@ -480,6 +480,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.json({ success: false, message: 'Senha incorreta' });
     }
     
+    // Se usuário não tem role, define como trial por padrão
+    if (!user.role) {
+      await pool.query('UPDATE simple_users SET role = $1 WHERE id = $2', ['trial', user.id]);
+      user.role = 'trial';
+    }
+    
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
@@ -490,7 +496,7 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       message: 'Login realizado com sucesso',
       token,
-      user: { id: user.id, email: user.email, name: user.name }
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
     
   } catch (error) {
@@ -524,13 +530,13 @@ app.post('/api/auth/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Create user
+    // Create user with 'trial' role by default
     const fullName = `${firstName} ${lastName}`;
     const result = await pool.query(`
-      INSERT INTO simple_users (name, email, password, created_at)
-      VALUES ($1, $2, $3, NOW())
-      RETURNING id, name, email, created_at
-    `, [fullName, email, hashedPassword]);
+      INSERT INTO simple_users (name, email, password, role, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      RETURNING id, name, email, role, created_at
+    `, [fullName, email, hashedPassword, 'trial']);
     
     const user = result.rows[0];
     
@@ -545,7 +551,7 @@ app.post('/api/auth/register', async (req, res) => {
       success: true,
       message: 'Usuário criado com sucesso',
       token,
-      user: { id: user.id, email: user.email, name: user.name }
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
     
   } catch (error) {
@@ -950,6 +956,58 @@ app.post('/api/debug/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao alterar senha',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Update roles to new system (free, trial, pro, premium, max)
+app.post('/api/debug/update-roles', async (req, res) => {
+  try {
+    // Update existing roles to new system
+    // admin stays admin, user becomes trial (default for new signups)
+    await pool.query(`
+      UPDATE simple_users 
+      SET role = CASE 
+        WHEN role = 'admin' THEN 'admin'
+        WHEN role = 'user' THEN 'trial'
+        WHEN role = 'premium' THEN 'premium'
+        WHEN role IS NULL THEN 'trial'
+        ELSE 'trial'
+      END
+    `);
+    
+    console.log('✅ All users updated to new role system');
+    
+    // Get count of users by role
+    const roleStats = await pool.query(`
+      SELECT role, COUNT(*) as count 
+      FROM simple_users 
+      GROUP BY role
+      ORDER BY 
+        CASE role 
+          WHEN 'admin' THEN 1
+          WHEN 'max' THEN 2
+          WHEN 'premium' THEN 3
+          WHEN 'pro' THEN 4
+          WHEN 'trial' THEN 5
+          WHEN 'free' THEN 6
+          ELSE 7
+        END
+    `);
+    
+    res.json({
+      success: true,
+      message: 'Role system updated successfully',
+      newRoles: ['free', 'trial', 'pro', 'premium', 'max', 'admin'],
+      roleStats: roleStats.rows
+    });
+    
+  } catch (error) {
+    console.error('Update roles error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao atualizar sistema de roles',
       error: error.message
     });
   }

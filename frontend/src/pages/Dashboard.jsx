@@ -198,28 +198,31 @@ const MainContent = styled.div`
   transition: margin-left 0.3s ease;
   min-height: 100vh;
   padding: 1.5rem;
+  padding-top: 100px; /* Space for fixed header */
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 769px) {
     margin-left: ${props => props.isMenuMinimized ? '50px' : '200px'};
     padding: 1.2rem;
+    padding-top: 88px;
   }
   
   /* Small laptop breakpoint */
   @media (max-width: 1200px) and (min-width: 769px) {
     margin-left: ${props => props.isMenuMinimized ? '50px' : '180px'};
     padding: 1rem;
+    padding-top: 84px;
   }
   
   @media (max-width: 768px) {
     margin-left: 0;
     padding: 1rem;
-    padding-top: 60px; /* Space for mobile header */
+    padding-top: 140px; /* Space for mobile header + fixed header */
   }
   
   @media (max-width: 480px) {
     padding: 0.5rem;
-    padding-top: 60px;
+    padding-top: 140px;
   }
 `;
 
@@ -338,25 +341,34 @@ const Header = styled.header`
   box-shadow: 
     0 4px 20px rgba(0, 255, 170, 0.1),
     0 0 0 1px rgba(0, 255, 170, 0.1);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: ${props => props.isMenuMinimized ? '60px' : '240px'};
+  right: 0;
   min-height: 80px;
   height: 80px;
   z-index: 100;
+  transition: left 0.3s ease;
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 769px) {
+    left: ${props => props.isMenuMinimized ? '50px' : '200px'};
     height: 68px;
     min-height: 68px;
   }
   
   /* Small laptop breakpoint */
   @media (max-width: 1200px) and (min-width: 769px) {
+    left: ${props => props.isMenuMinimized ? '50px' : '180px'};
     height: 64px;
     min-height: 64px;
   }
   
   @media (max-width: 768px) {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
     padding: 1rem;
     flex-wrap: nowrap;
   }
@@ -1851,7 +1863,7 @@ const Dashboard = () => {
                 onClick={handleLogoClick}
               />
             )}
-            {/* Botão toggle pequeno cilindro */}
+            {/* Botão toggle cilíndrico com flecha */}
             <MenuToggleButton 
               onClick={() => setIsMenuMinimized(!isMenuMinimized)}
               style={{ 
@@ -1862,7 +1874,7 @@ const Dashboard = () => {
                 zIndex: '10'
               }}
             >
-              {isMenuMinimized ? '' : ''}
+              {isMenuMinimized ? '›' : '‹'}
             </MenuToggleButton>
           </SidebarLogo>
           <SidebarItem 
@@ -1952,7 +1964,7 @@ const Dashboard = () => {
       </Sidebar>
 
       <MainContent isMenuMinimized={isMenuMinimized}>
-        <Header>
+        <Header isMenuMinimized={isMenuMinimized}>
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>

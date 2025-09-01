@@ -24,15 +24,6 @@ export const AuthProvider = ({ children }) => {
     if (storedToken && userData) {
       const parsedUser = JSON.parse(userData);
       
-      // FIX: Se o user não tem role (dados antigos), force logout para relogin
-      if (!parsedUser.role) {
-        console.log('🔧 User data sem role - forçando logout para atualização');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setLoading(false);
-        return;
-      }
-      
       setToken(storedToken);
       setUser(parsedUser);
       authService.setAuthToken(storedToken);
