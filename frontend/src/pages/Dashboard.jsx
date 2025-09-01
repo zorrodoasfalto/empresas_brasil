@@ -758,9 +758,8 @@ const ResultsSection = styled.section`
   border-radius: 12px;
   padding: 2rem;
   border: 1px solid rgba(0, 255, 170, 0.2);
-  /* Remove overflow-x from parent to prevent interference */
   width: 100%;
-  max-width: none;
+  contain: layout;
   
   @media (max-width: 768px) {
     padding: 1rem;
@@ -860,19 +859,19 @@ const SaveLeadButton = styled.button`
 `;
 
 const Table = styled.table`
-  width: 4500px; /* Fixed width to ensure all columns are visible */
+  width: 100%;
   border-collapse: collapse;
+  min-width: 3600px; /* Balanced width for all columns without page displacement */
   font-size: 0.85rem;
   background: transparent;
-  table-layout: fixed;
   
   @media (max-width: 768px) {
-    width: 3000px; /* Fixed width on mobile */
+    min-width: 2800px;
     font-size: 0.7rem;
   }
   
   @media (max-width: 480px) {
-    width: 3000px;
+    min-width: 2400px;
     font-size: 0.65rem;
   }
 `;
@@ -894,15 +893,6 @@ const Td = styled.td`
   color: #e0e0e0;
   font-size: 0.8rem;
   vertical-align: top;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  
-  /* Allow specific columns to expand if needed */
-  &.expandable {
-    white-space: normal;
-    min-width: 200px;
-  }
 `;
 
 const Tr = styled.tr`
@@ -969,7 +959,7 @@ const FiltersTitle = styled.h3`
 `;
 
 const TableWrapper = styled.div`
-  overflow-x: auto;
+  overflow-x: scroll;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   max-height: 600px;
@@ -979,23 +969,24 @@ const TableWrapper = styled.div`
   width: 100%;
   position: relative;
   
-  /* Force scroll behavior and ensure table can expand */
-  display: block;
-  white-space: nowrap;
+  /* Force horizontal scrollbar to always be visible */
+  scrollbar-width: thin;
+  scrollbar-color: #00ffaa rgba(0, 0, 0, 0.2);
   
   /* Custom scrollbar for better UX */
   &::-webkit-scrollbar {
-    height: 8px;
+    height: 12px;
   }
   
   &::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
+    border-radius: 6px;
   }
   
   &::-webkit-scrollbar-thumb {
     background: #00ffaa;
-    border-radius: 4px;
+    border-radius: 6px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
     
     &:hover {
       background: #00cc88;
@@ -2517,7 +2508,7 @@ const Dashboard = () => {
                         {empresa.opcaoMei === 'S' ? '✅ Sim' : empresa.opcaoMei === 'N' ? '❌ Não' : '-'}
                         {empresa.dataOpcaoMei && <div style={{fontSize: '0.7rem'}}>Desde: {empresa.dataOpcaoMei}</div>}
                       </Td>
-                      <Td className="expandable">
+                      <Td>
                         {empresa.socios && empresa.socios.length > 0 ? (
                           <div>
                             <div 
@@ -2557,7 +2548,7 @@ const Dashboard = () => {
                           <div style={{color: '#666'}}>Sem dados</div>
                         )}
                       </Td>
-                      <Td className="expandable">
+                      <Td>
                         {empresa.socios && empresa.socios.some(s => s.representante_legal_nome) ? (
                           <div>
                             {(() => {
