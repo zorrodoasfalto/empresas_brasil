@@ -399,10 +399,11 @@ const GoogleMapsScraper = () => {
   useEffect(() => {
     let progressTimer;
     
-    if (currentRun && currentRun.status === 'RUNNING') {
+    if (isRunning) {
       progressTimer = setInterval(() => {
         setProgress(prev => {
-          const newPercentage = Math.min(prev.percentage + 2, 90); // +2% a cada segundo
+          // Don't go beyond 90% with timer - wait for real results
+          const newPercentage = Math.min(prev.percentage + 3, 90); // +3% every 2 seconds
           const estimatedPlaces = Math.floor((newPercentage / 100) * formData.maxResults);
           
           return {
@@ -412,13 +413,13 @@ const GoogleMapsScraper = () => {
             requestsMade: Math.floor(estimatedPlaces / 2)
           };
         });
-      }, 1000); // Atualiza a cada 1 segundo
+      }, 2000); // Update every 2 seconds
     }
     
     return () => {
       if (progressTimer) clearInterval(progressTimer);
     };
-  }, [currentRun?.status, formData.maxResults]);
+  }, [isRunning, formData.maxResults]);
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [savedLeads, setSavedLeads] = useState([]);
   const { user } = useAuth();
@@ -909,7 +910,7 @@ const GoogleMapsScraper = () => {
     setResults([]);
     setCurrentRun(null);
     setProgress({ 
-      percentage: 0, 
+      percentage: 5, // Start at 5% to be immediately visible
       crawledPlaces: 0, 
       requestsMade: 0, 
       currentStatus: 'RUNNING' 
@@ -1334,8 +1335,8 @@ const GoogleMapsScraper = () => {
         </div>
       </Card>
 
-      {/* Progress Bar - Show when currentRun is RUNNING */}
-      {currentRun && currentRun.status === 'RUNNING' && (
+      {/* Progress Bar - Show when scraping is running */}
+      {isRunning && (
         <ResultsCard>
           <div style={{ 
             margin: '1rem 0', 
