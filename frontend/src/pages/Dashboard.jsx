@@ -16,8 +16,29 @@ const Container = styled.div`
   position: relative;
   display: flex;
   
+  /* Notebook optimization: Apply 80% zoom effect on smaller screens */
+  @media (max-width: 1600px) and (min-width: 1200px) {
+    transform: scale(0.9);
+    transform-origin: top left;
+    width: 111.11%; /* Compensate for 90% scale */
+  }
+  
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    transform: scale(0.85);
+    transform-origin: top left;
+    width: 117.65%; /* Compensate for 85% scale */
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    transform: scale(0.8);
+    transform-origin: top left;
+    width: 125%; /* Compensate for 80% scale */
+  }
+  
   @media (max-width: 768px) {
     flex-direction: column;
+    transform: none; /* Reset transform on mobile */
+    width: 100%;
   }
 `;
 
@@ -568,6 +589,17 @@ const Content = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   
+  /* Notebook optimization: Reduce padding for compact view */
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    padding: 1.5rem;
+    max-width: 1300px;
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    padding: 1.2rem;
+    max-width: 1200px;
+  }
+  
   @media (max-width: 768px) {
     padding: 1rem;
   }
@@ -603,6 +635,19 @@ const FiltersGrid = styled.div`
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+  
+  /* Notebook optimization: More compact grid for smaller screens */
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.2rem;
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
   
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
@@ -644,6 +689,17 @@ const Select = styled.select`
   padding: 0.75rem;
   border-radius: 6px;
   font-size: 0.9rem;
+  
+  /* Notebook optimization: Smaller padding and font */
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
   
   &:focus {
     outline: none;
@@ -719,6 +775,27 @@ const Input = styled.input`
   border-radius: 6px;
   font-size: 0.9rem;
   
+  /* Notebook optimization */
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+  }
+  
   &:focus {
     outline: none;
     border-color: #00ffaa;
@@ -740,6 +817,27 @@ const SearchButton = styled.button`
   font-weight: bold;
   font-size: 1rem;
   transition: all 0.3s ease;
+  
+  /* Notebook optimization */
+  @media (max-width: 1440px) and (min-width: 1200px) {
+    padding: 0.65rem 1.5rem;
+    font-size: 0.9rem;
+  }
+  
+  @media (max-width: 1366px) and (min-width: 1200px) {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
   
   &:hover {
     transform: translateY(-2px);
