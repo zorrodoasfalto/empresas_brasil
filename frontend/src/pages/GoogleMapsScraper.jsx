@@ -342,77 +342,28 @@ const ExportButton = styled.button`
   }
 `;
 
-const SelectionBar = styled.div`
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(15, 15, 35, 0.95);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(66, 133, 244, 0.3);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  
-  .selection-info {
-    color: #4285f4;
-    font-weight: bold;
-  }
-  
-  .selection-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 1rem 0;
 `;
 
-const SelectionButton = styled.button`
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: bold;
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #4285f4, #1a73e8);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: ${props => props.percentage}%;
+`;
+
+const ProgressText = styled.div`
+  color: #4285f4;
   font-size: 0.9rem;
-  transition: all 0.2s ease;
-  
-  &.save {
-    background: linear-gradient(135deg, #00ffaa, #00cc88);
-    color: #000;
-    
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 255, 170, 0.3);
-    }
-  }
-  
-  &.clear {
-    background: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    
-    &:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-  }
-`;
-
-const SavedLeadsCounter = styled.div`
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: linear-gradient(135deg, #00ffaa, #00cc88);
-  color: #000;
-  padding: 0.75rem 1rem;
-  border-radius: 25px;
-  font-weight: bold;
-  box-shadow: 0 4px 20px rgba(0, 255, 170, 0.3);
-  z-index: 1000;
-  
-  .count {
-    font-size: 1.2em;
-  }
+  text-align: center;
+  margin-bottom: 0.5rem;
 `;
 
 const GoogleMapsScraper = () => {
@@ -429,66 +380,8 @@ const GoogleMapsScraper = () => {
   const [debugMode, setDebugMode] = useState(false);
   const [autoSearching, setAutoSearching] = useState(false);
   const [searchAttempts, setSearchAttempts] = useState(0);
-  const [progress, setProgress] = useState({
-    percentage: 0,
-    crawledPlaces: 0,
-    requestsMade: 0,
-    currentStatus: ''
-  });
-  const [selectedLeads, setSelectedLeads] = useState(new Set());
-  const [savedLeads, setSavedLeads] = useState([]);
+  const [progress, setProgress] = useState({ found: 0, percentage: 0 });
   const { user } = useAuth();
-
-  // Load saved leads on component mount
-  useEffect(() => {
-    const saved = localStorage.getItem('savedLeads');
-    if (saved) {
-      setSavedLeads(JSON.parse(saved));
-    }
-  }, []);
-
-  // Toggle lead selection
-  const toggleLeadSelection = (leadId) => {
-    setSelectedLeads(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(leadId)) {
-        newSet.delete(leadId);
-      } else {
-        newSet.add(leadId);
-      }
-      return newSet;
-    });
-  };
-
-  // Save selected leads
-  const saveSelectedLeads = () => {
-    const leadsToSave = filteredResults.filter(lead => 
-      selectedLeads.has(lead.placeId || lead.url || lead.title)
-    );
-    
-    const updatedSavedLeads = [...savedLeads, ...leadsToSave];
-    const uniqueLeads = updatedSavedLeads.filter((lead, index, self) => 
-      index === self.findIndex(l => (l.placeId || l.url || l.title) === (lead.placeId || lead.url || lead.title))
-    );
-    
-    setSavedLeads(uniqueLeads);
-    localStorage.setItem('savedLeads', JSON.stringify(uniqueLeads));
-    
-    setSelectedLeads(new Set());
-    toast.success(`${leadsToSave.length} leads salvos! Total: ${uniqueLeads.length}`);
-  };
-
-  // Clear all selections
-  const clearSelection = () => {
-    setSelectedLeads(new Set());
-  };
-
-  // Clear all saved leads
-  const clearSavedLeads = () => {
-    setSavedLeads([]);
-    localStorage.removeItem('savedLeads');
-    toast.success('Todos os leads salvos foram removidos');
-  };
 
   // Remove internal duplicates from scraping results
   const removeDuplicatesFromResults = (results) => {
@@ -902,8 +795,8 @@ const GoogleMapsScraper = () => {
           locationQuery: formData.locationQuery
         });
         
-        // Reset progress and start polling
-        setProgress({ percentage: 0, crawledPlaces: 0, requestsMade: 0, currentStatus: 'INICIANDO' });
+        // Reset progress
+        setProgress({ found: 0, percentage: 0 });
         pollResults(data.runId);
       } else {
         toast.error('Erro ao iniciar scraper: ' + data.message);
@@ -916,7 +809,7 @@ const GoogleMapsScraper = () => {
     }
   };
 
-  const pollResults = async (runId, pollCount = 0) => {
+  const pollResults = async (runId) => {
     try {
       const response = await fetch(`/api/apify/runs/${runId}`);
       const data = await response.json();
@@ -928,38 +821,16 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Update progress if available
-        if (data.stats || data.results) {
-          const stats = data.stats || {};
-          const itemCount = stats.itemsOutputted || data.results?.length || 0;
-          const percentage = Math.min(Math.round((itemCount / parseInt(formData.maxResults)) * 100), 100);
-          
-          setProgress({
-            percentage: percentage,
-            crawledPlaces: itemCount,
-            requestsMade: stats.requestsFinished || 0,
-            currentStatus: 'RUNNING' // Force RUNNING status for progress display
-          });
-        } else if (data.status === 'RUNNING') {
-          // Even without stats, show we're running
-          setProgress(prev => ({
-            ...prev,
-            currentStatus: 'RUNNING'
-          }));
-        }
-        
-        // Stream partial results
-        if (data.results && data.results.length > results.length) {
-          const uniqueResults = removeDuplicatesFromResults(data.results);
-          setResults(uniqueResults);
+        // Update progress if we have partial results
+        if (data.results && data.results.length > 0) {
+          const found = data.results.length;
+          const percentage = Math.min(Math.round((found / formData.maxResults) * 100), 100);
+          setProgress({ found, percentage });
         }
         
         if (data.status === 'RUNNING') {
-          // Aggressive polling - check every 1.5s initially
-          const interval = pollCount < 30 ? 1500 : 3000;
-          setTimeout(() => pollResults(runId, pollCount + 1), interval);
+          setTimeout(() => pollResults(runId), 5000);
         } else if (data.status === 'SUCCEEDED') {
-          setProgress(prev => ({ ...prev, percentage: 100, currentStatus: 'FINALIZADO' }));
           setIsRunning(false);
           
           if (data.results && data.results.length > 0) {
@@ -995,13 +866,8 @@ const GoogleMapsScraper = () => {
       }
     } catch (error) {
       console.error('Polling error:', error);
-      // Don't break polling immediately - retry a few times
-      if (pollCount < 10) {
-        setTimeout(() => pollResults(runId, pollCount + 1), 5000);
-      } else {
-        setIsRunning(false);
-        toast.error('❌ Erro persistente no monitoramento');
-      }
+      setIsRunning(false);
+      toast.error('❌ Erro ao verificar status do scraping');
     }
   };
 
@@ -1175,13 +1041,6 @@ const GoogleMapsScraper = () => {
 
   return (
     <Container>
-      {/* Saved Leads Counter */}
-      {savedLeads.length > 0 && (
-        <SavedLeadsCounter>
-          💾 <span className="count">{savedLeads.length}</span> leads salvos
-        </SavedLeadsCounter>
-      )}
-      
       {/* Botão Voltar */}
       <div style={{ marginBottom: '2rem' }}>
         <button
@@ -1260,30 +1119,14 @@ const GoogleMapsScraper = () => {
             value={formData.maxResults}
             onChange={handleInputChange}
           >
-            <option value={10}>10 empresas (~30 segundos)</option>
-            <option value={25}>25 empresas (~45 segundos)</option>
-            <option value={50}>50 empresas (~1 minuto)</option>
-            <option value={100}>100 empresas (~2 minutos)</option>
-            <option value={200}>200 empresas (~4 minutos)</option>
-            <option value={300}>300 empresas (~6 minutos)</option>
-            <option value={500}>500 empresas (~10 minutos)</option>
+            <option value={10}>10 empresas</option>
+            <option value={25}>25 empresas</option>
+            <option value={50}>50 empresas (padrão)</option>
+            <option value={100}>100 empresas</option>
+            <option value={200}>200 empresas</option>
+            <option value={500}>500 empresas</option>
           </Select>
         </FormGroup>
-
-        {formData.maxResults >= 200 && (
-          <div style={{
-            background: 'rgba(255, 170, 0, 0.1)',
-            border: '1px solid rgba(255, 170, 0, 0.3)',
-            borderRadius: '6px',
-            padding: '1rem',
-            marginBottom: '1rem',
-            color: '#ffaa00',
-            fontSize: '0.9rem'
-          }}>
-            ⚠️ <strong>Volume Alto:</strong> {formData.maxResults} empresas levarão ~{Math.ceil(formData.maxResults/50)} minutos. 
-            A barra de progresso mostrará o andamento em tempo real.
-          </div>
-        )}
 
         <RunButton
           onClick={runScraper}
@@ -1327,60 +1170,16 @@ const GoogleMapsScraper = () => {
           </StatusBadge>
 
           {currentRun.status === 'RUNNING' && (
-            <ProgressContainer>
-              <ProgressMessage>
-                <span className="status-emoji">🔍</span>
-                {progress.currentStatus === 'INICIANDO' && 'Iniciando scraping...'}
-                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 ? (
-                  <div>
-                    Coletando dados... {progress.crawledPlaces} empresas encontradas
-                    {progress.percentage > 80 ? (
-                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
-                        ⏱️ Últimos 20% podem demorar mais (dados detalhados)
-                      </div>
-                    ) : progress.percentage > 50 ? (
-                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
-                        ⚡ Processamento acelerado ativo
-                      </div>
-                    ) : formData.maxResults >= 300 ? (
-                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
-                        🔥 Volume alto: processo pode levar {Math.ceil(formData.maxResults/50)} minutos
-                      </div>
-                    ) : null}
-                  </div>
-                ) : progress.currentStatus === 'RUNNING' ? (
-                  <div>
-                    Procurando empresas na região...
-                    <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
-                      🎯 Tempo estimado: ~{Math.ceil(formData.maxResults/50)} minutos
-                    </div>
-                  </div>
-                ) : 'Iniciando scraping...'}
-              </ProgressMessage>
-              
+            <div style={{ margin: '1rem 0' }}>
+              <ProgressText>
+                {progress.found > 0 
+                  ? `${progress.found} empresas encontradas (${progress.percentage}%)`
+                  : 'Procurando empresas...'}
+              </ProgressText>
               <ProgressBar>
                 <ProgressFill percentage={progress.percentage} />
               </ProgressBar>
-              
-              <ProgressStats>
-                <div className="stat">
-                  <span className="stat-value">{progress.percentage}%</span>
-                  <span className="stat-label">Progresso</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-value">{progress.crawledPlaces}</span>
-                  <span className="stat-label">Encontradas</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-value">{formData.maxResults}</span>
-                  <span className="stat-label">Meta</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-value">{progress.requestsMade}</span>
-                  <span className="stat-label">Requisições</span>
-                </div>
-              </ProgressStats>
-            </ProgressContainer>
+            </div>
           )}
           
           <div style={{ color: '#e0e0e0', marginBottom: '1rem' }}>
@@ -1421,23 +1220,6 @@ const GoogleMapsScraper = () => {
                 </ExportButton>
               </ExportButtonsContainer>
               
-              {/* Selection Bar */}
-              {selectedLeads.size > 0 && (
-                <SelectionBar>
-                  <div className="selection-info">
-                    🎯 {selectedLeads.size} leads selecionados
-                  </div>
-                  <div className="selection-actions">
-                    <SelectionButton className="save" onClick={saveSelectedLeads}>
-                      💾 Salvar Selecionados
-                    </SelectionButton>
-                    <SelectionButton className="clear" onClick={clearSelection}>
-                      ❌ Limpar Seleção
-                    </SelectionButton>
-                  </div>
-                </SelectionBar>
-              )}
-              
               <div style={{ 
                 maxHeight: '400px', 
                 overflowY: 'auto',
@@ -1445,58 +1227,25 @@ const GoogleMapsScraper = () => {
                 padding: '1rem',
                 borderRadius: '8px'
               }}>
-                {filteredResults.slice(0, 20).map((place, index) => {
-                  const leadId = place.placeId || place.url || place.title || `lead-${index}`;
-                  const isSelected = selectedLeads.has(leadId);
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      onClick={() => toggleLeadSelection(leadId)}
-                      style={{
-                        background: isSelected ? 'rgba(0,255,170,0.2)' : 'rgba(0,255,170,0.1)',
-                        border: isSelected ? '2px solid #00ffaa' : '1px solid rgba(0,255,170,0.2)',
-                        borderRadius: '6px',
-                        padding: '1rem',
-                        marginBottom: '0.5rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        position: 'relative',
-                        userSelect: 'none'
-                      }}
-                    >
-                      {/* Selection Indicator */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '1rem',
-                        right: '1rem',
-                        width: '20px',
-                        height: '20px',
-                        border: `2px solid ${isSelected ? '#00ffaa' : 'rgba(255,255,255,0.3)'}`,
-                        borderRadius: '4px',
-                        background: isSelected ? '#00ffaa' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#000',
-                        fontWeight: 'bold',
-                        fontSize: '12px'
-                      }}>
-                        {isSelected && '✓'}
-                      </div>
-                      
-                      <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem', marginRight: '30px' }}>
-                        {place.title || place.name}
-                      </div>
-                      <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-                        {place.address && <div>📍 {place.address}</div>}
-                        {place.phone && <div>📞 {place.phone}</div>}
-                        {place.website && <div>🌐 {place.website}</div>}
-                        {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
-                      </div>
+                {filteredResults.slice(0, 20).map((place, index) => (
+                  <div key={index} style={{
+                    background: 'rgba(0,255,170,0.1)',
+                    border: '1px solid rgba(0,255,170,0.2)',
+                    borderRadius: '6px',
+                    padding: '1rem',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      {place.title || place.name}
                     </div>
-                  );
-                })}
+                    <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
+                      {place.address && <div>📍 {place.address}</div>}
+                      {place.phone && <div>📞 {place.phone}</div>}
+                      {place.website && <div>🌐 {place.website}</div>}
+                      {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
+                    </div>
+                  </div>
+                ))}
               </div>
               
               {filteredResults.length > 20 && (
