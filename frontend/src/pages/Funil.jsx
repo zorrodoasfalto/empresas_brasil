@@ -89,6 +89,7 @@ const StatLabel = styled.div`
 
 const FunnelContainer = styled.div`
   display: flex;
+  justify-content: center;
   gap: 1.5rem;
   overflow-x: auto;
   padding-bottom: 1rem;
