@@ -395,7 +395,52 @@ const GoogleMapsScraper = () => {
     estimatedTotal: 0,
     phase: 'starting'
   });
+  const [selectedLeads, setSelectedLeads] = useState([]);
+  const [savedLeads, setSavedLeads] = useState([]);
   const { user } = useAuth();
+
+  // Load saved leads on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedLeads');
+    if (saved) {
+      setSavedLeads(JSON.parse(saved));
+    }
+  }, []);
+
+  // Toggle lead selection
+  const toggleLeadSelection = (leadId) => {
+    setSelectedLeads(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId);
+      } else {
+        newSet.add(leadId);
+      }
+      return newSet;
+    });
+  };
+
+  // Save selected leads
+  const saveSelectedLeads = () => {
+    const leadsToSave = filteredResults.filter(lead => 
+      selectedLeads.has(lead.placeId || lead.url || lead.title)
+    );
+    
+    const updatedSavedLeads = [...savedLeads, ...leadsToSave];
+    const uniqueLeads = updatedSavedLeads.filter((lead, index, self) => 
+      index === self.findIndex(l => (l.placeId || l.url || l.title) === (lead.placeId || lead.url || lead.title))
+    );
+    
+    setSavedLeads(uniqueLeads);
+    localStorage.setItem('savedLeads', JSON.stringify(uniqueLeads));
+    setSelectedLeads(new Set());
+    toast.success(`${leadsToSave.length} leads salvos! Total: ${uniqueLeads.length}`);
+  };
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedLeads(new Set());
+  };
 
   // Remove internal duplicates from scraping results
   const removeDuplicatesFromResults = (results) => {
@@ -774,6 +819,13 @@ const GoogleMapsScraper = () => {
     // Limpar resultados anteriores automaticamente antes de nova busca
     setResults([]);
     setCurrentRun(null);
+    setProgress({ 
+      found: 0, 
+      percentage: 0, 
+      startTime: Date.now(),
+      estimatedTotal: formData.maxResults,
+      phase: 'starting'
+    });
 
     console.log('🚀 Iniciando scraping com:', {
       searchTerms: formData.searchTerms,
@@ -1295,8 +1347,18 @@ const GoogleMapsScraper = () => {
                   📈 Exportar Excel
                 </ExportButton>
                 <ExportButton onClick={saveAllLeads} style={{ background: 'linear-gradient(135deg, #00ffaa 0%, #00cc88 100%)' }}>
-                  💾 Salvar Leads
+                  💾 Salvar Todos ({filteredResults.length})
                 </ExportButton>
+                {selectedLeads.length > 0 && (
+                  <>
+                    <ExportButton onClick={saveSelectedLeads} style={{ background: 'linear-gradient(135deg, #4285f4 0%, #0f9d58 100%)' }}>
+                      ✅ Salvar Selecionados ({selectedLeads.length})
+                    </ExportButton>
+                    <ExportButton onClick={clearSelection} style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)' }}>
+                      🗑️ Limpar Seleção
+                    </ExportButton>
+                  </>
+                )}
               </ExportButtonsContainer>
               
               <div style={{ 
@@ -1306,25 +1368,55 @@ const GoogleMapsScraper = () => {
                 padding: '1rem',
                 borderRadius: '8px'
               }}>
-                {filteredResults.slice(0, 20).map((place, index) => (
-                  <div key={index} style={{
-                    background: 'rgba(0,255,170,0.1)',
-                    border: '1px solid rgba(0,255,170,0.2)',
-                    borderRadius: '6px',
-                    padding: '1rem',
-                    marginBottom: '0.5rem'
-                  }}>
-                    <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                      {place.title || place.name}
+                {filteredResults.slice(0, 20).map((place, index) => {
+                  const leadId = `${place.title || place.name}-${place.address || ''}`;
+                  const isSelected = selectedLeads.includes(leadId);
+                  
+                  return (
+                    <div 
+                      key={index} 
+                      onClick={() => toggleLeadSelection(leadId)}
+                      style={{
+                        background: isSelected ? 'rgba(0,255,170,0.2)' : 'rgba(0,255,170,0.1)',
+                        border: isSelected ? '2px solid #00ffaa' : '1px solid rgba(0,255,170,0.2)',
+                        borderRadius: '6px',
+                        padding: '1rem',
+                        marginBottom: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        position: 'relative'
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute',
+                        top: '1rem',
+                        right: '1rem',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '4px',
+                        border: isSelected ? '2px solid #00ffaa' : '2px solid rgba(255,255,255,0.3)',
+                        background: isSelected ? '#00ffaa' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        color: isSelected ? '#000' : 'transparent'
+                      }}>
+                        {isSelected && '✓'}
+                      </div>
+                      
+                      <div style={{ color: '#00ffaa', fontWeight: 'bold', marginBottom: '0.5rem', paddingRight: '30px' }}>
+                        {place.title || place.name}
+                      </div>
+                      <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
+                        {place.address && <div>📍 {place.address}</div>}
+                        {place.phone && <div>📞 {place.phone}</div>}
+                        {place.website && <div>🌐 {place.website}</div>}
+                        {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
+                      </div>
                     </div>
-                    <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
-                      {place.address && <div>📍 {place.address}</div>}
-                      {place.phone && <div>📞 {place.phone}</div>}
-                      {place.website && <div>🌐 {place.website}</div>}
-                      {place.rating && <div>⭐ {place.rating} ({place.reviewsCount} avaliações)</div>}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               {filteredResults.length > 20 && (
