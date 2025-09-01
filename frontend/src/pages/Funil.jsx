@@ -27,10 +27,14 @@ const Container = styled.div`
     width: 125%; /* Compensate for 80% scale */
   }
   
-
-  max-width: 1600px;
-  margin: 2rem auto;
-  padding: 2rem;
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+  }
 `;
 
 const Header = styled.div`

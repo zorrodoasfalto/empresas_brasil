@@ -26,6 +26,15 @@ const Container = styled.div`
     transform-origin: top left;
     width: 125%; /* Compensate for 80% scale */
   }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.5rem;
+  }
 `;
 
 const Header = styled.div`
