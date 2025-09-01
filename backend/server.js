@@ -160,7 +160,7 @@ if (APIFY_API_KEY) {
 console.log('✅ Ghost Genius API configured for LinkedIn');
 
 // Import routes
-// const stripeRoutes = require('./stripe-routes'); // ARQUIVO DELETADO
+const stripeRoutes = require('./routes/stripe'); // Rotas do stripe reativadas
 const authRoutes = require('./routes/auth');
 
 // Import database initialization
@@ -228,7 +228,7 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-// app.use('/api/stripe', stripeRoutes); // ARQUIVO DELETADO  
+app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários  
 // app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
 
 // DEBUG: Check if user ID 1 exists and generate token

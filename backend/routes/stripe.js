@@ -61,15 +61,26 @@ async function generateAffiliateCode(userId) {
       affiliateCode += chars.charAt(Math.floor(Math.random() * chars.length));
     }
 
+    console.log(`🔄 Tentando inserir afiliado - UserID: ${userId}, Code: ${affiliateCode}`);
+
     await pool.query(
       `INSERT INTO affiliates (user_id, affiliate_code) 
        VALUES ($1, $2)`,
       [userId, affiliateCode]
     );
 
+    console.log(`✅ Código de afiliado inserido com sucesso: ${affiliateCode}`);
     return affiliateCode;
   } catch (error) {
-    console.error('Error creating affiliate code:', error);
+    console.error('❌ Erro ao gerar código de afiliado:', error.message);
+    console.error('Error details:', error);
+    
+    // Se o erro for de chave duplicada, tenta novamente
+    if (error.code === '23505') { // duplicate key error
+      console.log('🔄 Código duplicado, tentando novamente...');
+      return generateAffiliateCode(userId);
+    }
+    
     return null;
   }
 }
@@ -209,6 +220,50 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
   }
 });
 
+// Force create affiliate code (temporary debug route)
+router.post('/force-affiliate-code', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`🔧 Forçando criação de código de afiliado para usuário ${userId}...`);
+    
+    // Primeiro, verifica se já existe
+    const existingAffiliate = await pool.query(
+      'SELECT * FROM affiliates WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (existingAffiliate.rows.length > 0) {
+      console.log('📋 Código já existe:', existingAffiliate.rows[0]);
+      return res.json({
+        success: true,
+        message: 'Código já existe',
+        code: existingAffiliate.rows[0].affiliate_code
+      });
+    }
+    
+    // Se não existe, cria um novo
+    const code = await generateAffiliateCode(userId);
+    if (code) {
+      console.log(`✅ Código criado com sucesso: ${code}`);
+      res.json({
+        success: true,
+        message: 'Código criado com sucesso',
+        code: code
+      });
+    } else {
+      throw new Error('Falha na geração do código');
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro ao forçar criação:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao criar código de afiliado',
+      error: error.message
+    });
+  }
+});
+
 // Get affiliate status
 router.get('/affiliate-status', authenticateToken, async (req, res) => {
   try {
@@ -223,14 +278,42 @@ router.get('/affiliate-status', authenticateToken, async (req, res) => {
     let affiliate = affiliateResult.rows[0];
     
     if (!affiliate) {
-      // Generate affiliate code for user
+      // Generate affiliate code for user (including admins)
+      console.log(`🔄 Criando código de afiliado para usuário ${userId}...`);
       const code = await generateAffiliateCode(userId);
+      console.log(`✅ Código de afiliado criado: ${code}`);
+      
       if (code) {
         affiliateResult = await pool.query(
           'SELECT * FROM affiliates WHERE user_id = $1',
           [userId]
         );
         affiliate = affiliateResult.rows[0];
+        console.log(`📋 Dados de afiliado recuperados:`, affiliate);
+      } else {
+        console.log('❌ Falha ao criar código de afiliado');
+        // Força criação manual se falhou
+        try {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+          let affiliateCode = 'ADMIN';
+          for (let i = 0; i < 4; i++) {
+            affiliateCode += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          
+          await pool.query(
+            `INSERT INTO affiliates (user_id, affiliate_code) VALUES ($1, $2)`,
+            [userId, affiliateCode]
+          );
+          
+          affiliateResult = await pool.query(
+            'SELECT * FROM affiliates WHERE user_id = $1',
+            [userId]
+          );
+          affiliate = affiliateResult.rows[0];
+          console.log(`🛠️ Código de afiliado criado manualmente:`, affiliate);
+        } catch (manualError) {
+          console.error('❌ Erro na criação manual:', manualError);
+        }
       }
     }
 
