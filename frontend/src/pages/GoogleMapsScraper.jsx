@@ -395,30 +395,7 @@ const GoogleMapsScraper = () => {
     currentStatus: 'IDLE' 
   });
   
-  // Timer automático para progresso quando scraping está rodando
-  useEffect(() => {
-    let progressTimer;
-    
-    if (currentRun && currentRun.status === 'RUNNING') {
-      progressTimer = setInterval(() => {
-        setProgress(prev => {
-          const newPercentage = Math.min(prev.percentage + 2, 90); // +2% a cada segundo
-          const estimatedPlaces = Math.floor((newPercentage / 100) * formData.maxResults);
-          
-          return {
-            ...prev,
-            percentage: newPercentage,
-            crawledPlaces: estimatedPlaces,
-            requestsMade: Math.floor(estimatedPlaces / 2)
-          };
-        });
-      }, 1000); // Atualiza a cada 1 segundo
-    }
-    
-    return () => {
-      if (progressTimer) clearInterval(progressTimer);
-    };
-  }, [currentRun?.status, formData.maxResults]);
+  // Real-time progress is handled by polling backend data every 5 seconds
   const [selectedLeads, setSelectedLeads] = useState([]);
   const [savedLeads, setSavedLeads] = useState([]);
   const { user } = useAuth();
@@ -978,19 +955,33 @@ const GoogleMapsScraper = () => {
           finishedAt: data.finishedAt
         }));
         
-        // Progress is handled by timer - just update when we have real results
-        if (data.results && data.results.length > 0) {
-          const realCount = data.results.length;
-          const realPercentage = Math.min(Math.round((realCount / formData.maxResults) * 100), 100);
-          
-          setProgress(prev => ({
-            ...prev,
-            crawledPlaces: realCount,
-            percentage: Math.max(prev.percentage, realPercentage) // Never go backwards
-          }));
-          
-          console.log('📊 Real results found:', realCount);
+        // Update progress with real backend data
+        const stats = data.stats || {};
+        const currentItems = stats.itemsOutputted || 0;
+        const totalRequests = stats.requestsTotal || formData.maxResults;
+        const finishedRequests = stats.requestsFinished || 0;
+        
+        // Calculate percentage based on actual progress
+        let realPercentage = 0;
+        if (totalRequests > 0) {
+          realPercentage = Math.min(Math.round((finishedRequests / totalRequests) * 100), 100);
+        } else if (currentItems > 0) {
+          realPercentage = Math.min(Math.round((currentItems / formData.maxResults) * 100), 100);
         }
+        
+        setProgress(prev => ({
+          percentage: Math.max(realPercentage, prev.percentage), // Never go backwards
+          crawledPlaces: currentItems,
+          requestsMade: finishedRequests,
+          currentStatus: data.status
+        }));
+        
+        console.log('📊 Real progress from backend:', { 
+          percentage: realPercentage, 
+          items: currentItems, 
+          requests: finishedRequests,
+          total: totalRequests 
+        });
         
         if (data.status === 'RUNNING') {
           setTimeout(() => pollResults(runId), 5000);
