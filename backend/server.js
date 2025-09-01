@@ -1663,23 +1663,36 @@ app.post('/api/apify/run/:actorId', async (req, res) => {
     let inputData = req.body;
     
     // Optimize input for compass/crawler-google-places
-    if (actorId === 'compass~crawler-google-places') {
+    if (actorId === 'compass~crawler-google-places' || actorId === 'nwua9Gu5YrADL7ZDj') {
+      const maxPlaces = parseInt(inputData.maxCrawledPlacesPerSearch || inputData.maxResults) || 50;
+      
       inputData = {
         ...inputData,
-        // Performance optimizations
-        maxConcurrency: inputData.maxCrawledPlacesPerSearch > 200 ? 10 : 5,
-        pageLoadTimeoutSecs: 30,
-        maxPageRetries: 2,
-        // Ensure proper structure
+        // AGGRESSIVE SPEED settings - GO FAST!
+        maxConcurrency: maxPlaces > 200 ? 50 : maxPlaces > 100 ? 30 : 20,
+        pageLoadTimeoutSecs: 8, // Very fast
+        maxPageRetries: 0, // No retries - SPEED!
+        
+        // Speed optimizations
+        scrapeReviewsPersonalData: false,
+        scrapeImageAuthors: false,
+        includeWebResults: false,
+        scrapeDirectories: false,
+        maxQuestions: 0,
+        scrapeTableReservationProvider: false,
+        
+        // Core structure
         searchStringsArray: Array.isArray(inputData.searchStringsArray) 
           ? inputData.searchStringsArray 
-          : [inputData.searchQuery || inputData.searchStringsArray],
+          : [inputData.searchQuery || inputData.searchStringsArray || inputData.searchTerms],
         locationQuery: inputData.locationQuery,
-        maxCrawledPlacesPerSearch: parseInt(inputData.maxCrawledPlacesPerSearch) || 50
+        maxCrawledPlacesPerSearch: maxPlaces
       };
       
-      // Remove old format keys
+      // Clean old format keys
       delete inputData.searchQuery;
+      delete inputData.maxResults;
+      delete inputData.searchTerms;
     }
     
     console.log(`🚀 Running Apify actor: ${actorId}`);

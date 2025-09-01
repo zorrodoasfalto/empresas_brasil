@@ -1250,13 +1250,29 @@ const GoogleMapsScraper = () => {
             onChange={handleInputChange}
           >
             <option value={10}>10 empresas (~30 segundos)</option>
-            <option value={25}>25 empresas (~1 minuto)</option>
-            <option value={50}>50 empresas (~2 minutos)</option>
-            <option value={100}>100 empresas (~4 minutos)</option>
-            <option value={200}>200 empresas (~8 minutos)</option>
-            <option value={500}>500 empresas (~20 minutos)</option>
+            <option value={25}>25 empresas (~45 segundos)</option>
+            <option value={50}>50 empresas (~1 minuto)</option>
+            <option value={100}>100 empresas (~2 minutos)</option>
+            <option value={200}>200 empresas (~4 minutos)</option>
+            <option value={300}>300 empresas (~6 minutos)</option>
+            <option value={500}>500 empresas (~10 minutos)</option>
           </Select>
         </FormGroup>
+
+        {formData.maxResults >= 200 && (
+          <div style={{
+            background: 'rgba(255, 170, 0, 0.1)',
+            border: '1px solid rgba(255, 170, 0, 0.3)',
+            borderRadius: '6px',
+            padding: '1rem',
+            marginBottom: '1rem',
+            color: '#ffaa00',
+            fontSize: '0.9rem'
+          }}>
+            ⚠️ <strong>Volume Alto:</strong> {formData.maxResults} empresas levarão ~{Math.ceil(formData.maxResults/50)} minutos. 
+            A barra de progresso mostrará o andamento em tempo real.
+          </div>
+        )}
 
         <RunButton
           onClick={runScraper}
@@ -1304,8 +1320,34 @@ const GoogleMapsScraper = () => {
               <ProgressMessage>
                 <span className="status-emoji">🔍</span>
                 {progress.currentStatus === 'INICIANDO' && 'Iniciando scraping...'}
-                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 && `Coletando dados... ${progress.crawledPlaces} empresas encontradas`}
-                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces === 0 && 'Procurando empresas na região...'}
+                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces > 0 && (
+                  <>
+                    Coletando dados... {progress.crawledPlaces} empresas encontradas
+                    {progress.percentage > 80 && (
+                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
+                        ⏱️ Últimos 20% podem demorar mais (dados detalhados)
+                      </div>
+                    )}
+                    {progress.percentage > 50 && progress.percentage <= 80 && (
+                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
+                        ⚡ Processamento acelerado ativo
+                      </div>
+                    )}
+                    {formData.maxResults >= 300 && progress.percentage < 30 && (
+                      <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#ffaa00'}}>
+                        🔥 Volume alto: processo pode levar {Math.ceil(formData.maxResults/50)} minutos
+                      </div>
+                    )}
+                  </>
+                )}
+                {progress.currentStatus === 'RUNNING' && progress.crawledPlaces === 0 && (
+                  <>
+                    Procurando empresas na região...
+                    <div style={{fontSize: '0.8em', marginTop: '0.5rem', color: '#00ccff'}}>
+                      🎯 Tempo estimado: ~{Math.ceil(formData.maxResults/50)} minutos
+                    </div>
+                  </>
+                )}
               </ProgressMessage>
               
               <ProgressBar>
