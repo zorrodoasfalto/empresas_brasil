@@ -1177,7 +1177,7 @@ const GoogleMapsScraper = () => {
             {currentRun.status}
           </StatusBadge>
 
-          {currentRun.status === 'RUNNING' && (
+          {isRunning && (
             <div style={{ 
               margin: '1rem 0', 
               padding: '1rem',
