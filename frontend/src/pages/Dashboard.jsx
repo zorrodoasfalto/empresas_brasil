@@ -1989,7 +1989,7 @@ const Dashboard = () => {
               style={{ 
                 position: 'absolute',
                 top: '50%',
-                right: isMenuMinimized ? '12px' : '10px',
+                right: isMenuMinimized ? '2px' : '10px',
                 transform: 'translateY(-50%)',
                 zIndex: '10'
               }}
