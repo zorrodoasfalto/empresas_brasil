@@ -506,10 +506,16 @@ const Checkout = () => {
             <Logo onClick={() => navigate('/')}>
               <img src={logo} alt="Empresas Brasil" />
             </Logo>
-            <BackButton onClick={() => navigate(-1)}>
-              <ArrowLeft size={18} />
-              Voltar
-            </BackButton>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <AffiliateButton onClick={() => navigate('/settings?tab=affiliate')}>
+                <Settings size={16} />
+                Configurar Afiliado
+              </AffiliateButton>
+              <BackButton onClick={() => navigate(-1)}>
+                <ArrowLeft size={18} />
+                Voltar
+              </BackButton>
+            </div>
           </div>
         </HeaderContent>
       </Header>
@@ -628,13 +634,6 @@ const Checkout = () => {
             </SecurityBadge>
           </div>
 
-          {/* Small affiliate button */}
-          <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
-            <AffiliateButton onClick={() => navigate('/dashboard')}>
-              <Settings size={16} />
-              Configurar Afiliado
-            </AffiliateButton>
-          </div>
         </NewCheckoutLayout>
       </Content>
     </Container>

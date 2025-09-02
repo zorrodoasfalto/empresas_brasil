@@ -26,6 +26,7 @@ import Checkout from './pages/Checkout';
 import CheckoutSimple from './pages/CheckoutSimple';
 import VerifyEmail from './pages/VerifyEmail';
 import SubscriptionPage from './pages/SubscriptionPage';
+import AccountSettings from './pages/AccountSettings';
 import GlobalStyles from './styles/GlobalStyles';
 
 function App() {
@@ -46,6 +47,14 @@ function App() {
             <Route path="/security" element={<SecurityPolicy />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/checkout-debug" element={<CheckoutSimple />} />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <AccountSettings />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/dashboard" 
               element={

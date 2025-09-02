@@ -227,10 +227,18 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('🔍 Login: useEffect detected authentication, navigating to dashboard');
-      navigate('/dashboard');
+      console.log('🔍 Login: useEffect detected authentication, checking user subscription status');
+      
+      // Check if user is free (trial or no subscription)
+      if (user && (user.subscription === 'none' || user.role === 'trial' || !user.subscription)) {
+        console.log('🔍 Login: Free user detected, redirecting to checkout');
+        navigate('/checkout');
+      } else {
+        console.log('🔍 Login: Premium user, navigating to dashboard');
+        navigate('/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -240,7 +248,7 @@ const Login = () => {
     console.log('🔍 Login: Login result:', result);
     
     if (result.success) {
-      console.log('🔍 Login: Login successful, AuthContext should update soon...');
+      console.log('🔍 Login: Login successful, checking user status...');
       
       // Se o trial expirou, redirecionar para página de assinatura
       if (result.trialExpired && result.redirectToSubscription) {
@@ -250,7 +258,15 @@ const Login = () => {
         return;
       }
       
-      // Caso contrário, deixar o useEffect lidar com a navegação normal
+      // Check if user is free and redirect to checkout
+      if (result.user && (result.user.subscription === 'none' || result.user.role === 'trial' || !result.user.subscription)) {
+        console.log('🔍 Login: Free user detected, redirecting to checkout');
+        navigate('/checkout');
+        setLoading(false);
+        return;
+      }
+      
+      // Premium user goes to dashboard (useEffect will handle this case)
     }
     
     setLoading(false);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { 
@@ -285,6 +285,7 @@ const InfoBox = styled.div`
 const AccountSettings = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('profile');
   const [affiliateData, setAffiliateData] = useState({
     code: null,
@@ -297,8 +298,14 @@ const AccountSettings = () => {
   const [showAffiliateUrl, setShowAffiliateUrl] = useState(false);
 
   useEffect(() => {
+    // Check if should open affiliate tab based on URL parameter
+    const tab = searchParams.get('tab');
+    if (tab === 'affiliate') {
+      setActiveTab('affiliate');
+    }
+    
     loadAffiliateData();
-  }, []);
+  }, [searchParams]);
 
   const loadAffiliateData = async () => {
     try {
