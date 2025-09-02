@@ -1285,14 +1285,17 @@ const Dashboard = () => {
   });
   const [affiliateLoading, setAffiliateLoading] = useState(false);
   
-  // Estados para estatísticas admin - INICIALIZADO COM VALORES REAIS
+  // Estados para estatísticas admin - SERÃO CARREGADOS DA BASE
   const [adminStats, setAdminStats] = useState({
-    totalUsers: 33,
-    freeUsers: 33,
+    totalUsers: 0,
+    freeUsers: 0,
     premiumUsers: 0,
     proUsers: 0,
     maxUsers: 0,
-    activeTrials: 33
+    activeTrials: 0,
+    adminUsers: 0,
+    expiredTrials: 0,
+    totalLeads: 0
   });
   const [adminStatsLoading, setAdminStatsLoading] = useState(false);
   
@@ -1342,11 +1345,42 @@ const Dashboard = () => {
     }
   };
 
-  // Função para carregar estatísticas admin - SIMPLIFICADA
+  // Função para carregar estatísticas admin - USANDO DADOS REAIS DA BASE
   const loadAdminStats = async () => {
-    console.log('🔍 loadAdminStats called - but values are already correct');
-    // Os valores já estão corretos no estado inicial
-    // Esta função agora serve apenas para debug
+    console.log('🔍 loadAdminStats called - fetching real data from database');
+    setAdminStatsLoading(true);
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/user-stats', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAdminStats({
+          totalUsers: data.stats.total,
+          freeUsers: data.stats.free,
+          premiumUsers: data.stats.premium,
+          proUsers: data.stats.pro,
+          maxUsers: data.stats.max,
+          activeTrials: data.stats.trial_active,
+          adminUsers: data.stats.admin,
+          expiredTrials: data.stats.trial_expired,
+          totalLeads: data.totalLeads
+        });
+        console.log('✅ Admin stats updated:', data.stats);
+      } else {
+        console.error('❌ Error loading admin stats:', data.error);
+        toast.error('Erro ao carregar estatísticas');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching admin stats:', error);
+      toast.error('Erro ao conectar com servidor');
+    } finally {
+      setAdminStatsLoading(false);
+    }
   };
 
   // Função para submeter solicitação de saque
@@ -1493,7 +1527,20 @@ const Dashboard = () => {
     // Só executa quando user está definido e é admin
     if (user && (user.role === 'admin' || user.email === 'rodyrodrigo@gmail.com')) {
       console.log('🔍 User admin detectado, carregando stats:', user);
-      loadAdminStats();
+      loadAdminStats(); // Carrega automaticamente
+      loadAdminWithdrawals(); // Carrega também os saques
+    }
+  }, [user]);
+
+  // Auto-refresh dos stats admin a cada 30 segundos
+  useEffect(() => {
+    if (user && (user.role === 'admin' || user.email === 'rodyrodrigo@gmail.com')) {
+      const interval = setInterval(() => {
+        console.log('🔄 Auto-refresh admin stats');
+        loadAdminStats();
+      }, 30000); // 30 segundos
+
+      return () => clearInterval(interval);
     }
   }, [user]);
 
@@ -3349,7 +3396,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
                   <div style={{ color: '#3b82f6', fontWeight: 'bold', fontSize: '1.1rem' }}>Total Usuários</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.totalUsers}
+                    {adminStatsLoading ? '...' : adminStats.totalUsers}
                   </div>
                 </div>
                 
@@ -3363,7 +3410,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🆓</div>
                   <div style={{ color: '#22c55e', fontWeight: 'bold', fontSize: '1.1rem' }}>Free</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.freeUsers}
+                    {adminStatsLoading ? '...' : adminStats.freeUsers}
                   </div>
                 </div>
                 
@@ -3377,7 +3424,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⚡</div>
                   <div style={{ color: '#f59e0b', fontWeight: 'bold', fontSize: '1.1rem' }}>Pro</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.proUsers || 0}
+                    {adminStatsLoading ? '...' : (adminStats.proUsers || 0)}
                   </div>
                 </div>
                 
@@ -3391,7 +3438,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>💎</div>
                   <div style={{ color: '#a855f7', fontWeight: 'bold', fontSize: '1.1rem' }}>Premium</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.premiumUsers}
+                    {adminStatsLoading ? '...' : adminStats.premiumUsers}
                   </div>
                 </div>
                 
@@ -3405,7 +3452,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🚀</div>
                   <div style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '1.1rem' }}>Max</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.maxUsers || 0}
+                    {adminStatsLoading ? '...' : (adminStats.maxUsers || 0)}
                   </div>
                 </div>
                 
@@ -3419,7 +3466,7 @@ const Dashboard = () => {
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>⏰</div>
                   <div style={{ color: '#eab308', fontWeight: 'bold', fontSize: '1.1rem' }}>Trial Ativo</div>
                   <div style={{ color: '#e0e0e0', fontSize: '2rem', fontWeight: 'bold', marginTop: '0.5rem' }}>
-                    {adminStats.activeTrials}
+                    {adminStatsLoading ? '...' : adminStats.activeTrials}
                   </div>
                 </div>
               </div>

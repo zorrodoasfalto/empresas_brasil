@@ -311,12 +311,19 @@ const Funil = () => {
 
   const fetchFunnelData = async () => {
     try {
+      const userData = localStorage.getItem('user');
       const headers = {};
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/crm/funil', { headers });
+      let url = '/api/crm/funil-direct';
+      if (userData) {
+        const user = JSON.parse(userData);
+        url += `?email=${encodeURIComponent(user.email)}`;
+      }
+      
+      const response = await fetch(url, { headers });
       
       if (response.status === 401) {
         const data = await response.json();

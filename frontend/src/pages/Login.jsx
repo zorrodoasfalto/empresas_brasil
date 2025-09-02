@@ -241,7 +241,16 @@ const Login = () => {
     
     if (result.success) {
       console.log('🔍 Login: Login successful, AuthContext should update soon...');
-      // Don't navigate here - let useEffect handle it when isAuthenticated changes
+      
+      // Se o trial expirou, redirecionar para página de assinatura
+      if (result.trialExpired && result.redirectToSubscription) {
+        console.log('🔍 Login: Trial expired, redirecting to subscription page');
+        navigate('/subscription');
+        setLoading(false);
+        return;
+      }
+      
+      // Caso contrário, deixar o useEffect lidar com a navegação normal
     }
     
     setLoading(false);

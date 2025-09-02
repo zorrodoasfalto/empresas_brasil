@@ -6,25 +6,9 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// Helper function to ensure we have a valid token
-const ensureToken = async () => {
-  let token = localStorage.getItem('token');
-  
-  // If no token, try to get one from debug endpoint
-  if (!token) {
-    try {
-      const response = await fetch('/api/debug/check-user');
-      const data = await response.json();
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        token = data.token;
-        console.log('🔐 Auto-generated token for user:', data.user.email);
-      }
-    } catch (error) {
-      console.warn('🔐 Failed to auto-generate token:', error);
-    }
-  }
-  
+// Helper function to get token from localStorage
+const ensureToken = () => {
+  const token = localStorage.getItem('token');
   return token;
 };
 

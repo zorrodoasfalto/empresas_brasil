@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import TrialExpiredRedirect from './components/TrialExpiredRedirect';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -49,7 +50,9 @@ function App() {
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <TrialExpiredRedirect>
+                    <Dashboard />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -57,7 +60,9 @@ function App() {
               path="/app" 
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <TrialExpiredRedirect>
+                    <Dashboard />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -65,7 +70,9 @@ function App() {
               path="/google-places" 
               element={
                 <ProtectedRoute>
-                  <GoogleMapsSimple />
+                  <TrialExpiredRedirect>
+                    <GoogleMapsSimple />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -73,7 +80,9 @@ function App() {
               path="/google-maps-scraper" 
               element={
                 <ProtectedRoute>
-                  <GoogleMapsScraper />
+                  <TrialExpiredRedirect>
+                    <GoogleMapsScraper />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -81,7 +90,9 @@ function App() {
               path="/linkedin-scraper" 
               element={
                 <ProtectedRoute>
-                  <LinkedInScraper />
+                  <TrialExpiredRedirect>
+                    <LinkedInScraper />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -89,7 +100,9 @@ function App() {
               path="/instagram" 
               element={
                 <ProtectedRoute>
-                  <InstagramEmailScraper />
+                  <TrialExpiredRedirect>
+                    <InstagramEmailScraper />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -98,7 +111,9 @@ function App() {
               path="/leads" 
               element={
                 <ProtectedRoute>
-                  <Leads />
+                  <TrialExpiredRedirect>
+                    <Leads />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -106,7 +121,9 @@ function App() {
               path="/funil" 
               element={
                 <ProtectedRoute>
-                  <Funil />
+                  <TrialExpiredRedirect>
+                    <Funil />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />
@@ -114,7 +131,9 @@ function App() {
               path="/kanban" 
               element={
                 <ProtectedRoute>
-                  <Kanban />
+                  <TrialExpiredRedirect>
+                    <Kanban />
+                  </TrialExpiredRedirect>
                 </ProtectedRoute>
               } 
             />

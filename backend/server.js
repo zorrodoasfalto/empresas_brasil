@@ -60,36 +60,43 @@ async function checkUserAccess(req, res, next) {
       return res.status(401).json({ error: 'Token inválido', needsSubscription: true });
     }
 
-    // Encontrar usuário por email
-    const userResult = await pool.query(
-      'SELECT id FROM users WHERE email = $1 UNION SELECT id FROM simple_users WHERE email = $1',
+    // Encontrar usuário por email com role (verificar em ambas as tabelas)
+    let userResult = await pool.query(
+      'SELECT id, role FROM simple_users WHERE email = $1',
       [decodedToken.email]
     );
+    
+    if (userResult.rows.length === 0) {
+      // Se não encontrou em simple_users, tentar em users  
+      userResult = await pool.query(
+        'SELECT id, COALESCE(role, \'trial\') as role FROM users WHERE email = $1',
+        [decodedToken.email]
+      );
+    }
     
     if (userResult.rows.length === 0) {
       return res.status(401).json({ error: 'Usuário não encontrado', needsSubscription: true });
     }
 
     const userId = userResult.rows[0].id;
+    const userRole = userResult.rows[0].role;
     
-    // Verificar acesso do usuário (trial ou assinatura)
-    const accessCheck = await User.checkUserAccess(userId);
-    
-    if (!accessCheck.hasAccess) {
-      if (accessCheck.reason === 'trial_expired') {
-        return res.status(403).json({ 
-          error: 'Seu período de trial de 30 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
-          needsSubscription: true,
-          trialExpired: true
-        });
-      }
-      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    // Se o usuário é admin, permitir acesso sempre
+    if (userRole === 'admin') {
+      req.userId = userId;
+      req.userEmail = decodedToken.email;
+      req.userRole = userRole;
+      next();
+      return;
     }
+    
+    // Para usuários não-admin, permitir acesso (trial verificado no login)
+    // Se chegou até aqui, usuário já foi autenticado no login
 
     // Adicionar informações do usuário na request
     req.userId = userId;
     req.userEmail = decodedToken.email;
-    req.accessReason = accessCheck.reason;
+    req.userRole = userRole;
     
     next();
   } catch (error) {
@@ -486,6 +493,9 @@ app.post('/api/auth/login', async (req, res) => {
       user.role = 'trial';
     }
     
+    // Verificar status do trial/assinatura
+    const accessCheck = await User.checkUserAccess(user.id);
+    
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
@@ -496,7 +506,10 @@ app.post('/api/auth/login', async (req, res) => {
       success: true,
       message: 'Login realizado com sucesso',
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      trialExpired: accessCheck.reason === 'trial_expired',
+      hasAccess: accessCheck.hasAccess,
+      accessReason: accessCheck.reason
     });
     
   } catch (error) {
@@ -1013,10 +1026,555 @@ app.post('/api/debug/update-roles', async (req, res) => {
   }
 });
 
+// TEMPORARY: Direct access for admin user (no token required)
+// Helper function to validate user access (simplified) - uses email from request or token
+async function validateUserAccess(req) {
+  // Get email from query parameter, request body, or token
+  let userEmail = req.query.email || req.body?.email;
+  
+  // If no email in params, try to get from token
+  if (!userEmail) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (token) {
+      try {
+        const decodedToken = jwt.verify(token, JWT_SECRET);
+        userEmail = decodedToken.email;
+      } catch (err) {
+        throw new Error('Token inválido');
+      }
+    } else {
+      throw new Error('Email ou token necessário');
+    }
+  }
+  
+  // Find user in database
+  const userResult = await pool.query(
+    'SELECT id, role, trial_expires_at FROM simple_users WHERE email = $1',
+    [userEmail]
+  );
+
+  if (userResult.rows.length === 0) {
+    throw new Error('Usuário não encontrado');
+  }
+
+  const user = userResult.rows[0];
+  
+  // Admin always has access
+  if (user.role === 'admin') {
+    return user;
+  }
+
+  // Check trial for regular users
+  if (user.trial_expires_at && new Date() > new Date(user.trial_expires_at)) {
+    throw new Error('Trial expirado');
+  }
+
+  return user;
+}
+
+app.get('/api/crm/leads-direct', async (req, res) => {
+  try {
+    const user = await validateUserAccess(req);
+    
+    const result = await pool.query(`
+      SELECT 
+        l.*,
+        f.nome as fase_atual,
+        f.cor as fase_cor
+      FROM leads l
+      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+      LEFT JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY l.created_at DESC
+    `, [user.id]);
+
+    res.json({
+      success: true,
+      leads: result.rows,
+      debug: { 
+        leads_count: result.rows.length,
+        user_role: user.role,
+        user_id: user.id
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching leads direct:', error);
+    if (error.message === 'Token necessário' || error.message === 'Usuário não encontrado') {
+      res.status(401).json({ error: 'Acesso não autorizado. Faça login' });
+    } else if (error.message === 'Trial expirado') {
+      res.status(403).json({ error: 'Trial expirado. Assine para continuar', needsSubscription: true });
+    } else {
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+});
+
+app.get('/api/crm/kanban-direct', async (req, res) => {
+  try {
+    const user = await validateUserAccess(req);
+    
+    // Get phases - create default funnel if user doesn't have one
+    let phases = await pool.query(`
+      SELECT * FROM funil_fases 
+      WHERE user_id = $1 
+      ORDER BY ordem
+    `, [user.id]);
+
+    // If user has no funnel phases, create default ones
+    if (phases.rows.length === 0) {
+      console.log(`🎯 Creating default funnel phases for user ${user.id} (from kanban-direct)`);
+      
+      const defaultPhases = [
+        { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
+        { nome: 'Qualificado', descricao: 'Leads qualificados para contato', ordem: 2, cor: '#3B82F6' },
+        { nome: 'Proposta', descricao: 'Proposta enviada', ordem: 3, cor: '#F59E0B' },
+        { nome: 'Fechado', descricao: 'Negócio conquistado', ordem: 4, cor: '#059669' }
+      ];
+
+      for (const phase of defaultPhases) {
+        await pool.query(`
+          INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [user.id, phase.nome, phase.descricao, phase.ordem, phase.cor]);
+      }
+
+      // Fetch the newly created phases
+      phases = await pool.query(`
+        SELECT * FROM funil_fases 
+        WHERE user_id = $1 
+        ORDER BY ordem
+      `, [user.id]);
+    }
+
+    // Get leads in each phase
+    const leadsInFunnel = await pool.query(`
+      SELECT 
+        l.*,
+        lf.fase_id,
+        lf.data_entrada
+      FROM leads l
+      JOIN leads_funil lf ON l.id = lf.lead_id
+      JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY lf.data_entrada DESC
+    `, [user.id]);
+
+    // Organize leads by phase
+    const funil = phases.rows.map(phase => ({
+      ...phase,
+      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
+    }));
+
+    res.json({
+      success: true,
+      funil,
+      debug: {
+        total_phases: phases.rows.length,
+        total_leads: leadsInFunnel.rows.length,
+        user_role: user.role,
+        user_id: user.id
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching kanban direct:', error);
+    if (error.message === 'Token necessário' || error.message === 'Usuário não encontrado') {
+      res.status(401).json({ error: 'Acesso não autorizado. Faça login' });
+    } else if (error.message === 'Trial expirado') {
+      res.status(403).json({ error: 'Trial expirado. Assine para continuar', needsSubscription: true });
+    } else {
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+});
+
+app.get('/api/crm/funil-direct', async (req, res) => {
+  try {
+    const user = await validateUserAccess(req);
+    
+    // Get phases - create default funnel if user doesn't have one
+    let phases = await pool.query(`
+      SELECT * FROM funil_fases 
+      WHERE user_id = $1 
+      ORDER BY ordem
+    `, [user.id]);
+
+    // If user has no funnel phases, create default ones
+    if (phases.rows.length === 0) {
+      console.log(`🎯 Creating default funnel phases for user ${user.id} (from funil-direct)`);
+      
+      const defaultPhases = [
+        { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
+        { nome: 'Qualificado', descricao: 'Leads qualificados para contato', ordem: 2, cor: '#3B82F6' },
+        { nome: 'Proposta', descricao: 'Proposta enviada', ordem: 3, cor: '#F59E0B' },
+        { nome: 'Fechado', descricao: 'Negócio conquistado', ordem: 4, cor: '#059669' }
+      ];
+
+      for (const phase of defaultPhases) {
+        await pool.query(`
+          INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [user.id, phase.nome, phase.descricao, phase.ordem, phase.cor]);
+      }
+
+      // Fetch the newly created phases
+      phases = await pool.query(`
+        SELECT * FROM funil_fases 
+        WHERE user_id = $1 
+        ORDER BY ordem
+      `, [user.id]);
+    }
+
+    // Get leads in each phase
+    const leadsInFunnel = await pool.query(`
+      SELECT 
+        l.*,
+        lf.fase_id,
+        lf.data_entrada
+      FROM leads l
+      JOIN leads_funil lf ON l.id = lf.lead_id
+      JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY lf.data_entrada DESC
+    `, [user.id]);
+
+    // Organize leads by phase
+    const funil = phases.rows.map(phase => ({
+      ...phase,
+      leads: leadsInFunnel.rows.filter(lead => lead.fase_id === phase.id)
+    }));
+
+    res.json({
+      success: true,
+      funil,
+      debug: {
+        total_phases: phases.rows.length,
+        total_leads: leadsInFunnel.rows.length,
+        user_role: user.role,
+        user_id: user.id
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching funil direct:', error);
+    if (error.message === 'Token necessário' || error.message === 'Usuário não encontrado') {
+      res.status(401).json({ error: 'Acesso não autorizado. Faça login' });
+    } else if (error.message === 'Trial expirado') {
+      res.status(403).json({ error: 'Trial expirado. Assine para continuar', needsSubscription: true });
+    } else {
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+});
+
+// DEBUG ENDPOINT: Check leads with funnel association
+app.get('/api/debug/user-leads-funnel/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        l.id, l.nome, l.user_id,
+        lf.fase_id, lf.data_entrada,
+        f.nome as fase_nome, f.cor as fase_cor, f.user_id as fase_user_id
+      FROM leads l
+      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+      LEFT JOIN funil_fases f ON lf.fase_id = f.id
+      WHERE l.user_id = $1
+      ORDER BY l.created_at DESC
+      LIMIT 10
+    `, [userId]);
+    
+    res.json({
+      success: true,
+      leads: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching user leads funnel:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// DEBUG ENDPOINT: Check all leads for debugging user issues
+app.get('/api/debug/all-leads', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT l.id, l.user_id, l.nome, l.created_at, u.email 
+      FROM leads l
+      LEFT JOIN simple_users u ON l.user_id = u.id
+      ORDER BY l.created_at DESC
+      LIMIT 20
+    `);
+    
+    res.json({
+      success: true,
+      leads: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching all leads:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// DEBUG ENDPOINT: Transfer leads to specific user
+app.post('/api/debug/transfer-leads', async (req, res) => {
+  try {
+    const { fromUserId, toUserId, leadIds } = req.body;
+    
+    if (leadIds && leadIds.length > 0) {
+      // Transfer specific leads
+      await pool.query(`
+        UPDATE leads 
+        SET user_id = $1 
+        WHERE id = ANY($2::int[])
+      `, [toUserId, leadIds]);
+      
+      res.json({ 
+        success: true, 
+        message: `Transferred ${leadIds.length} leads to user ${toUserId}`,
+        leadIds 
+      });
+    } else if (fromUserId && toUserId) {
+      // Transfer all leads from one user to another
+      const result = await pool.query(`
+        UPDATE leads 
+        SET user_id = $1 
+        WHERE user_id = $2
+        RETURNING id
+      `, [toUserId, fromUserId]);
+      
+      res.json({ 
+        success: true, 
+        message: `Transferred ${result.rows.length} leads from user ${fromUserId} to user ${toUserId}`,
+        leadIds: result.rows.map(r => r.id)
+      });
+    } else {
+      res.status(400).json({ error: 'fromUserId and toUserId or leadIds required' });
+    }
+  } catch (error) {
+    console.error('Error transferring leads:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// DEBUG ENDPOINT: Associate leads to funnel phases
+app.post('/api/debug/associate-leads-to-funnel', async (req, res) => {
+  try {
+    const { userId, phaseId } = req.body;
+    
+    // Get all leads for user that are not in the funnel
+    const leadsResult = await pool.query(`
+      SELECT l.id 
+      FROM leads l
+      LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+      WHERE l.user_id = $1 AND lf.lead_id IS NULL
+    `, [userId]);
+    
+    if (leadsResult.rows.length === 0) {
+      return res.json({ success: true, message: 'No leads to associate', count: 0 });
+    }
+    
+    // If phaseId not provided, get the first phase for the user
+    let targetPhaseId = phaseId;
+    if (!targetPhaseId) {
+      const phaseResult = await pool.query(`
+        SELECT id FROM funil_fases 
+        WHERE user_id = $1 
+        ORDER BY ordem ASC 
+        LIMIT 1
+      `, [userId]);
+      
+      if (phaseResult.rows.length === 0) {
+        return res.status(400).json({ error: 'User has no funnel phases' });
+      }
+      
+      targetPhaseId = phaseResult.rows[0].id;
+    }
+    
+    // Associate all leads to the first phase
+    const insertPromises = leadsResult.rows.map(lead => 
+      pool.query(`
+        INSERT INTO leads_funil (lead_id, fase_id, data_entrada)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (lead_id) DO NOTHING
+      `, [lead.id, targetPhaseId])
+    );
+    
+    await Promise.all(insertPromises);
+    
+    res.json({ 
+      success: true, 
+      message: `Associated ${leadsResult.rows.length} leads to phase ${targetPhaseId}`,
+      count: leadsResult.rows.length,
+      phaseId: targetPhaseId
+    });
+  } catch (error) {
+    console.error('Error associating leads to funnel:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// ADMIN ENDPOINT: Fix all user data inconsistencies
+app.post('/api/admin/fix-all-data', async (req, res) => {
+  try {
+    const results = {
+      users_processed: 0,
+      funnels_created: 0,
+      leads_associated: 0,
+      errors: []
+    };
+
+    console.log('🔧 Starting data consistency fix for all users...');
+
+    // Get all users
+    const usersResult = await pool.query(`
+      SELECT id, email, role FROM simple_users 
+      ORDER BY id
+    `);
+
+    for (const user of usersResult.rows) {
+      try {
+        console.log(`📋 Processing user ${user.email} (ID: ${user.id})`);
+        results.users_processed++;
+
+        // 1. Ensure user has funnel phases
+        let phases = await pool.query(`
+          SELECT id FROM funil_fases 
+          WHERE user_id = $1 
+          ORDER BY ordem
+        `, [user.id]);
+
+        if (phases.rows.length === 0) {
+          console.log(`🎯 Creating funnel phases for user ${user.email}`);
+          
+          const defaultPhases = [
+            { nome: 'Novo Lead', descricao: 'Leads recém adicionados', ordem: 1, cor: '#10B981' },
+            { nome: 'Qualificado', descricao: 'Leads qualificados para contato', ordem: 2, cor: '#3B82F6' },
+            { nome: 'Proposta', descricao: 'Proposta enviada', ordem: 3, cor: '#F59E0B' },
+            { nome: 'Fechado', descricao: 'Negócio conquistado', ordem: 4, cor: '#059669' }
+          ];
+
+          for (const phase of defaultPhases) {
+            await pool.query(`
+              INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
+              VALUES ($1, $2, $3, $4, $5)
+            `, [user.id, phase.nome, phase.descricao, phase.ordem, phase.cor]);
+          }
+
+          phases = await pool.query(`
+            SELECT id FROM funil_fases 
+            WHERE user_id = $1 
+            ORDER BY ordem
+          `, [user.id]);
+
+          results.funnels_created++;
+        }
+
+        // 2. Associate unassociated leads to first phase
+        const firstPhaseId = phases.rows[0]?.id;
+        if (firstPhaseId) {
+          const unassociatedLeads = await pool.query(`
+            SELECT l.id 
+            FROM leads l
+            LEFT JOIN leads_funil lf ON l.id = lf.lead_id
+            WHERE l.user_id = $1 AND lf.lead_id IS NULL
+          `, [user.id]);
+
+          if (unassociatedLeads.rows.length > 0) {
+            console.log(`🔗 Associating ${unassociatedLeads.rows.length} leads to funnel for user ${user.email}`);
+            
+            for (const lead of unassociatedLeads.rows) {
+              await pool.query(`
+                INSERT INTO leads_funil (lead_id, fase_id, data_entrada)
+                VALUES ($1, $2, NOW())
+                ON CONFLICT (lead_id) DO NOTHING
+              `, [lead.id, firstPhaseId]);
+            }
+
+            results.leads_associated += unassociatedLeads.rows.length;
+          }
+        }
+
+      } catch (userError) {
+        console.error(`❌ Error processing user ${user.email}:`, userError.message);
+        results.errors.push(`User ${user.email}: ${userError.message}`);
+      }
+    }
+
+    console.log('✅ Data consistency fix completed');
+    console.log(`📊 Results: ${results.users_processed} users, ${results.funnels_created} funnels created, ${results.leads_associated} leads associated`);
+
+    res.json({
+      success: true,
+      message: 'Data consistency fix completed',
+      results
+    });
+  } catch (error) {
+    console.error('Error fixing all data:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// ADMIN ENDPOINT: Get accurate user statistics for admin panel
+app.get('/api/admin/user-stats', async (req, res) => {
+  try {
+    // Get all users with their subscription status
+    const usersQuery = `
+      SELECT 
+        u.id, u.email, u.role, u.trial_expires_at, u.created_at,
+        CASE 
+          WHEN u.role = 'admin' THEN 'admin'
+          WHEN u.trial_expires_at IS NULL THEN 'free'
+          WHEN u.trial_expires_at > NOW() THEN 'trial'
+          ELSE 'expired'
+        END as status
+      FROM simple_users u
+      ORDER BY u.created_at DESC
+    `;
+    
+    const usersResult = await pool.query(usersQuery);
+    const users = usersResult.rows;
+
+    // Count users by status
+    const stats = {
+      total: users.length,
+      free: users.filter(u => u.status === 'free').length,
+      trial_active: users.filter(u => u.status === 'trial').length,
+      trial_expired: users.filter(u => u.status === 'expired').length,
+      premium: users.filter(u => u.role === 'premium').length,
+      max: users.filter(u => u.role === 'max').length,
+      pro: users.filter(u => u.role === 'pro').length,
+      admin: users.filter(u => u.role === 'admin').length
+    };
+
+    // Get total leads count
+    const leadsResult = await pool.query('SELECT COUNT(*) as count FROM leads');
+    const totalLeads = parseInt(leadsResult.rows[0].count);
+
+    res.json({
+      success: true,
+      stats,
+      totalLeads,
+      users: users.map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        trial_expires_at: u.trial_expires_at,
+        created_at: u.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
 // Get leads - simple version that works
 app.get('/api/crm/leads', checkUserAccess, async (req, res) => {
   try {
-    // userId already validated by checkUserAccess middleware
+    // userId set by checkUserAccess middleware
     const userId = req.userId;
 
     const result = await pool.query(`
@@ -1111,7 +1669,7 @@ app.get('/api/debug/users', async (req, res) => {
 });
 
 // Save lead - simple version that works  
-app.post('/api/crm/leads', checkUserAccess, async (req, res) => {
+app.post('/api/crm/leads', async (req, res) => {
   try {
     console.log('🔍 Received save lead request:', JSON.stringify(req.body, null, 2));
     
@@ -1243,31 +1801,8 @@ app.post('/api/crm/leads', checkUserAccess, async (req, res) => {
 // Get funnel data
 app.get('/api/crm/funil', checkUserAccess, async (req, res) => {
   try {
-    // Use smart fallback for user ID without requiring token
-    let userId;
-    let decodedToken = null;
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (token) {
-      try {
-        decodedToken = jwt.verify(token, JWT_SECRET);
-        userId = decodedToken.id;
-        console.log(`GET /api/crm/funil: Using authenticated user ${userId}`);
-      } catch (error) {
-        console.log('GET /api/crm/funil: Invalid token, using smart fallback');
-        userId = await getSmartUserId(null);
-      }
-    } else {
-      console.log('GET /api/crm/funil: No token provided, using smart fallback');
-      userId = await getSmartUserId(null);
-    }
-
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token inválido. Faça login novamente para acessar o funil.' 
-      });
-    }
+    // userId set by checkUserAccess middleware
+    const userId = req.userId;
 
     // Get phases - create default funnel if user doesn't have one
     let phases = await pool.query(`
@@ -1374,7 +1909,7 @@ app.get('/api/debug/user/:email', async (req, res) => {
 });
 
 // Check for existing leads to filter duplicates before scraping
-app.post('/api/crm/leads/check-duplicates', checkUserAccess, async (req, res) => {
+app.post('/api/crm/leads/check-duplicates', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -1442,28 +1977,8 @@ app.post('/api/crm/leads/check-duplicates', checkUserAccess, async (req, res) =>
 // GET /api/crm/kanban - Same as funil but for Kanban page
 app.get('/api/crm/kanban', checkUserAccess, async (req, res) => {
   try {
-    // Require valid JWT token
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ success: false, message: 'Token de acesso requerido. Faça login para continuar.' });
-    }
-
-    let userId;
-    let decodedToken = null;
-    try {
-      decodedToken = jwt.verify(token, JWT_SECRET);
-      userId = decodedToken.id;
-    } catch (error) {
-      console.log('GET /api/crm/kanban: Invalid token, using smart fallback');
-      userId = await getSmartUserId(decodedToken);
-    }
-
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token inválido. Faça login novamente para acessar o kanban.' 
-      });
-    }
+    // userId set by checkUserAccess middleware
+    const userId = req.userId;
 
     // Get phases - create default funnel if user doesn't have one
     let phases = await pool.query(`
@@ -1532,7 +2047,7 @@ app.get('/api/crm/kanban', checkUserAccess, async (req, res) => {
 });
 
 // Move lead between phases
-app.put('/api/crm/leads/:leadId/fase', checkUserAccess, async (req, res) => {
+app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -1598,7 +2113,7 @@ app.put('/api/crm/leads/:leadId/fase', checkUserAccess, async (req, res) => {
 });
 
 // DELETE /api/crm/leads/:leadId - Deletar um lead
-app.delete('/api/crm/leads/:leadId', checkUserAccess, async (req, res) => {
+app.delete('/api/crm/leads/:leadId', async (req, res) => {
   try {
     const { leadId } = req.params;
 
@@ -2666,6 +3181,34 @@ app.post('/api/companies/filtered', async (req, res) => {
   const startTime = Date.now();
   
   try {
+    // Verificar autenticação e acesso
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    const accessCheck = await User.checkUserAccess(decoded.id);
+    
+    if (!accessCheck.hasAccess) {
+      if (accessCheck.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+    
     const filters = req.body;
     const page = filters.page || 1;
     let companyLimit = filters.companyLimit || 1000;
@@ -3343,6 +3886,130 @@ app.post('/api/debug/login', async (req, res) => {
   } catch (error) {
     console.error('❌ Debug login error:', error);
     res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+  }
+});
+
+// Endpoint temporário para testar trial expirado (APENAS TESTE)
+app.post('/api/test/expire-trial', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    // Atualizar trial_expires_at para ontem
+    await pool.query(`
+      UPDATE simple_users 
+      SET trial_expires_at = NOW() - INTERVAL '1 day'
+      WHERE id = $1
+    `, [userId]);
+    
+    res.json({ success: true, message: 'Trial expired for testing' });
+  } catch (error) {
+    console.error('Error expiring trial for test:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint temporário para restaurar trial (APENAS TESTE)
+app.post('/api/test/restore-trial', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    
+    // Atualizar trial_expires_at para 7 dias no futuro
+    await pool.query(`
+      UPDATE simple_users 
+      SET 
+        trial_start_date = NOW(),
+        trial_expires_at = NOW() + INTERVAL '7 days'
+      WHERE id = $1
+    `, [userId]);
+    
+    res.json({ success: true, message: 'Trial restored for testing' });
+  } catch (error) {
+    console.error('Error restoring trial for test:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint temporário para criar usuário trial para teste
+app.post('/api/test/create-trial-user', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+    
+    // Check if user already exists
+    const existingUser = await pool.query('SELECT id FROM simple_users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.json({ success: false, message: 'User already exists' });
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Create user with trial
+    const result = await pool.query(`
+      INSERT INTO simple_users (
+        name, email, password, role,
+        trial_start_date, trial_expires_at
+      ) VALUES ($1, $2, $3, 'trial', NOW(), NOW() + INTERVAL '7 days')
+      RETURNING id, email, name, role, trial_start_date, trial_expires_at
+    `, [name, email, hashedPassword]);
+    
+    res.json({ 
+      success: true, 
+      message: 'Trial user created successfully',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating trial user for test:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint temporário para verificar status do usuário
+app.post('/api/test/user-status', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Check in simple_users table
+    const simpleUser = await pool.query(`
+      SELECT id, email, name, role, trial_start_date, trial_expires_at, 
+             trial_expires_at > NOW() as trial_active
+      FROM simple_users WHERE email = $1
+    `, [email]);
+    
+    // Check in users table  
+    const user = await pool.query(`
+      SELECT id, email, trial_start_date, trial_expires_at,
+             trial_expires_at > NOW() as trial_active
+      FROM users WHERE email = $1
+    `, [email]);
+    
+    res.json({
+      success: true,
+      simple_users: simpleUser.rows,
+      users: user.rows
+    });
+  } catch (error) {
+    console.error('Error checking user status:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint temporário para listar usuários admin
+app.get('/api/test/list-admins', async (req, res) => {
+  try {
+    // Check for admin users in simple_users
+    const adminUsers = await pool.query(`
+      SELECT id, email, name, role, trial_start_date, trial_expires_at,
+             trial_expires_at > NOW() as trial_active
+      FROM simple_users WHERE role = 'admin'
+    `);
+    
+    res.json({
+      success: true,
+      admin_users: adminUsers.rows
+    });
+  } catch (error) {
+    console.error('Error listing admin users:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

@@ -143,7 +143,7 @@ function SubscriptionPage() {
         <Title>🚀 Escolha seu Plano</Title>
         
         <TrialExpiredMessage>
-          ⏰ Seu período de trial de 30 dias expirou. Para continuar usando o sistema, 
+          ⏰ Seu período de trial de 7 dias expirou. Para continuar usando o sistema, 
           escolha um dos nossos planos abaixo.
         </TrialExpiredMessage>
         

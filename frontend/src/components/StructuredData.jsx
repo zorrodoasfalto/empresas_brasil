@@ -48,7 +48,7 @@ export const SoftwareApplicationSchema = () => {
       {
         "@type": "Offer",
         "name": "Plano Pro",
-        "description": "30 dias de teste gratuito + Plano Pro mensal",
+        "description": "7 dias de teste gratuito + Plano Pro mensal",
         "price": "97.00",
         "priceCurrency": "BRL",
         "priceValidUntil": "2025-12-31",

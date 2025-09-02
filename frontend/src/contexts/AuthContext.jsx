@@ -52,6 +52,21 @@ export const AuthProvider = ({ children }) => {
       
       console.log('🔍 AuthContext: State updated - token:', !!response.token, 'user:', !!response.user);
       console.log('🔍 AuthContext: isAuthenticated will be:', !!(response.user && response.token));
+      
+      // Verificar se o trial expirou
+      if (response.trialExpired && !response.hasAccess) {
+        toast.warning('Seu período de trial de 7 dias expirou. Escolha um plano para continuar!');
+        
+        // Force a small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        return { 
+          success: true, 
+          trialExpired: true, 
+          redirectToSubscription: true 
+        };
+      }
+      
       toast.success('Login realizado com sucesso!');
       
       // Force a small delay to ensure state is updated

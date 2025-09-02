@@ -7,29 +7,12 @@ const Container = styled.div`
   max-width: 1600px;
   margin: 2rem auto;
   padding: 2rem;
+  width: 100%;
+  overflow-x: visible;
   
-  /* Notebook optimization: Apply 80% zoom effect APENAS para notebooks */
-  @media (max-width: 1600px) and (min-width: 1200px) {
-    transform: scale(0.9);
-    transform-origin: top center;
-  }
+  /* Remove problematic transform scales - they were causing cut-off issues */
   
-  @media (max-width: 1440px) and (min-width: 1200px) {
-    transform: scale(0.85);
-    transform-origin: top center;
-  }
-  
-  @media (max-width: 1366px) and (min-width: 1200px) {
-    transform: scale(0.8);
-    transform-origin: top center;
-  }
-  
-  /* Tablet and smaller notebook responsiveness */
-  @media (max-width: 1199px) and (min-width: 1024px) {
-    transform: scale(0.95);
-    transform-origin: top center;
-  }
-  
+  /* Responsive padding adjustments only */
   @media (max-width: 1023px) and (min-width: 769px) {
     padding: 1.5rem;
     max-width: 100%;
@@ -93,11 +76,33 @@ const FunnelContainer = styled.div`
   gap: 1.5rem;
   padding-bottom: 1rem;
   min-height: auto;
+  width: 100%;
   flex-wrap: wrap;
   
-  @media (max-width: 1200px) {
-    overflow-x: auto;
+  /* Large screens: Show all columns side by side */
+  @media (min-width: 1400px) {
     flex-wrap: nowrap;
+    gap: 2rem;
+  }
+  
+  /* Medium screens: Keep wrapping but optimize gap */
+  @media (max-width: 1399px) and (min-width: 1000px) {
+    gap: 1.2rem;
+  }
+  
+  /* Small screens: Optimize for mobile viewing */
+  @media (max-width: 999px) {
+    gap: 1rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    justify-content: center;
+  }
+  
+  /* Very small screens: Stack vertically */
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
   }
 `;
 
@@ -106,14 +111,44 @@ const FunnelColumn = styled.div`
   border: 2px solid ${props => props.color || '#3B82F6'};
   border-radius: 12px;
   flex: 1;
-  min-width: 280px;
-  max-width: 350px;
   padding: 1.5rem;
   position: relative;
   
-  @media (max-width: 1200px) {
-    flex: none;
+  /* Large screens: 4 columns side by side */
+  @media (min-width: 1400px) {
     min-width: 300px;
+    max-width: 350px;
+  }
+  
+  /* Medium-large screens: optimize for 4 columns */
+  @media (max-width: 1399px) and (min-width: 1200px) {
+    min-width: 280px;
+    max-width: 300px;
+  }
+  
+  /* Medium screens: 2x2 grid */
+  @media (max-width: 1199px) and (min-width: 800px) {
+    flex: none;
+    min-width: 320px;
+    max-width: 400px;
+    margin-bottom: 1rem;
+  }
+  
+  /* Small screens: 2 columns */
+  @media (max-width: 799px) and (min-width: 601px) {
+    flex: none;
+    min-width: 280px;
+    max-width: 320px;
+    padding: 1rem;
+  }
+  
+  /* Very small screens: 1 column (stacked) */
+  @media (max-width: 600px) {
+    min-width: 90%;
+    max-width: 90%;
+    width: 90%;
+    padding: 1rem;
+    margin: 0 auto;
   }
 `;
 
@@ -254,13 +289,20 @@ const Kanban = () => {
   const fetchFunnelData = async () => {
     try {
       const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
       const headers = {};
       
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/crm/kanban', {
+      let url = '/api/crm/kanban-direct';
+      if (userData) {
+        const user = JSON.parse(userData);
+        url += `?email=${encodeURIComponent(user.email)}`;
+      }
+      
+      const response = await fetch(url, {
         headers
       });
       

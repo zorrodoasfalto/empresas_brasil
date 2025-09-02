@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 
 const SEOHead = ({ 
   title = "Data Atlas - 66 Milhões de Empresas | Prospecção e CRM Avançado",
-  description = "Acesse 66+ milhões de empresas brasileiras, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 30 dias. Performance garantida.",
+  description = "Acesse 66+ milhões de empresas brasileiras, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 7 dias. Performance garantida.",
   keywords = "empresas brasil, base de dados empresas, prospecção leads, crm integrado, dados cnpj, linkedin scraper, instagram scraper, google maps scraper, inteligência comercial, leads qualificados, vendas b2b, dados empresariais, cnpj consulta, empresas ativas, receita federal, dados abertos, prospecção digital, automação vendas, funil de vendas, kanban leads",
   url = "https://dataatlas.com.br/",
   image = "https://dataatlas.com.br/og-image.jpg",
@@ -45,7 +45,7 @@ const SEOHead = ({
 export const LandingPageSEO = () => (
   <SEOHead 
     title="Data Atlas - 66 Milhões de Empresas | Prospecção e CRM Avançado"
-    description="Acesse 66+ milhões de empresas brasileiras, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 30 dias. Performance garantida."
+    description="Acesse 66+ milhões de empresas brasileiras, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 7 dias. Performance garantida."
     keywords="empresas brasil, base de dados empresas, prospecção leads, crm integrado, dados cnpj, linkedin scraper, instagram scraper, google maps scraper, inteligência comercial, leads qualificados, vendas b2b, dados empresariais, cnpj consulta, empresas ativas, receita federal, dados abertos, prospecção digital, automação vendas, funil de vendas, kanban leads"
     url="https://dataatlas.com.br/"
   />
@@ -62,9 +62,9 @@ export const LoginSEO = () => (
 
 export const RegisterSEO = () => (
   <SEOHead 
-    title="Cadastro Grátis - Data Atlas | Teste 30 Dias"
-    description="Cadastre-se grátis no Data Atlas. Teste por 30 dias nossa base com 66+ milhões de empresas brasileiras, prospecção multicanal e CRM integrado."
-    keywords="cadastro grátis data atlas, registro empresas brasil, teste gratuito 30 dias, criar conta data atlas, trial gratuito prospecção"
+    title="Cadastro Grátis - Data Atlas | Teste 7 Dias"
+    description="Cadastre-se grátis no Data Atlas. Teste por 7 dias nossa base com 66+ milhões de empresas brasileiras, prospecção multicanal e CRM integrado."
+    keywords="cadastro grátis data atlas, registro empresas brasil, teste gratuito 7 dias, criar conta data atlas, trial gratuito prospecção"
     url="https://dataatlas.com.br/register"
   />
 );

@@ -1229,7 +1229,7 @@ const LandingPage = () => {
     document.title = "Data Atlas — Inteligência Empresarial (66M+)";
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.content = "Acesso instantâneo a 66+ milhões de empresas, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 30 dias.";
+      metaDescription.content = "Acesso instantâneo a 66+ milhões de empresas, prospecção multicanal (Instagram, LinkedIn, Google Maps) e CRM integrado. Teste grátis por 7 dias.";
     }
   }, []);
 
@@ -1367,9 +1367,9 @@ const LandingPage = () => {
                   <button 
                     className="primary-cta"
                     onClick={handleStartTrial}
-                    aria-label="Iniciar teste gratuito de 30 dias"
+                    aria-label="Iniciar teste gratuito de 7 dias"
                   >
-                    Teste grátis por 30 dias
+                    Teste grátis por 7 dias
                   </button>
                   <button 
                     className="secondary-cta"
@@ -1531,10 +1531,10 @@ const LandingPage = () => {
                 </p>
                 <ul className="feature-list">
                   <li>Gestão centralizada de leads</li>
-                  <li>Funil de vendas customizável</li>
-                  <li>Sistema Kanban visual</li>
-                  <li>Histórico de interações</li>
-                  <li>Relatórios de conversão</li>
+                  <li>Histórico completo de interações</li>
+                  <li>Segmentação avançada de prospects</li>
+                  <li>Relatórios de performance</li>
+                  <li>Integração com todas as ferramentas</li>
                 </ul>
                 <a href="/leads" className="cta-button">
                   Acessar CRM 📊
@@ -1886,7 +1886,7 @@ const LandingPage = () => {
 
         <CTASection id="trial">
           <div className="cta-content">
-            <h2>Ative seu trial de 30 dias</h2>
+            <h2>Ative seu trial de 7 dias</h2>
             <p>
               <strong>Data Atlas</strong> — A maior plataforma de inteligência empresarial do Brasil. <strong>66 milhões</strong> de empresas na palma da sua mão.
             </p>

@@ -25,7 +25,7 @@ class User {
           email VARCHAR(255) UNIQUE NOT NULL,
           password VARCHAR(255) NOT NULL,
           trial_start_date TIMESTAMP DEFAULT NOW(),
-          trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
           subscription_active BOOLEAN DEFAULT FALSE,
           subscription_expires_at TIMESTAMP NULL,
           created_at TIMESTAMP DEFAULT NOW(),
@@ -42,7 +42,7 @@ class User {
         await this.pool.query(`
           ALTER TABLE users 
           ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
-          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
           ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
           ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
         `);
@@ -51,27 +51,27 @@ class User {
         await this.pool.query(`
           ALTER TABLE simple_users 
           ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
-          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '30 days',
+          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
           ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
           ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
         `);
         
-        // Update existing users to have 30 day trial from their creation date
+        // Update existing users to have 7 day trial from today
         await this.pool.query(`
           UPDATE users 
           SET 
-            trial_start_date = COALESCE(trial_start_date, created_at),
-            trial_expires_at = NOW() + INTERVAL '30 days'
+            trial_start_date = NOW(),
+            trial_expires_at = NOW() + INTERVAL '7 days'
         `);
         
         await this.pool.query(`
           UPDATE simple_users 
           SET 
-            trial_start_date = COALESCE(trial_start_date, created_at),
-            trial_expires_at = NOW() + INTERVAL '30 days'
+            trial_start_date = NOW(),
+            trial_expires_at = NOW() + INTERVAL '7 days'
         `);
         
-        console.log('✅ Trial fields added/updated for existing users in BOTH tables');
+        console.log('✅ Trial updated to 7 days from today for existing users in BOTH tables');
       } catch (error) {
         console.log('ℹ️ Trial fields already exist or error adding them:', error.message);
       }
