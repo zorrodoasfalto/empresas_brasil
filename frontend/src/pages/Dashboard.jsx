@@ -603,6 +603,55 @@ const AdminButton = styled.button`
   }
 `;
 
+const CreditsIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(0, 255, 170, 0.1), rgba(0, 136, 204, 0.1));
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  color: #00ffaa;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 255, 170, 0.1);
+  
+  @media (max-width: 768px) {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.7rem;
+    .credits-label {
+      display: none;
+    }
+  }
+
+  .credits-icon {
+    font-size: 1.1rem;
+    animation: pulse 2s infinite;
+  }
+
+  .credits-amount {
+    font-weight: 700;
+    ${props => props.lowCredits && 'color: #ff4757;'}
+  }
+
+  .credits-label {
+    opacity: 0.8;
+    font-size: 0.8rem;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+`;
+
 const Content = styled.div`
   padding: 2rem;
   max-width: 1400px;
@@ -1264,6 +1313,13 @@ const Dashboard = () => {
     naturezaJuridica: []
   });
 
+  // Estado para créditos
+  const [credits, setCredits] = useState({
+    amount: 0,
+    plan: 'trial',
+    loading: false
+  });
+
   // Estados para configurações
   const [sidebarOpen] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
@@ -1311,6 +1367,66 @@ const Dashboard = () => {
   // Estados para admin de saques
   const [adminWithdrawals, setAdminWithdrawals] = useState([]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
+
+  // Funções para sistema de créditos
+  const loadCredits = async () => {
+    try {
+      setCredits(prev => ({ ...prev, loading: true }));
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('/api/credits', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCredits({
+          amount: data.credits,
+          plan: data.plan,
+          loading: false
+        });
+      } else {
+        console.error('Erro ao carregar créditos');
+        setCredits(prev => ({ ...prev, loading: false }));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar créditos:', error);
+      setCredits(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const debitCredits = async (searchType, creditsToDebit, searchQuery = '') => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('/api/credits/debit', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          searchType,
+          creditsToDebit,
+          searchQuery: JSON.stringify(searchQuery)
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setCredits(prev => ({ ...prev, amount: data.remainingCredits }));
+        return { success: true, remainingCredits: data.remainingCredits };
+      } else {
+        return { success: false, message: data.message, currentCredits: data.currentCredits };
+      }
+    } catch (error) {
+      console.error('Erro ao debitar créditos:', error);
+      return { success: false, message: 'Erro interno' };
+    }
+  };
 
   // Funções para sistema de afiliados
   const loadAffiliateData = async () => {
@@ -1512,6 +1628,13 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
+  // Carregar créditos quando user estiver disponível
+  useEffect(() => {
+    if (user) {
+      loadCredits();
+    }
+  }, [user]);
+
   // Debug: Monitor adminStats changes
   useEffect(() => {
     console.log('🔍 adminStats changed:', adminStats);
@@ -1651,6 +1774,12 @@ const Dashboard = () => {
   // Simplified search - no complex counting needed
 
   const handleSearch = async (page = 1) => {
+    // Verificar se tem créditos suficientes (1 crédito por busca de empresa)
+    if (credits.amount < 1) {
+      toast.error('Créditos insuficientes! Você precisa de pelo menos 1 crédito para fazer essa busca.');
+      return;
+    }
+
     // Validate at least one filter is selected
     const hasFilter = Object.values(filters).some(value => value && value.trim() !== '');
     if (!hasFilter) {
@@ -1722,6 +1851,12 @@ const Dashboard = () => {
         
         if (page === 1) {
           setEmpresas(data.data);
+          
+          // Debitar 1 crédito apenas na primeira busca
+          const debitResult = await debitCredits('empresas_brasil', 1, searchData);
+          if (debitResult.success) {
+            console.log(`💎 1 crédito debitado. Restam: ${debitResult.remainingCredits}`);
+          }
         } else {
           setEmpresas(prev => [...prev, ...data.data]);
         }
@@ -2282,6 +2417,11 @@ const Dashboard = () => {
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
+            <CreditsIndicator lowCredits={credits.amount < 10}>
+              <span className="credits-icon">💎</span>
+              <span className="credits-amount">{credits.loading ? '...' : credits.amount}</span>
+              <span className="credits-label">créditos</span>
+            </CreditsIndicator>
             {(user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com') && (
               <AdminButton onClick={() => setActiveModal('admin')}>👑</AdminButton>
             )}

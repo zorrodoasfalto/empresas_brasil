@@ -43,7 +43,7 @@ function cleanNomeFantasia(nomeFantasia) {
 
 const app = express();
 const PORT = process.env.PORT || 6000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
+const { JWT_SECRET } = require('./config/jwt');
 
 // Middleware para verificar acesso do usuário (trial ou assinatura ativa)
 async function checkUserAccess(req, res, next) {
@@ -431,6 +431,32 @@ async function initDB() {
       )
     `);
 
+    // Credits table - stores user credits for searches
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_credits (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+        credits INTEGER DEFAULT 0,
+        plan VARCHAR(20) DEFAULT 'trial', -- trial, pro, premium, max, admin
+        last_reset TIMESTAMP DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id)
+      )
+    `);
+
+    // Credit usage log table - tracks search usage
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS credit_usage_log (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+        search_type VARCHAR(50) NOT NULL, -- google_maps, instagram, linkedin, empresas_brasil
+        credits_used INTEGER NOT NULL,
+        search_query TEXT,
+        timestamp TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
     // Insert default funnel phases for new users
     await pool.query(`
       INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
@@ -626,6 +652,126 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
+// CREDITS SYSTEM ENDPOINTS
+// Get user credits
+app.get('/api/credits', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+
+    // Get or create user credits
+    let creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [userId]);
+
+    if (creditsResult.rows.length === 0) {
+      // Create credits record with default values based on user role
+      const userResult = await pool.query(`
+        SELECT role FROM simple_users WHERE id = $1
+      `, [userId]);
+
+      let initialCredits = 5; // trial default
+      const userRole = userResult.rows[0]?.role || 'trial';
+      
+      if (userRole === 'admin') initialCredits = 10000;
+      else if (userRole === 'max') initialCredits = 300;
+      else if (userRole === 'premium') initialCredits = 150;
+      else if (userRole === 'pro') initialCredits = 50;
+
+      await pool.query(`
+        INSERT INTO user_credits (user_id, credits, plan)
+        VALUES ($1, $2, $3)
+      `, [userId, initialCredits, userRole]);
+
+      creditsResult = await pool.query(`
+        SELECT * FROM user_credits WHERE user_id = $1
+      `, [userId]);
+    }
+
+    const credits = creditsResult.rows[0];
+    res.json({
+      success: true,
+      credits: credits.credits,
+      plan: credits.plan,
+      lastReset: credits.last_reset
+    });
+
+  } catch (error) {
+    console.error('Get credits error:', error);
+    res.status(500).json({ success: false, message: 'Erro ao consultar créditos' });
+  }
+});
+
+// Debit credits from user account
+app.post('/api/credits/debit', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+    const { searchType, creditsToDebit, searchQuery } = req.body;
+
+    // Validate input
+    if (!searchType || !creditsToDebit || creditsToDebit <= 0) {
+      return res.status(400).json({ success: false, message: 'Dados inválidos' });
+    }
+
+    // Get current credits
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [userId]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+
+    // Check if user has enough credits
+    if (currentCredits < creditsToDebit) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Créditos insuficientes',
+        currentCredits,
+        requiredCredits: creditsToDebit
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - creditsToDebit;
+    await pool.query(`
+      UPDATE user_credits 
+      SET credits = $1, updated_at = NOW() 
+      WHERE user_id = $2
+    `, [newCredits, userId]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query)
+      VALUES ($1, $2, $3, $4)
+    `, [userId, searchType, creditsToDebit, searchQuery]);
+
+    res.json({
+      success: true,
+      message: `${creditsToDebit} créditos debitados`,
+      remainingCredits: newCredits,
+      searchType
+    });
+
+  } catch (error) {
+    console.error('Debit credits error:', error);
+    res.status(500).json({ success: false, message: 'Erro ao debitar créditos' });
+  }
+});
+
 // Helper function to analyze successful Apify run
 app.get('/api/instagram/analyze-run/:runId', checkUserAccess, async (req, res) => {
   try {
@@ -683,6 +829,79 @@ app.get('/api/instagram/analyze-run/:runId', checkUserAccess, async (req, res) =
 // Instagram email scraping usando Apify - OTIMIZADO para 25s/21 resultados
 app.post('/api/instagram/scrape', async (req, res) => {
   try {
+    // Verificar autenticação e acesso
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    console.log('🔍 Checking user access for Instagram search, user ID:', decoded.id);
+    let accessCheck;
+    try {
+      accessCheck = await User.checkUserAccess(decoded.id);
+      console.log('🔍 Access check result:', accessCheck);
+    } catch (error) {
+      console.error('❌ Error during access check:', error);
+      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
+    }
+    
+    if (!accessCheck || !accessCheck.hasAccess) {
+      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
+      if (accessCheck?.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+    
+    console.log('✅ Access granted, proceeding to credit check');
+    
+    // Check and debit credits for Instagram search (1 credit per search)
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [decoded.id]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+    const requiredCredits = 1; // Instagram costs 1 credit
+
+    if (currentCredits < requiredCredits) {
+      return res.status(400).json({ 
+        error: 'Créditos insuficientes para realizar a busca',
+        currentCredits,
+        requiredCredits
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, 'instagram', requiredCredits, JSON.stringify(req.body)]);
+
+    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
+    
     const { keyword } = req.body;
     
     if (!keyword) {
@@ -2174,8 +2393,97 @@ app.get('/api/apify/actors', async (req, res) => {
 // Run an Apify actor using official client
 app.post('/api/apify/run/:actorId', async (req, res) => {
   try {
+    // Verificar autenticação e acesso
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    console.log('🔍 Checking user access for Apify run, user ID:', decoded.id);
+    let accessCheck;
+    try {
+      accessCheck = await User.checkUserAccess(decoded.id);
+      console.log('🔍 Access check result:', accessCheck);
+    } catch (error) {
+      console.error('❌ Error during access check:', error);
+      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
+    }
+    
+    if (!accessCheck || !accessCheck.hasAccess) {
+      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
+      if (accessCheck?.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+    
+    console.log('✅ Access granted, proceeding to credit check');
+    
     const { actorId } = req.params;
     let inputData = req.body;
+    
+    // Determine search type and required credits based on actorId
+    let searchType = 'google_maps'; // default
+    let requiredCredits = 1; // default for google maps
+    
+    if (actorId.includes('linkedin') || actorId === 'ghost-genius/linkedin-search') {
+      searchType = 'linkedin';
+      requiredCredits = 5; // LinkedIn costs 5 credits
+    } else if (actorId.includes('instagram')) {
+      searchType = 'instagram';
+      requiredCredits = 1; // Instagram costs 1 credit
+    } else if (actorId.includes('google') || actorId.includes('places') || actorId.includes('maps')) {
+      searchType = 'google_maps';
+      requiredCredits = 1; // Google Maps costs 1 credit
+    }
+    
+    console.log(`🎯 Search type: ${searchType}, Credits required: ${requiredCredits}`);
+    
+    // Check and debit credits
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [decoded.id]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+
+    if (currentCredits < requiredCredits) {
+      return res.status(400).json({ 
+        error: 'Créditos insuficientes para realizar a busca',
+        currentCredits,
+        requiredCredits
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, searchType, requiredCredits, JSON.stringify({ actorId, ...inputData })]);
+
+    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
     
     // Optimize input for compass/crawler-google-places
     if (actorId === 'compass~crawler-google-places' || actorId === 'nwua9Gu5YrADL7ZDj') {
@@ -2436,7 +2744,80 @@ function updateProgress(sessionId, data) {
 // LinkedIn search using Ghost Genius API (multiple pages)
 app.post('/api/linkedin/search-bulk', async (req, res) => {
   try {
+    // Verificar autenticação e acesso
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    console.log('🔍 Checking user access for LinkedIn bulk search, user ID:', decoded.id);
+    let accessCheck;
+    try {
+      accessCheck = await User.checkUserAccess(decoded.id);
+      console.log('🔍 Access check result:', accessCheck);
+    } catch (error) {
+      console.error('❌ Error during access check:', error);
+      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
+    }
+    
+    if (!accessCheck || !accessCheck.hasAccess) {
+      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
+      if (accessCheck?.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+    
+    console.log('✅ Access granted, proceeding to credit check');
+    
     const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
+    
+    // Check and debit credits for LinkedIn search (5 credits per search)
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [decoded.id]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+    const requiredCredits = 5; // LinkedIn costs 5 credits
+
+    if (currentCredits < requiredCredits) {
+      return res.status(400).json({ 
+        error: 'Créditos insuficientes para realizar a busca',
+        currentCredits,
+        requiredCredits
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
+
+    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
     
     // Initialize progress tracking
     if (sessionId) {
@@ -2683,7 +3064,80 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
 // LinkedIn search using Ghost Genius API (single page)
 app.post('/api/linkedin/search', async (req, res) => {
   try {
+    // Verificar autenticação e acesso
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Token de acesso requerido' });
+    }
+    
+    const token = authHeader.substring(7);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    // Verificar acesso do usuário (trial ou assinatura)
+    console.log('🔍 Checking user access for LinkedIn search, user ID:', decoded.id);
+    let accessCheck;
+    try {
+      accessCheck = await User.checkUserAccess(decoded.id);
+      console.log('🔍 Access check result:', accessCheck);
+    } catch (error) {
+      console.error('❌ Error during access check:', error);
+      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
+    }
+    
+    if (!accessCheck || !accessCheck.hasAccess) {
+      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
+      if (accessCheck?.reason === 'trial_expired') {
+        return res.status(403).json({ 
+          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
+          needsSubscription: true,
+          trialExpired: true
+        });
+      }
+      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
+    }
+    
+    console.log('✅ Access granted, proceeding to credit check');
+    
     const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
+    
+    // Check and debit credits for LinkedIn search (5 credits per search)
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [decoded.id]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+    const requiredCredits = 5; // LinkedIn costs 5 credits
+
+    if (currentCredits < requiredCredits) {
+      return res.status(400).json({ 
+        error: 'Créditos insuficientes para realizar a busca',
+        currentCredits,
+        requiredCredits
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
+
+    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
     
     console.log('🔍 LinkedIn search with Ghost Genius:', { keywords, location, industries, company_size, page });
     
@@ -3196,10 +3650,19 @@ app.post('/api/companies/filtered', async (req, res) => {
     }
     
     // Verificar acesso do usuário (trial ou assinatura)
-    const accessCheck = await User.checkUserAccess(decoded.id);
+    console.log('🔍 Checking user access for user ID:', decoded.id);
+    let accessCheck;
+    try {
+      accessCheck = await User.checkUserAccess(decoded.id);
+      console.log('🔍 Access check result:', accessCheck);
+    } catch (error) {
+      console.error('❌ Error during access check:', error);
+      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
+    }
     
-    if (!accessCheck.hasAccess) {
-      if (accessCheck.reason === 'trial_expired') {
+    if (!accessCheck || !accessCheck.hasAccess) {
+      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
+      if (accessCheck?.reason === 'trial_expired') {
         return res.status(403).json({ 
           error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
           needsSubscription: true,
@@ -3209,6 +3672,43 @@ app.post('/api/companies/filtered', async (req, res) => {
       return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
     }
     
+    console.log('✅ Access granted, proceeding to credit check');
+    
+    
+    // Check and debit credits for company search (1 credit per search)
+    const creditsResult = await pool.query(`
+      SELECT * FROM user_credits WHERE user_id = $1
+    `, [decoded.id]);
+
+    if (creditsResult.rows.length === 0) {
+      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+    }
+
+    const currentCredits = creditsResult.rows[0].credits;
+    const requiredCredits = 1; // Empresas Brasil costs 1 credit
+
+    if (currentCredits < requiredCredits) {
+      return res.status(400).json({ 
+        error: 'Créditos insuficientes para realizar a busca',
+        currentCredits,
+        requiredCredits
+      });
+    }
+
+    // Debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, 'empresas_brasil', requiredCredits, JSON.stringify(req.body)]);
+
+    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
+
     const filters = req.body;
     const page = filters.page || 1;
     let companyLimit = filters.companyLimit || 1000;
@@ -3475,8 +3975,8 @@ app.post('/api/companies/filtered', async (req, res) => {
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);
       
-      // Optimized socios query with all fields - performance focused
-      const sociosQuery = companyLimit >= 25000 ? `
+      // ALWAYS use the simple fast query - ROW_NUMBER causes timeout even for 1k companies
+      const sociosQuery = `
         SELECT 
           cnpj_basico,
           identificador_de_socio,
@@ -3495,36 +3995,11 @@ app.post('/api/companies/filtered', async (req, res) => {
           AND nome_socio != ''
         ORDER BY cnpj_basico, identificador_de_socio
         LIMIT $2
-      ` : `
-        SELECT DISTINCT ON (socios.cnpj_basico, socios.identificador_de_socio)
-          socios.cnpj_basico,
-          socios.identificador_de_socio,
-          socios.nome_socio,
-          socios.cnpj_cpf_socio,
-          socios.qualificacao_socio,
-          socios.data_entrada_sociedade,
-          socios.pais,
-          socios.representante_legal,
-          socios.nome_representante,
-          socios.qualificacao_representante_legal,
-          socios.faixa_etaria
-        FROM (
-          SELECT *, ROW_NUMBER() OVER (PARTITION BY cnpj_basico ORDER BY identificador_de_socio) as rn
-          FROM socios
-          WHERE cnpj_basico = ANY($1)
-          AND nome_socio IS NOT NULL
-          AND nome_socio != ''
-        ) socios
-        WHERE rn <= $2
-        ORDER BY socios.cnpj_basico, socios.identificador_de_socio
-        LIMIT $3
       `;
       
       try {
-        // Different parameters for optimized vs full query
-        const queryParams = companyLimit >= 50000 
-          ? [cnpjBasicos, totalSociosLimit] // Simple query: only array and limit
-          : [cnpjBasicos, maxSociosPerCompany, totalSociosLimit]; // Full query: array, per-company limit, total limit
+        // Simple query always uses 2 parameters: array and total limit
+        const queryParams = [cnpjBasicos, totalSociosLimit];
           
         const sociosResult = await pool.query(sociosQuery, queryParams);
         console.log(`📊 Found ${sociosResult.rows.length} socios records`);
@@ -3535,19 +4010,8 @@ app.post('/api/companies/filtered', async (req, res) => {
             sociosData[socio.cnpj_basico] = [];
           }
           
-          // For 50k+ queries (simplified structure) vs normal queries (full structure)
-          const socioData = companyLimit >= 50000 ? {
-            identificador: socio.identificador_de_socio || 1,
-            nome: socio.nome_socio,
-            cpf_cnpj: null, // Not available in fast query
-            qualificacao: socio.qualificacao_socio,
-            data_entrada: null, // Not available in fast query
-            pais: null, // Not available in fast query
-            representante_legal_cpf: null,
-            representante_legal_nome: null,
-            representante_legal_qualificacao: null,
-            faixa_etaria: null
-          } : {
+          // Always use full structure since we're always using the complete query
+          const socioData = {
             identificador: socio.identificador_de_socio,
             nome: socio.nome_socio,
             cpf_cnpj: socio.cnpj_cpf_socio,
@@ -4024,21 +4488,11 @@ app.get('/api/admin/stats', async (req, res) => {
     // Get subscription stats based on plan types
     const subscriptionStats = await pool.query(`
       SELECT 
-        CASE 
-          WHEN subscription_plan = 'pro' THEN 'pro'
-          WHEN subscription_plan = 'premium' THEN 'premium'
-          WHEN subscription_plan = 'max' THEN 'max'
-          ELSE 'free'
-        END as plan_type,
+        COALESCE(uc.plan, 'trial') as plan_type,
         COUNT(*) as count
-      FROM simple_users 
-      GROUP BY 
-        CASE 
-          WHEN subscription_plan = 'pro' THEN 'pro'
-          WHEN subscription_plan = 'premium' THEN 'premium'
-          WHEN subscription_plan = 'max' THEN 'max'
-          ELSE 'free'
-        END
+      FROM simple_users su
+      LEFT JOIN user_credits uc ON su.id = uc.user_id
+      GROUP BY COALESCE(uc.plan, 'trial')
     `);
     
     // Get trial stats

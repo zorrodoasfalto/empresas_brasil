@@ -9,7 +9,8 @@ import {
   ArrowLeft, 
   CreditCard,
   Shield,
-  Zap
+  Zap,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/images/logo.png';
@@ -71,6 +72,27 @@ const BackButton = styled.button`
   &:hover {
     box-shadow: 0 10px 25px rgba(54, 233, 97, 0.4);
     transform: translateY(-2px);
+  }
+`;
+
+const AffiliateButton = styled.button`
+  background: rgba(34, 197, 94, 0.1);
+  color: #059669;
+  border: 1px solid #059669;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  
+  &:hover {
+    background: #059669;
+    color: white;
+    transform: translateY(-1px);
   }
 `;
 
@@ -375,6 +397,7 @@ const PLANS = {
   pro: {
     name: 'Plano Pro',
     price: 97.00,
+    credits: 50,
     features: [
       'Acesso a 66 milhões de empresas',
       'Consultas de até 10.000 empresas',
@@ -387,6 +410,7 @@ const PLANS = {
   premium: {
     name: 'Plano Premium',
     price: 147.00,
+    credits: 150,
     features: [
       'Acesso a 66 milhões de empresas',
       'Consultas de até 25.000 empresas',
@@ -400,6 +424,7 @@ const PLANS = {
   max: {
     name: 'Plano Max',
     price: 247.00,
+    credits: 300,
     features: [
       'Acesso a 66 milhões de empresas',
       'Consultas ilimitadas até 50k por vez',
@@ -531,6 +556,25 @@ const Checkout = () => {
                 
                 <PriceSubtext>por mês</PriceSubtext>
                 
+                <div style={{ 
+                  background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', 
+                  border: '2px solid #3b82f6', 
+                  borderRadius: '12px', 
+                  padding: '1rem', 
+                  margin: '1rem 0', 
+                  textAlign: 'center' 
+                }}>
+                  <div style={{ color: '#1e40af', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                    💳 {plan.credits} créditos mensais
+                  </div>
+                  <div style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                    Renovados automaticamente todo mês
+                  </div>
+                  <div style={{ color: '#475569', fontSize: '0.8rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    Empresas Brasil: 1 crédito | Maps: 1 crédito | Instagram: 1 crédito | LinkedIn: 5 créditos
+                  </div>
+                </div>
+                
                 <FeatureList>
                   {plan.features.map((feature, index) => (
                     <li key={index}>{feature}</li>
@@ -579,6 +623,14 @@ const Checkout = () => {
               <Zap size={16} />
               Ativação imediata após confirmação do pagamento
             </SecurityBadge>
+          </div>
+
+          {/* Small affiliate button */}
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <AffiliateButton onClick={() => navigate('/dashboard')}>
+              <Settings size={16} />
+              Configurar Afiliado
+            </AffiliateButton>
           </div>
         </NewCheckoutLayout>
       </Content>
