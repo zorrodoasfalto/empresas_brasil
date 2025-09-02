@@ -567,11 +567,14 @@ const Checkout = () => {
                   <div style={{ color: '#1e40af', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
                     💳 {plan.credits} créditos mensais
                   </div>
-                  <div style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
+                  <div style={{ color: '#16a34a', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '600' }}>
+                    🔄 Créditos se acumulam mês a mês se não utilizados!
+                  </div>
+                  <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                     Renovados automaticamente todo mês
                   </div>
                   <div style={{ color: '#475569', fontSize: '0.8rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    Empresas Brasil: 1 crédito | Maps: 1 crédito | Instagram: 1 crédito | LinkedIn: 5 créditos
+                    Empresas Brasil: 1 crédito | Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
                   </div>
                 </div>
                 
