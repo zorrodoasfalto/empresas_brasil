@@ -3105,7 +3105,7 @@ app.post('/api/linkedin/search', async (req, res) => {
     
     const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
     
-    // Check and debit credits for LinkedIn search (5 credits per search)
+    // Check credits for LinkedIn search (5 credits per search) - BUT DON'T DEBIT YET
     const creditsResult = await pool.query(`
       SELECT * FROM user_credits WHERE user_id = $1
     `, [decoded.id]);
@@ -3124,20 +3124,6 @@ app.post('/api/linkedin/search', async (req, res) => {
         requiredCredits
       });
     }
-
-    // Debit credits
-    const newCredits = currentCredits - requiredCredits;
-    await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
-    `, [newCredits, decoded.id]);
-
-    // Log the usage
-    await pool.query(`
-      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
-    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
-
-    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
     
     console.log('🔍 LinkedIn search with Ghost Genius:', { keywords, location, industries, company_size, page });
     
@@ -3260,6 +3246,20 @@ app.post('/api/linkedin/search', async (req, res) => {
       
       console.log(`✅ Enhanced ${detailedResults.length} companies with detailed info`);
     }
+
+    // ✅ API SUCCESS - Now debit credits
+    const newCredits = currentCredits - requiredCredits;
+    await pool.query(`
+      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+    `, [newCredits, decoded.id]);
+
+    // Log the usage
+    await pool.query(`
+      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
+      VALUES ($1, $2, $3, $4, NOW())
+    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
+
+    console.log(`💳 SUCCESS! Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
 
     res.json({
       success: true,
