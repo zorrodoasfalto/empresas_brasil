@@ -443,7 +443,6 @@ const PLANS = {
     credits: 50,
     features: [
       'Acesso a 66 milhões de empresas',
-      'Consultas de até 10.000 empresas',
       'Exportação profissional Excel/CSV',
       'Dados completos + sócios',
       'Filtros avançados',
@@ -456,7 +455,6 @@ const PLANS = {
     credits: 150,
     features: [
       'Acesso a 66 milhões de empresas',
-      'Consultas de até 25.000 empresas',
       'Exportação profissional Excel/CSV',
       'Dados completos + sócios',
       'Todos os 20 segmentos',
@@ -470,12 +468,10 @@ const PLANS = {
     credits: 300,
     features: [
       'Acesso a 66 milhões de empresas',
-      'Consultas ilimitadas até 50k por vez',
       'Exportação profissional Excel/CSV',
       'Dados completos + sócios',
       'Todos os 20 segmentos',
       'Filtros avançados',
-      'Performance otimizada',
       'Suporte técnico prioritário'
     ]
   }
