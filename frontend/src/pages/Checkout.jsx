@@ -89,6 +89,15 @@ const AffiliateButton = styled.button`
   align-items: center;
   gap: 0.4rem;
   
+  @media (max-width: 1200px) {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    
+    span {
+      display: none;
+    }
+  }
+  
   &:hover {
     background: #059669;
     color: white;
@@ -97,14 +106,18 @@ const AffiliateButton = styled.button`
 `;
 
 const Content = styled.main`
-  padding: 4rem 1rem;
+  padding: 2rem 1rem;
   background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
   
   @media (min-width: 640px) {
-    padding: 4rem 1.5rem;
+    padding: 2.5rem 1.5rem;
   }
   
   @media (min-width: 1024px) {
+    padding: 3rem 2rem;
+  }
+  
+  @media (min-width: 1400px) {
     padding: 4rem 2rem;
   }
   
@@ -145,9 +158,20 @@ const PlanSelector = styled.div`
   gap: 1.5rem;
   margin-bottom: 2rem;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  @media (max-width: 1400px) {
     gap: 1rem;
+  }
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 600px;
+    margin: 0 auto 2rem auto;
+  }
+  
+  @media (max-width: 768px) {
+    gap: 1rem;
+    max-width: 400px;
   }
 `;
 
@@ -161,6 +185,15 @@ const SelectablePlanCard = styled.div`
   position: relative;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  
+  @media (max-width: 1400px) {
+    padding: 1.25rem;
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
   
   &:hover {
     border-color: #36e961;
@@ -263,6 +296,14 @@ const PriceDisplay = styled.div`
   margin: 1rem 0;
   line-height: 1;
   text-align: center;
+  
+  @media (max-width: 1400px) {
+    font-size: 2.5rem;
+  }
+  
+  @media (max-width: 1200px) {
+    font-size: 2.8rem;
+  }
 `;
 
 const PriceSubtext = styled.div`
@@ -509,7 +550,7 @@ const Checkout = () => {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <AffiliateButton onClick={() => navigate('/settings?tab=affiliate')}>
                 <Settings size={16} />
-                Configurar Afiliado
+                <span>Configurar Afiliado</span>
               </AffiliateButton>
               <BackButton onClick={() => navigate(-1)}>
                 <ArrowLeft size={18} />
