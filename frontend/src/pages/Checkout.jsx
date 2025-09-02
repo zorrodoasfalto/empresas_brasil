@@ -106,23 +106,23 @@ const AffiliateButton = styled.button`
 `;
 
 const Content = styled.main`
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
   
   @media (min-width: 640px) {
-    padding: 2.5rem 1.5rem;
+    padding: 2rem 1.5rem;
   }
   
   @media (min-width: 1024px) {
+    padding: 2.5rem 2rem;
+  }
+  
+  @media (min-width: 1600px) {
     padding: 3rem 2rem;
   }
   
-  @media (min-width: 1400px) {
-    padding: 4rem 2rem;
-  }
-  
   .section-content {
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 `;
@@ -155,22 +155,19 @@ const PlansGrid = styled.div`
 const PlanSelector = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  
-  @media (max-width: 1400px) {
-    gap: 1rem;
-  }
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto 1.5rem auto;
   
   @media (max-width: 1200px) {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
-    max-width: 600px;
-    margin: 0 auto 2rem auto;
+    gap: 1rem;
+    max-width: 500px;
   }
   
   @media (max-width: 768px) {
-    gap: 1rem;
+    gap: 0.8rem;
     max-width: 400px;
   }
 `;
@@ -178,32 +175,32 @@ const PlanSelector = styled.div`
 const SelectablePlanCard = styled.div`
   background: #ffffff;
   border: 2px solid ${props => props.selected ? '#36e961' : '#e5e7eb'};
-  border-radius: 16px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 1.25rem;
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  
-  @media (max-width: 1400px) {
-    padding: 1.25rem;
-  }
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
   
   @media (max-width: 1200px) {
-    padding: 1.5rem;
-    border-radius: 12px;
+    padding: 1rem;
+    border-radius: 10px;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 1.25rem;
   }
   
   &:hover {
     border-color: #36e961;
-    transform: translateY(-2px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
   
   ${props => props.selected && `
     background: rgba(59, 130, 246, 0.1);
-    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 6px 25px rgba(59, 130, 246, 0.3);
   `}
   
   &::before {
@@ -278,31 +275,35 @@ const PlanCard = styled.div`
 `;
 
 const PlanTitle = styled.h2`
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #0a3042;
-  margin-bottom: 1rem;
-  margin-top: ${props => props.hasPopularBadge ? '2rem' : '0'};
+  margin-bottom: 0.8rem;
+  margin-top: ${props => props.hasPopularBadge ? '1.5rem' : '0'};
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  
+  @media (max-width: 768px) {
+    font-size: 1.4rem;
+  }
 `;
 
 const PriceDisplay = styled.div`
-  font-size: 3rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: #36e961;
-  margin: 1rem 0;
+  margin: 0.8rem 0;
   line-height: 1;
   text-align: center;
   
-  @media (max-width: 1400px) {
-    font-size: 2.5rem;
+  @media (max-width: 1200px) {
+    font-size: 2rem;
   }
   
-  @media (max-width: 1200px) {
-    font-size: 2.8rem;
+  @media (max-width: 768px) {
+    font-size: 2.4rem;
   }
 `;
 
@@ -316,21 +317,22 @@ const PriceSubtext = styled.div`
 const FeatureList = styled.ul`
   list-style: none;
   padding: 0;
-  margin: 2rem 0;
+  margin: 1rem 0;
 
   li {
     color: #475569;
-    padding: 0.5rem 0;
+    padding: 0.3rem 0;
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
-    line-height: 1.5;
+    gap: 0.4rem;
+    line-height: 1.4;
+    font-size: 0.9rem;
 
     &::before {
       content: '✓';
       color: #36e961;
       font-weight: bold;
-      font-size: 1.2rem;
+      font-size: 1rem;
       margin-top: 0.1rem;
     }
   }
@@ -606,21 +608,21 @@ const Checkout = () => {
                 <div style={{ 
                   background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)', 
                   border: '2px solid #3b82f6', 
-                  borderRadius: '12px', 
-                  padding: '1rem', 
-                  margin: '1rem 0', 
+                  borderRadius: '10px', 
+                  padding: '0.8rem', 
+                  margin: '0.8rem 0', 
                   textAlign: 'center' 
                 }}>
-                  <div style={{ color: '#1e40af', fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                  <div style={{ color: '#1e40af', fontSize: '1.3rem', fontWeight: 'bold', marginBottom: '0.2rem' }}>
                     💳 {plan.credits} créditos mensais
                   </div>
-                  <div style={{ color: '#16a34a', fontSize: '0.9rem', marginBottom: '0.5rem', fontWeight: '600' }}>
+                  <div style={{ color: '#16a34a', fontSize: '0.85rem', marginBottom: '0.4rem', fontWeight: '600' }}>
                     🔄 Créditos se acumulam mês a mês se não utilizados!
                   </div>
-                  <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
                     Renovados automaticamente todo mês
                   </div>
-                  <div style={{ color: '#475569', fontSize: '0.8rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                  <div style={{ color: '#475569', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
                     Empresas Brasil: 1 crédito | Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
                   </div>
                 </div>

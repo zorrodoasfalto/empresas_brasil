@@ -124,29 +124,29 @@ const CTAButton = styled.button`
 `;
 
 const Section = styled.section`
-  padding: 4rem 1rem;
+  padding: 2.5rem 1rem;
   
   @media (min-width: 640px) {
-    padding: 4rem 1.5rem;
+    padding: 3rem 1.5rem;
   }
   
   @media (min-width: 1024px) {
-    padding: 4rem 2rem;
+    padding: 3.5rem 2rem;
   }
   
   .section-content {
-    max-width: 1280px;
+    max-width: 1200px;
     margin: 0 auto;
   }
 `;
 
 const HeroSection = styled(Section)`
   background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-  padding-top: 5rem;
+  padding-top: 3rem;
   
   .hero-grid {
     display: grid;
-    gap: 3rem;
+    gap: 2rem;
     align-items: center;
     
     @media (min-width: 1024px) {
@@ -158,18 +158,18 @@ const HeroSection = styled(Section)`
     animation: ${fadeInUp} 0.8s ease-out;
     
     h1 {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: bold;
       color: #0a3042;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.2rem;
       line-height: 1.2;
       
       @media (min-width: 640px) {
-        font-size: 3rem;
+        font-size: 2.2rem;
       }
       
       @media (min-width: 1024px) {
-        font-size: 3.75rem;
+        font-size: 2.5rem;
       }
       
       .highlight {
@@ -574,13 +574,13 @@ const StatsSection = styled(Section)`
     text-align: center;
     
     .stat-number {
-      font-size: 2.5rem;
+      font-size: 2rem;
       font-weight: bold;
       color: #36e961;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
       
       @media (min-width: 640px) {
-        font-size: 3rem;
+        font-size: 2.2rem;
       }
     }
     
@@ -1138,7 +1138,7 @@ const CookieButton = styled.button`
 const Footer = styled.footer`
   background: #0a3042;
   color: white;
-  padding: 3rem 1rem;
+  padding: 2rem 1rem;
   
   .footer-content {
     max-width: 1280px;

@@ -238,21 +238,21 @@ const MainContent = styled.div`
   margin-left: ${props => props.isMenuMinimized ? '60px' : '240px'};
   transition: margin-left 0.3s ease;
   min-height: 100vh;
-  padding: 1.5rem;
-  padding-top: 100px; /* Space for fixed header */
+  padding: 1rem;
+  padding-top: 80px; /* Space for fixed header */
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 769px) {
     margin-left: ${props => props.isMenuMinimized ? '50px' : '200px'};
-    padding: 1.2rem;
-    padding-top: 88px;
+    padding: 0.8rem;
+    padding-top: 70px;
   }
   
   /* Small laptop breakpoint */
   @media (max-width: 1200px) and (min-width: 769px) {
     margin-left: ${props => props.isMenuMinimized ? '50px' : '180px'};
-    padding: 1rem;
-    padding-top: 84px;
+    padding: 0.6rem;
+    padding-top: 65px;
   }
   
   @media (max-width: 768px) {
