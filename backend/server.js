@@ -236,7 +236,7 @@ const flexibleAuth = (req, res, next) => {
 
 // Use routes
 app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários  
-// app.use('/api/auth', authRoutes); // TEMPORARIAMENTE DESABILITADO - USANDO ENDPOINTS DIRETOS
+app.use('/api/auth', authRoutes); // Rotas de autenticação reativadas
 
 // DEBUG: Check if user ID 1 exists and generate token
 app.get('/api/debug/check-user', async (req, res) => {
@@ -878,7 +878,7 @@ app.post('/api/instagram/scrape', async (req, res) => {
     }
 
     const currentCredits = creditsResult.rows[0].credits;
-    const requiredCredits = 1; // Instagram costs 1 credit
+    const requiredCredits = 10; // Instagram costs 10 credits
 
     if (currentCredits < requiredCredits) {
       return res.status(400).json({ 
@@ -2515,13 +2515,13 @@ app.post('/api/apify/run/:actorId', async (req, res) => {
     
     if (actorId.includes('linkedin') || actorId === 'ghost-genius/linkedin-search') {
       searchType = 'linkedin';
-      requiredCredits = 5; // LinkedIn costs 5 credits
+      requiredCredits = 50; // LinkedIn costs 50 credits
     } else if (actorId.includes('instagram')) {
       searchType = 'instagram';
-      requiredCredits = 1; // Instagram costs 1 credit
-    } else if (actorId.includes('google') || actorId.includes('places') || actorId.includes('maps')) {
+      requiredCredits = 10; // Instagram costs 10 credits
+    } else if (actorId.includes('google') || actorId.includes('places') || actorId.includes('maps') || actorId === 'nwua9Gu5YrADL7ZDj' || actorId === 'compass~crawler-google-places') {
       searchType = 'google_maps';
-      requiredCredits = 1; // Google Maps costs 1 credit
+      requiredCredits = 10; // Google Maps costs 10 credits
     }
     
     console.log(`🎯 Search type: ${searchType}, Credits required: ${requiredCredits}`);
@@ -2869,7 +2869,7 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     }
 
     const currentCredits = creditsResult.rows[0].credits;
-    const requiredCredits = 5; // LinkedIn costs 5 credits
+    const requiredCredits = 50; // LinkedIn costs 50 credits
 
     if (currentCredits < requiredCredits) {
       return res.status(400).json({ 
@@ -3189,7 +3189,7 @@ app.post('/api/linkedin/search', async (req, res) => {
     }
 
     const currentCredits = creditsResult.rows[0].credits;
-    const requiredCredits = 5; // LinkedIn costs 5 credits
+    const requiredCredits = 50; // LinkedIn costs 50 credits
 
     if (currentCredits < requiredCredits) {
       return res.status(400).json({ 

@@ -27,8 +27,8 @@ class SecurityUtils {
    * Verificar senha
    */
   static async verifyPassword(password, hash, salt) {
-    const testHash = await bcrypt.hash(password, salt);
-    return testHash === hash;
+    // Usar bcrypt.compare que funciona com hash completo
+    return await bcrypt.compare(password, hash);
   }
 
   /**

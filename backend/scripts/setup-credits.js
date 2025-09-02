@@ -60,7 +60,7 @@ async function setupCredits() {
         credits = 50;
       } else {
         // trial ou null
-        credits = 5;
+        credits = 20;
         trialsFound++;
         plan = 'trial';
       }
@@ -118,9 +118,9 @@ async function setupCredits() {
 
     console.log('\n✅ SISTEMA DE CRÉDITOS CONFIGURADO COM SUCESSO!');
     console.log('\n💡 CUSTOS POR BUSCA:');
-    console.log('   Google Maps: 1 crédito');
-    console.log('   Instagram: 1 crédito');
-    console.log('   LinkedIn: 5 créditos');
+    console.log('   Google Maps: 10 créditos');
+    console.log('   Instagram: 10 créditos');
+    console.log('   LinkedIn: 50 créditos');
     console.log('   Empresas Brasil: 1 crédito');
 
   } catch (error) {
