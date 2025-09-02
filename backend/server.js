@@ -1015,8 +1015,82 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         console.log('🔍 DEBUG: All available fields in items:', Array.from(allFields).sort());
       }
       
+      // Helper function to detect if username looks like a code/gibberish
+      const isCodeLikeUsername = (username) => {
+        if (!username) return false;
+        
+        // Remove @ if present
+        const cleanUsername = username.replace('@', '');
+        
+        // Skip if too short (less than 4 chars) or too long (more than 30 chars)
+        if (cleanUsername.length < 4 || cleanUsername.length > 30) return true;
+        
+        // Check for patterns that look like codes:
+        // 1. Mix of random uppercase/lowercase/numbers with no vowels
+        // 2. More than 50% numbers
+        // 3. More than 70% consonants without vowels
+        // 4. Alternating caps/numbers pattern
+        
+        const vowels = 'aeiouAEIOU';
+        const numbers = '0123456789';
+        
+        let vowelCount = 0;
+        let numberCount = 0;
+        let consonantCount = 0;
+        
+        for (let char of cleanUsername) {
+          if (vowels.includes(char)) {
+            vowelCount++;
+          } else if (numbers.includes(char)) {
+            numberCount++;
+          } else if (/[a-zA-Z]/.test(char)) {
+            consonantCount++;
+          }
+        }
+        
+        const totalLetters = vowelCount + consonantCount;
+        const numberRatio = numberCount / cleanUsername.length;
+        const vowelRatio = totalLetters > 0 ? vowelCount / totalLetters : 0;
+        
+        // Consider it code-like if:
+        // - More than 50% numbers
+        // - Has letters but less than 15% vowels (too few vowels)
+        // - All uppercase/lowercase random mix with numbers
+        if (numberRatio > 0.5) return true;
+        if (totalLetters > 3 && vowelRatio < 0.15) return true;
+        
+        // Check for random patterns like DNgYrh6P0Wj
+        // (mix of caps, lowercase, numbers without readable structure)
+        const hasRandomPattern = /^[A-Z][a-z][A-Z].*[0-9][A-Z].*[a-z]/.test(cleanUsername) ||
+                                /^[a-zA-Z]*[0-9][a-zA-Z]*[0-9]/.test(cleanUsername) && vowelRatio < 0.2;
+        
+        return hasRandomPattern;
+      };
+      
       // Filter and structure the results - simplified version with easy username extraction
-      const processedResults = items.filter(item => item.email || item.Email).map(item => {
+      const processedResults = items
+        .filter(item => item.email || item.Email)
+        .filter(item => {
+          // Extract username for filtering
+          const url = item.url || item.link || item.profileUrl || item.profile_url;
+          let extractedUsername = item.username || item.Username;
+          
+          if (!extractedUsername && url) {
+            const urlParts = url.split('/').filter(part => part);
+            if (urlParts.length > 0) {
+              extractedUsername = urlParts[urlParts.length - 1];
+            }
+          }
+          
+          // Filter out code-like usernames
+          if (isCodeLikeUsername(extractedUsername)) {
+            console.log(`🚫 Filtered out code-like username: ${extractedUsername}`);
+            return false;
+          }
+          
+          return true;
+        })
+        .map(item => {
         const url = item.url || item.link || item.profileUrl || item.profile_url;
         let extractedUsername = item.username || item.Username;
         
@@ -1029,8 +1103,8 @@ app.get('/api/instagram/progress/:runId', async (req, res) => {
         }
         
         return {
-          username: extractedUsername || 'N/A',
-          fullName: item.fullName || item.full_name || item.name || item.Name || 'N/A',
+          username: extractedUsername || '',
+          fullName: item.fullName || item.full_name || item.name || item.Name || '',
           email: item.email || item.Email,
           url: url,
           biography: item.biography || item.bio || item.description,

@@ -1054,7 +1054,7 @@ const InstagramEmailScraper = () => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginBottom: '0.5rem' }}>
                       <div style={{ color: '#e6683c', fontWeight: 'bold', flex: 1 }}>
-                        {profile.fullName || profile.username}
+                        {profile.fullName || (profile.username ? `@${profile.username}` : 'Instagram User')}
                       </div>
                     </div>
                     <div style={{ color: '#e0e0e0', fontSize: '0.9rem' }}>
