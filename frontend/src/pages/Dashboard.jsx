@@ -1825,10 +1825,12 @@ const Dashboard = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies/filtered', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(searchData),
         signal: controller.signal
@@ -1926,10 +1928,12 @@ const Dashboard = () => {
     
     try {
       // Make API call to get all companies with current filters
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies/filtered', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           ...filters,
@@ -2043,10 +2047,12 @@ const Dashboard = () => {
     
     try {
       // Make API call to get all companies with current filters
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/companies/filtered', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           ...filters,

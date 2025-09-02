@@ -557,10 +557,12 @@ const InstagramEmailScraper = () => {
         keyword: formData.keyword
       };
 
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/instagram/scrape', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json; charset=utf-8'
+          'Content-Type': 'application/json; charset=utf-8',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestBody)
       });

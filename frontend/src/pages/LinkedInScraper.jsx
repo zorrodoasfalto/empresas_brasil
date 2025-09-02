@@ -581,10 +581,12 @@ const LinkedInScraper = () => {
         sessionId: sessionId
       };
 
+      const token = localStorage.getItem('token');
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestBody)
       });

@@ -924,10 +924,12 @@ const GoogleMapsScraper = () => {
     setIsRunning(true);
     
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/apify/run/nwua9Gu5YrADL7ZDj', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           locationQuery: formData.locationQuery,
