@@ -57,23 +57,24 @@ const Sidebar = styled.div`
   left: 0;
   top: 0;
   z-index: 99999 !important;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 2px 0 15px rgba(0, 255, 170, 0.2);
   border: 1px solid rgba(0, 255, 170, 0.3);
   
-  /* Notebook optimization: Ajustar altura para telas com zoom 80% */
+  /* Notebook optimization: Ajustar largura para telas com zoom 80% */
   @media (max-width: 1366px) and (min-width: 1200px) {
     width: ${props => props.isMinimized ? '60px' : '180px'};
-    height: 400px; /* Altura fixa para eliminar espaço vazio */
-    min-height: 400px;
+    min-height: 100vh; /* Altura completa */
+    height: 100vh;
     max-width: ${props => props.isMinimized ? '60px' : 'none'};
   }
   
   /* Laptop/Notebook breakpoint */
   @media (max-width: 1440px) and (min-width: 1200px) {
     width: ${props => props.isMinimized ? '60px' : '200px'};
-    height: 450px; /* Altura ligeiramente maior para telas maiores */
-    min-height: 450px;
+    min-height: 100vh; /* Altura completa */
+    height: 100vh;
     max-width: ${props => props.isMinimized ? '60px' : 'none'};
   }
   
