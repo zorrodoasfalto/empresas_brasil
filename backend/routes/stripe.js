@@ -36,18 +36,21 @@ const PLANS = {
     name: 'Plano Pro',
     priceId: null, // Temporário: usar price_data até configurar price IDs ativos
     price: 9700, // R$ 97.00 in cents
+    credits: 50, // Créditos mensais do plano
     interval: 'month'
   },
   premium: {
     name: 'Plano Premium', 
     priceId: null, // Temporário: usar price_data até configurar price IDs ativos
     price: 14700, // R$ 147.00 in cents
+    credits: 150, // Créditos mensais do plano
     interval: 'month'
   },
   max: {
     name: 'Plano Max',
     priceId: null, // Forçar price_data para evitar problemas em produção
     price: 24700, // R$ 247.00 in cents
+    credits: 300, // Créditos mensais do plano
     interval: 'month'
   }
 };
@@ -177,6 +180,12 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
       customer: customer.id,
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:4001'}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:4001'}/checkout?canceled=true`,
+      subscription_data: {
+        metadata: {
+          plan_type: planType,
+          user_id: userId.toString()
+        }
+      },
       metadata: {
         user_id: userId.toString(),
         plan_type: planType,
@@ -420,6 +429,34 @@ async function handleCheckoutCompleted(session) {
     userId
   ]);
 
+  // Add credits for the new subscription
+  const plan = PLANS[planType];
+  if (plan && plan.credits) {
+    console.log(`🎯 Adding ${plan.credits} credits to user ${userId} for plan ${planType}`);
+    
+    // Check if user already has credits record
+    const existingCredits = await pool.query(
+      'SELECT credits FROM user_credits WHERE user_id = $1',
+      [userId]
+    );
+    
+    if (existingCredits.rows.length > 0) {
+      // Update existing credits (add to current balance)
+      await pool.query(
+        'UPDATE user_credits SET credits = credits + $1, plan = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $3',
+        [plan.credits, planType, userId]
+      );
+      console.log(`✅ Added ${plan.credits} credits to existing balance for user ${userId}`);
+    } else {
+      // Create new credits record
+      await pool.query(
+        'INSERT INTO user_credits (user_id, credits, plan, created_at, updated_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        [userId, plan.credits, planType]
+      );
+      console.log(`✅ Created new credits record with ${plan.credits} credits for user ${userId}`);
+    }
+  }
+
   // Handle affiliate referral if applicable
   if (affiliateId) {
     const plan = PLANS[planType];
@@ -446,6 +483,45 @@ async function handleCheckoutCompleted(session) {
 async function handlePaymentSucceeded(invoice) {
   if (invoice.subscription) {
     const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+    
+    // Add monthly credits for subscription renewal
+    const subscriptionResult = await pool.query(
+      'SELECT user_id FROM subscriptions WHERE stripe_subscription_id = $1',
+      [subscription.id]
+    );
+    
+    if (subscriptionResult.rows.length > 0) {
+      const userId = subscriptionResult.rows[0].user_id;
+      
+      // Determine plan type from subscription metadata or price
+      const priceId = subscription.items.data[0].price.id;
+      let planType = null;
+      
+      // Try to get plan type from subscription metadata first
+      if (subscription.metadata && subscription.metadata.plan_type) {
+        planType = subscription.metadata.plan_type;
+      } else {
+        // Fallback: determine by price (this might need adjustment based on your actual price IDs)
+        for (const [key, plan] of Object.entries(PLANS)) {
+          if (plan.price === subscription.items.data[0].price.unit_amount) {
+            planType = key;
+            break;
+          }
+        }
+      }
+      
+      if (planType && PLANS[planType]) {
+        const plan = PLANS[planType];
+        console.log(`🔄 Monthly renewal: Adding ${plan.credits} credits to user ${userId} for plan ${planType}`);
+        
+        // Add monthly credits (always add, as this is a renewal)
+        await pool.query(
+          'UPDATE user_credits SET credits = credits + $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+          [plan.credits, userId]
+        );
+        console.log(`✅ Added ${plan.credits} monthly renewal credits to user ${userId}`);
+      }
+    }
     
     // Create new commission for affiliate if applicable
     const referralResult = await pool.query(
