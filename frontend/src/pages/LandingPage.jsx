@@ -8,7 +8,7 @@ import dashboard1 from '../assets/images/Dashboard 1.png';
 import dashboardGoogleMaps from '../assets/images/dashboard_google_maps.png';
 import dashboardLinkedin from '../assets/images/dashboard linkedin.png';
 import dashboardInstagram from '../assets/images/dashboard instagram.png';
-import dashboardBuscaEmpresas from '../assets/images/dashboard empresas.png';
+import dashboardEmpresas from '../assets/images/dashboard empresas.png';
 import dashboardLeads from '../assets/images/dashboard leads.png';
 import dashboardKanban from '../assets/images/dashboard kanbam.png';
 import dashboardFunil from '../assets/images/dashboard funil.png';
@@ -1453,7 +1453,7 @@ const LandingPage = () => {
                 </a>
               </div>
               <div className="showcase-image">
-                <img src={dashboard1} alt="Dashboard Principal Data Atlas" />
+                <img src={dashboardEmpresas} alt="Dashboard Principal Data Atlas" />
               </div>
             </div>
 
