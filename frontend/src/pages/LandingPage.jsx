@@ -1429,9 +1429,9 @@ const LandingPage = () => {
         <ShowcaseSection>
           <div className="showcase-content">
             <div className="showcase-header">
-              <h2>Conheça todas as funcionalidades da plataforma</h2>
+              <h2>7 Ferramentas Poderosas em Uma Única Plataforma</h2>
               <p>
-                Explore cada ferramenta desenvolvida para maximizar sua produtividade e acelerar seus resultados comerciais
+                Da prospecção multicanal ao CRM completo com funil e Kanban - tudo que você precisa para acelerar suas vendas
               </p>
             </div>
 
@@ -1542,6 +1542,50 @@ const LandingPage = () => {
               </div>
               <div className="showcase-image">
                 <img src={dashboardLeads} alt="CRM Integrado Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>Funil de Vendas - Pipeline Inteligente</h3>
+                <p>
+                  Visualize e gerencie todo seu processo comercial com um funil de vendas profissional. Acompanhe leads desde o primeiro contato até o fechamento.
+                </p>
+                <ul className="feature-list">
+                  <li>Etapas customizáveis do funil</li>
+                  <li>Arrastar e soltar leads entre fases</li>
+                  <li>Métricas de conversão por etapa</li>
+                  <li>Tempo médio por fase</li>
+                  <li>Previsão de vendas</li>
+                </ul>
+                <a href="/funil" className="cta-button">
+                  Ver Funil de Vendas 🎯
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardFunil} alt="Funil de Vendas Data Atlas" />
+              </div>
+            </div>
+
+            <div className="showcase-item">
+              <div className="showcase-content-text">
+                <h3>Kanban Board - Gestão Visual</h3>
+                <p>
+                  Organize seus leads de forma visual com quadros Kanban intuitivos. Gerencie tarefas, acompanhe progresso e otimize sua produtividade comercial.
+                </p>
+                <ul className="feature-list">
+                  <li>Interface visual drag & drop</li>
+                  <li>Colunas personalizáveis</li>
+                  <li>Cards com informações completas</li>
+                  <li>Filtros e busca avançada</li>
+                  <li>Atualizações em tempo real</li>
+                </ul>
+                <a href="/kanban" className="cta-button">
+                  Explorar Kanban 📋
+                </a>
+              </div>
+              <div className="showcase-image">
+                <img src={dashboardKanban} alt="Kanban Board Data Atlas" />
               </div>
             </div>
           </div>
