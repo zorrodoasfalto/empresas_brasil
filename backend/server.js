@@ -4746,7 +4746,8 @@ app.post('/api/withdrawals/request', async (req, res) => {
   }
 });
 
-Promise.all([initDB(), createUsersTable()]).then(() => {
+Promise.all([initDB()]).then(() => {
+  // Temporarily disabled createUsersTable() due to ECONNRESET crashes with Railway PostgreSQL
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');
