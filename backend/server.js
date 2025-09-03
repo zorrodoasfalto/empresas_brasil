@@ -3807,31 +3807,48 @@ app.post('/api/companies/filtered', async (req, res) => {
     console.log('✅ Access granted, proceeding to credit check');
     
     
-    // Check and debit credits for company search (1 credit per search)
-    const creditsResult = await pool.query(`
-      SELECT * FROM user_credits WHERE user_id = $1
-    `, [decoded.id]);
-
-    if (creditsResult.rows.length === 0) {
-      return res.status(400).json({ error: 'Conta de créditos não encontrada' });
-    }
-
-    const currentCredits = creditsResult.rows[0].credits;
+    // 🔒 ATOMIC CREDIT DEDUCTION - Prevents double charging at database level
     const requiredCredits = 1; // Empresas Brasil costs 1 credit
-
-    if (currentCredits < requiredCredits) {
+    
+    console.log('💳 Attempting atomic credit deduction...');
+    const deductionResult = await pool.query(`
+      UPDATE user_credits 
+      SET credits = credits - $1, updated_at = NOW() 
+      WHERE user_id = $2 AND credits >= $1
+      RETURNING credits, credits + $1 as original_credits
+    `, [requiredCredits, decoded.id]);
+    
+    // Check if deduction was successful
+    if (deductionResult.rows.length === 0) {
+      // Either user not found or insufficient credits
+      const creditsCheck = await pool.query('SELECT credits FROM user_credits WHERE user_id = $1', [decoded.id]);
+      
+      if (creditsCheck.rows.length === 0) {
+        return res.status(400).json({ error: 'Conta de créditos não encontrada' });
+      }
+      
+      const currentCredits = creditsCheck.rows[0].credits;
       return res.status(400).json({ 
         error: 'Créditos insuficientes para realizar a busca',
         currentCredits,
         requiredCredits
       });
     }
-
-    // Debit credits
-    const newCredits = currentCredits - requiredCredits;
-    await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
-    `, [newCredits, decoded.id]);
+    
+    const newCredits = deductionResult.rows[0].credits;
+    const originalCredits = deductionResult.rows[0].original_credits;
+    
+    console.log(`💳 ✅ ATOMIC deduction successful: ${originalCredits} → ${newCredits} (-${requiredCredits})`);
+    
+    // Set cache ONLY after successful credit deduction to prevent duplicates
+    requestCache.set(requestKey, now);
+    
+    // Clean old cache entries
+    for (const [key, timestamp] of requestCache.entries()) {
+      if (now - timestamp > 10000) {
+        requestCache.delete(key);
+      }
+    }
 
     // Log the usage
     await pool.query(`
