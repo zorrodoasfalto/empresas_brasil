@@ -3856,7 +3856,7 @@ app.post('/api/companies/filtered', async (req, res) => {
       VALUES ($1, $2, $3, $4, NOW())
     `, [decoded.id, 'empresas_brasil', requiredCredits, JSON.stringify(req.body)]);
 
-    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
+    // ✅ Credit deduction logged by atomic implementation above
 
     const filters = req.body;
     const page = filters.page || 1;
