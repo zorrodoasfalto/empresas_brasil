@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const { JWT_SECRET } = require('../config/jwt');
 
 class SecurityUtils {
   
@@ -135,7 +136,7 @@ class SecurityUtils {
   static generateAccessToken(payload) {
     return jwt.sign(
       payload,
-      process.env.JWT_SECRET || 'your-fallback-secret-key-for-development',
+      JWT_SECRET,
       { 
         expiresIn: '15m',
         issuer: 'empresas-brasil',
@@ -164,7 +165,7 @@ class SecurityUtils {
    */
   static verifyToken(token, secret = null) {
     try {
-      const secretKey = secret || process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
+      const secretKey = secret || JWT_SECRET;
       return jwt.verify(token, secretKey);
     } catch (error) {
       throw new Error('Token inválido ou expirado');

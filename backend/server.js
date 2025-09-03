@@ -44,6 +44,7 @@ function cleanNomeFantasia(nomeFantasia) {
 const app = express();
 const PORT = process.env.PORT || 6000;
 const { JWT_SECRET } = require('./config/jwt');
+const { authenticateToken, generateToken, verifyToken } = require('./middleware/authUnified');
 
 // Middleware para verificar acesso do usuário (trial ou assinatura ativa)
 async function checkUserAccess(req, res, next) {
@@ -213,24 +214,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
-// JWT Authentication Middleware (strict)
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, message: 'Token de acesso requerido' });
-  }
-  
-  const token = authHeader.substring(7);
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(403).json({ success: false, message: 'Token inválido' });
-  }
-};
+// Using unified authentication middleware from ./middleware/authUnified.js
 
 // Flexible Authentication Middleware - tries to authenticate but continues without token
 const flexibleAuth = (req, res, next) => {
@@ -694,7 +678,7 @@ app.get('/api/credits', async (req, res) => {
         SELECT role FROM simple_users WHERE id = $1
       `, [userId]);
 
-      let initialCredits = 5; // trial default
+      let initialCredits = 10; // trial default
       const userRole = userResult.rows[0]?.role || 'trial';
       
       if (userRole === 'admin') initialCredits = 10000;

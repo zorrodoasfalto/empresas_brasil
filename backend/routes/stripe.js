@@ -10,7 +10,7 @@ const pool = new Pool({
 });
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-fallback-secret-key-for-development';
+const { JWT_SECRET } = require('../config/jwt');
 
 // Middleware for JWT authentication
 const authenticateToken = (req, res, next) => {
