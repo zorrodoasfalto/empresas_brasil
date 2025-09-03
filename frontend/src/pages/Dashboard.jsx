@@ -653,6 +653,95 @@ const CreditsIndicator = styled.div`
   }
 `;
 
+const CreditsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+`;
+
+const InfoIcon = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 255, 170, 0.2);
+  border: 1px solid rgba(0, 255, 170, 0.4);
+  color: #00ffaa;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: help;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(0, 255, 170, 0.3);
+    transform: scale(1.1);
+  }
+
+  &:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-5px);
+  }
+
+  &::after {
+    content: 'Se os créditos não aparecem, faça logout e login novamente';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(0px);
+    background: rgba(0, 20, 40, 0.95);
+    color: #00ffaa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1px solid rgba(0, 255, 170, 0.3);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: rgba(0, 255, 170, 0.3);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1001;
+  }
+
+  &:hover::before {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  @media (max-width: 768px) {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+
+    &::after {
+      font-size: 11px;
+      padding: 6px 10px;
+      white-space: normal;
+      width: 200px;
+    }
+  }
+`;
+
 const Content = styled.div`
   padding: 2rem;
   max-width: 1400px;
@@ -2426,11 +2515,14 @@ const Dashboard = () => {
           <Title onClick={handleLogoClick}>🏢 Empresas Brasil</Title>
           <UserInfo>
             <span>Olá, {user?.email}</span>
-            <CreditsIndicator lowCredits={credits.amount < 10}>
-              <span className="credits-icon">💎</span>
-              <span className="credits-amount">{credits.loading ? '...' : credits.amount}</span>
-              <span className="credits-label">créditos</span>
-            </CreditsIndicator>
+            <CreditsContainer>
+              <CreditsIndicator lowCredits={credits.amount < 10}>
+                <span className="credits-icon">💎</span>
+                <span className="credits-amount">{credits.loading ? '...' : credits.amount}</span>
+                <span className="credits-label">créditos</span>
+              </CreditsIndicator>
+              <InfoIcon>ℹ</InfoIcon>
+            </CreditsContainer>
             {(user?.role === 'admin' || user?.email === 'rodyrodrigo@gmail.com') && (
               <AdminButton onClick={() => setActiveModal('admin')}>👑</AdminButton>
             )}
