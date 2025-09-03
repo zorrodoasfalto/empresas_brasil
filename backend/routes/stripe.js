@@ -123,6 +123,45 @@ async function checkReferralTracking(referredUserId, affiliateCode) {
   }
 }
 
+// DEBUG: Who am I endpoint
+router.get('/debug-user', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+    
+    // Get full user info
+    const userResult = await pool.query(
+      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    // Check if user is affiliate
+    const affiliateResult = await pool.query(
+      'SELECT affiliate_code FROM affiliates WHERE user_id = $1',
+      [userId]
+    );
+    
+    const user = userResult.rows[0];
+    
+    res.json({
+      debug: {
+        userId: userId,
+        email: userEmail,
+        name: user ? `${user.first_name} ${user.last_name}`.trim() : 'Unknown',
+        role: user ? user.role : 'Unknown',
+        isVictor: userId === 39,
+        affiliateCode: affiliateResult.rows[0]?.affiliate_code || null,
+        victorsCode: 'VICT039',
+        canUseVictorsCode: userId !== 39,
+        message: userId === 39 ? '❌ Victor cannot use his own affiliate code VICT039!' : '✅ Can use affiliate codes including VICT039'
+      }
+    });
+    
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
 // Create checkout session
 router.post('/create-checkout-session', authenticateToken, async (req, res) => {
   try {
