@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { ApifyClient } = require('apify-client');
 const User = require('./models/User');
+const { setupCreditsBackupCron } = require('./scripts/setup-credits-backup-cron');
 require('dotenv').config();
 
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
@@ -4757,6 +4758,12 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
   process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   });
+  // 🔄 Inicializar sistema de backup diário de créditos
+  console.log('🔄 Inicializando sistema de backup de créditos...');
+  const creditsBackupManager = setupCreditsBackupCron();
+  creditsBackupManager.start();
+  console.log(`✅ Backup automático ativado - próximo backup: ${creditsBackupManager.nextExecution().toLocaleString('pt-BR')}`);
+
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
   process.exit(1);
