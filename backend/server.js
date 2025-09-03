@@ -175,8 +175,27 @@ const { createUsersTable } = require('./database/init-users');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false },
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+  acquireTimeoutMillis: 60000,
+  keepAlive: true
 });
+
+// Database connection error handling
+pool.on('error', (err) => {
+  console.error('Database connection error:', err);
+});
+
+pool.on('connect', () => {
+  console.log('✅ Database connected successfully');
+});
+
+// Test database connection on startup
+pool.query('SELECT 1')
+  .then(() => console.log('✅ Database connection verified'))
+  .catch(err => console.error('❌ Database connection failed:', err));
 
 // Configure CORS for production
 const corsOptions = {
@@ -4714,7 +4733,7 @@ app.post('/api/withdrawals/request', async (req, res) => {
 });
 
 Promise.all([initDB(), createUsersTable()]).then(() => {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');
     console.log('✅ Database: Railway PostgreSQL');
@@ -4724,6 +4743,39 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
       console.log('✅ Frontend: Serving React from /frontend/dist');
     }
   });
+
+  // Graceful shutdown handling
+  const gracefulShutdown = (signal) => {
+    console.log(`\n🛑 ${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      console.log('✅ HTTP server closed');
+      try {
+        await pool.end();
+        console.log('✅ Database pool closed');
+        process.exit(0);
+      } catch (err) {
+        console.error('❌ Error closing database pool:', err);
+        process.exit(1);
+      }
+    });
+  };
+
+  // Listen for termination signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  
+  // Handle uncaught exceptions
+  process.on('uncaughtException', (err) => {
+    console.error('❌ Uncaught Exception:', err);
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+  });
+  
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  });
+}).catch(err => {
+  console.error('❌ Failed to start server:', err);
+  process.exit(1);
 });
 
 // Generate tokens for all users in database
