@@ -192,12 +192,12 @@ const Login = () => {
         return;
       }
       
-      // Check if user is free (trial or no subscription) - only for non-admin users
-      if (user && (user.subscription === 'none' || user.role === 'trial' || !user.subscription)) {
-        console.log('🔍 Login: Free user detected, redirecting to checkout');
+      // Only redirect to checkout if user has NO subscription/role at all
+      if (user && (!user.subscription || user.subscription === 'none') && (!user.role || user.role === 'user')) {
+        console.log('🔍 Login: User without plan detected, redirecting to checkout');
         navigate('/checkout');
       } else {
-        console.log('🔍 Login: Premium user, navigating to dashboard');
+        console.log('🔍 Login: User with plan (trial/pro/premium/max), navigating to dashboard');
         navigate('/dashboard');
       }
     }
@@ -229,9 +229,9 @@ const Login = () => {
         return;
       }
       
-      // Check if user is free and redirect to checkout - only for non-admin users
-      if (result.user && (result.user.subscription === 'none' || result.user.role === 'trial' || !result.user.subscription)) {
-        console.log('🔍 Login: Free user detected, redirecting to checkout');
+      // Only redirect to checkout if user has NO subscription/role at all
+      if (result.user && (!result.user.subscription || result.user.subscription === 'none') && (!result.user.role || result.user.role === 'user')) {
+        console.log('🔍 Login: User without plan detected, redirecting to checkout');
         navigate('/checkout');
         setLoading(false);
         return;
