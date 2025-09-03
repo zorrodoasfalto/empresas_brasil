@@ -668,16 +668,35 @@ app.get('/api/credits', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.id;
 
-    // Get user credits (DO NOT auto-create)
-    const creditsResult = await pool.query(`
+    // Get or create user credits (restored original logic for admin compatibility)
+    let creditsResult = await pool.query(`
       SELECT * FROM user_credits WHERE user_id = $1
     `, [userId]);
 
     if (creditsResult.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Conta de créditos não encontrada. Contate o suporte.' 
-      });
+      // Create credits record with default values based on user role
+      const userResult = await pool.query(`
+        SELECT role FROM simple_users WHERE id = $1
+      `, [userId]);
+
+      let initialCredits = 10; // trial default
+      const userRole = userResult.rows[0]?.role || 'trial';
+      
+      if (userRole === 'admin') initialCredits = 10000;
+      else if (userRole === 'max') initialCredits = 300;
+      else if (userRole === 'premium') initialCredits = 150;
+      else if (userRole === 'pro') initialCredits = 50;
+
+      console.log(`🔧 AUTO-CREATING credits for user ${userId} (${userRole}) with ${initialCredits} credits`);
+
+      await pool.query(`
+        INSERT INTO user_credits (user_id, credits, plan)
+        VALUES ($1, $2, $3)
+      `, [userId, initialCredits, userRole]);
+
+      creditsResult = await pool.query(`
+        SELECT * FROM user_credits WHERE user_id = $1
+      `, [userId]);
     }
 
     const credits = creditsResult.rows[0];

@@ -1405,9 +1405,9 @@ const Dashboard = () => {
 
   // Estado para créditos
   const [credits, setCredits] = useState({
-    amount: 0,
+    amount: null, // null indica que ainda não carregou
     plan: 'trial',
-    loading: false
+    loading: true // iniciar com loading true
   });
 
   // Estados para configurações
@@ -1478,11 +1478,24 @@ const Dashboard = () => {
           loading: false
         });
       } else {
-        console.error('Erro ao carregar créditos');
+        console.error('Erro ao carregar créditos - possivelmente token expirado');
+        
+        // Se token expirado/inválido, forçar novo login
+        if (response.status === 401 || response.status === 404) {
+          console.log('Token inválido detectado - fazendo logout automático');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        }
+        
         setCredits(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
       console.error('Erro ao carregar créditos:', error);
+      
+      // Em caso de erro de rede, também pode ser token inválido
+      console.log('Erro de rede - possivelmente token expirado');
       setCredits(prev => ({ ...prev, loading: false }));
     }
   };
@@ -1864,7 +1877,12 @@ const Dashboard = () => {
   // Simplified search - no complex counting needed
 
   const handleSearch = async (page = 1) => {
-    // Verificar se tem créditos suficientes (1 crédito por busca de empresa)
+    // Verificar se os créditos carregaram e se são suficientes
+    if (credits.amount === null || credits.loading) {
+      toast.error('Aguarde os créditos carregarem...');
+      return;
+    }
+    
     if (credits.amount < 1) {
       toast.error('Créditos insuficientes! Você precisa de pelo menos 1 crédito para fazer essa busca.');
       return;
@@ -2516,9 +2534,11 @@ const Dashboard = () => {
           <UserInfo>
             <span>Olá, {user?.email}</span>
             <CreditsContainer>
-              <CreditsIndicator lowCredits={credits.amount < 10}>
+              <CreditsIndicator lowCredits={credits.amount !== null && credits.amount < 10}>
                 <span className="credits-icon">💎</span>
-                <span className="credits-amount">{credits.loading ? '...' : credits.amount}</span>
+                <span className="credits-amount">
+                  {credits.loading || credits.amount === null ? '...' : credits.amount}
+                </span>
                 <span className="credits-label">créditos</span>
               </CreditsIndicator>
               <InfoIcon>ℹ</InfoIcon>
