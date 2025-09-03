@@ -178,26 +178,53 @@ const { createUsersTable } = require('./database/init-users');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
   ssl: { rejectUnauthorized: false },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-  acquireTimeoutMillis: 60000,
-  keepAlive: true
+  max: 10, // Reduzir conexões simultâneas
+  min: 2,  // Manter conexões mínimas
+  idleTimeoutMillis: 20000, // Reduzir timeout
+  connectionTimeoutMillis: 15000, // Aumentar timeout de conexão
+  acquireTimeoutMillis: 30000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 1000,
+  // Configurações anti-crash
+  allowExitOnIdle: false,
+  maxLifetimeSeconds: 300, // 5 minutos max por conexão
+  statement_timeout: 30000 // 30 segundos timeout
 });
 
-// Database connection error handling
+// Enhanced database connection error handling
 pool.on('error', (err) => {
-  console.error('Database connection error:', err);
+  console.error('🔥 Database pool error (NOT CRASHING):', err.message);
+  // Don't crash the server - just log the error
 });
 
 pool.on('connect', () => {
   console.log('✅ Database connected successfully');
 });
 
-// Test database connection on startup
-pool.query('SELECT 1')
-  .then(() => console.log('✅ Database connection verified'))
-  .catch(err => console.error('❌ Database connection failed:', err));
+pool.on('remove', () => {
+  console.log('⚠️ Database connection removed from pool');
+});
+
+// Test database connection with retry
+const testDatabaseConnection = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Database connection verified');
+      return true;
+    } catch (err) {
+      console.error(`❌ Database connection attempt ${i + 1} failed:`, err.message);
+      if (i === retries - 1) {
+        console.error('💥 All database connection attempts failed');
+        return false;
+      }
+      // Wait 2 seconds before retry
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+};
+
+testDatabaseConnection();
 
 // Configure CORS for production
 const corsOptions = {
@@ -4760,11 +4787,11 @@ Promise.all([initDB(), createUsersTable()]).then(() => {
   process.on('unhandledRejection', (reason, promise) => {
     console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
   });
-  // 🔄 Inicializar sistema de backup diário de créditos
-  console.log('🔄 Inicializando sistema de backup de créditos...');
-  const creditsBackupManager = setupCreditsBackupCron();
-  creditsBackupManager.start();
-  console.log(`✅ Backup automático ativado - próximo backup: ${creditsBackupManager.nextExecution().toLocaleString('pt-BR')}`);
+  // 🔄 Sistema de backup temporariamente desabilitado para evitar crashes
+  console.log('⏸️  Sistema de backup desabilitado temporariamente (evitando sobrecarga DB)');
+  // const creditsBackupManager = setupCreditsBackupCron();
+  // creditsBackupManager.start();
+  // console.log(`✅ Backup automático ativado - próximo backup: ${creditsBackupManager.nextExecution().toLocaleString('pt-BR')}`);
 
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
