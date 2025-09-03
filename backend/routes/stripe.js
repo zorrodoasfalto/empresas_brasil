@@ -91,18 +91,31 @@ async function generateAffiliateCode(userId) {
 // Check for referral tracking
 async function checkReferralTracking(referredUserId, affiliateCode) {
   try {
-    if (!affiliateCode) return null;
+    if (!affiliateCode) {
+      console.log('❌ No affiliate code provided');
+      return null;
+    }
 
+    console.log('🔍 Looking for affiliate code in DB:', affiliateCode);
     const affiliateResult = await pool.query(
       'SELECT id, user_id FROM affiliates WHERE affiliate_code = $1',
       [affiliateCode]
     );
 
-    if (affiliateResult.rows.length === 0) return null;
+    if (affiliateResult.rows.length === 0) {
+      console.log('❌ Affiliate code not found in database:', affiliateCode);
+      return null;
+    }
 
     const affiliate = affiliateResult.rows[0];
-    if (affiliate.user_id === referredUserId) return null; // Can't refer yourself
+    console.log('✅ Found affiliate:', affiliate.id, 'belonging to user:', affiliate.user_id);
+    
+    if (affiliate.user_id === referredUserId) {
+      console.log('❌ User trying to refer themselves - blocked');
+      return null; // Can't refer yourself
+    }
 
+    console.log('✅ Valid referral! Affiliate ID:', affiliate.id);
     return affiliate.id;
   } catch (error) {
     console.error('Error checking referral:', error);
@@ -115,6 +128,8 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
   try {
     const { planType = 'pro', affiliateCode } = req.body;
     const userId = req.user.id;
+    
+    console.log('🔍 CHECKOUT DEBUG - User ID:', userId, 'Plan:', planType, 'Affiliate Code:', affiliateCode);
 
     // Validate plan
     if (!PLANS[planType]) {
@@ -130,9 +145,13 @@ router.post('/create-checkout-session', authenticateToken, async (req, res) => {
 
     // Check for referral discount
     if (affiliateCode) {
+      console.log('🎯 Checking referral tracking for code:', affiliateCode);
       affiliateId = await checkReferralTracking(userId, affiliateCode);
       if (affiliateId) {
         discountAmount = Math.round(plan.price * 0.1); // 10% discount
+        console.log('✅ Discount applied! Amount:', discountAmount, 'cents');
+      } else {
+        console.log('❌ No valid referral found for code:', affiliateCode);
       }
     }
 

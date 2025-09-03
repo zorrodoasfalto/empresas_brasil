@@ -490,6 +490,7 @@ const Checkout = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const ref = urlParams.get('ref');
     if (ref) {
+      console.log('🎯 Affiliate code detected:', ref);
       setAffiliateCode(ref);
     }
   }, []);
@@ -504,6 +505,7 @@ const Checkout = () => {
     setError('');
 
     try {
+      console.log('💰 Sending checkout request with affiliate code:', affiliateCode);
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: {
