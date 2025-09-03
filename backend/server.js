@@ -178,17 +178,16 @@ const { createUsersTable } = require('./database/init-users');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
   ssl: { rejectUnauthorized: false },
-  max: 10, // Reduzir conexões simultâneas
-  min: 2,  // Manter conexões mínimas
-  idleTimeoutMillis: 20000, // Reduzir timeout
-  connectionTimeoutMillis: 15000, // Aumentar timeout de conexão
-  acquireTimeoutMillis: 30000,
-  keepAlive: true,
-  keepAliveInitialDelayMillis: 1000,
-  // Configurações anti-crash
-  allowExitOnIdle: false,
-  maxLifetimeSeconds: 300, // 5 minutos max por conexão
-  statement_timeout: 30000 // 30 segundos timeout
+  max: 3, // DRASTICALLY reduce to 3 connections max
+  min: 1,  // Just 1 minimum connection
+  idleTimeoutMillis: 10000, // 10 seconds idle timeout
+  connectionTimeoutMillis: 5000, // 5 seconds connection timeout
+  acquireTimeoutMillis: 8000, // 8 seconds acquire timeout
+  keepAlive: false, // Disable keepAlive to prevent hangs
+  // Configurações ultra-estáveis para Railway PostgreSQL
+  allowExitOnIdle: true, // Allow pool to close idle connections
+  maxLifetimeSeconds: 120, // 2 minutes max per connection (shorter)
+  statement_timeout: 10000 // 10 seconds statement timeout (shorter)
 });
 
 // Enhanced database connection error handling
