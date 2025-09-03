@@ -185,7 +185,14 @@ const Login = () => {
     if (isAuthenticated) {
       console.log('🔍 Login: useEffect detected authentication, checking user subscription status');
       
-      // Check if user is free (trial or no subscription)
+      // Admin always goes to dashboard
+      if (user && user.role === 'admin') {
+        console.log('🔍 Login: Admin user, navigating to dashboard');
+        navigate('/dashboard');
+        return;
+      }
+      
+      // Check if user is free (trial or no subscription) - only for non-admin users
       if (user && (user.subscription === 'none' || user.role === 'trial' || !user.subscription)) {
         console.log('🔍 Login: Free user detected, redirecting to checkout');
         navigate('/checkout');
@@ -214,7 +221,15 @@ const Login = () => {
         return;
       }
       
-      // Check if user is free and redirect to checkout
+      // Admin always goes to dashboard
+      if (result.user && result.user.role === 'admin') {
+        console.log('🔍 Login: Admin user, navigating to dashboard');
+        navigate('/dashboard');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if user is free and redirect to checkout - only for non-admin users
       if (result.user && (result.user.subscription === 'none' || result.user.role === 'trial' || !result.user.subscription)) {
         console.log('🔍 Login: Free user detected, redirecting to checkout');
         navigate('/checkout');
