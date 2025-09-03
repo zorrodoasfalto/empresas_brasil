@@ -1797,15 +1797,17 @@ const Dashboard = () => {
     setProgress(5);
     toast.info(`Buscando ${companyLimit.toLocaleString()} empresas...`);
 
-    // Progress bar simulation - mais agressiva e rápida
+    // Progress bar simulation - reflete velocidade real do backend
     progressInterval = setInterval(() => {
         setProgress(prev => {
-          if (prev > 90) {
-            return Math.min(prev + 0.5, 98); // Mais lento perto do fim, mas não trava em 95%
+          if (prev > 95) {
+            return Math.min(prev + 0.3, 99); // Últimos 5% mais lentos
+          } else if (prev > 80) {
+            return Math.min(prev + Math.random() * 3 + 1, 95); // 80-95% moderado
           }
-          return Math.min(prev + Math.random() * 8 + 3, 85);
+          return Math.min(prev + Math.random() * 12 + 5, 80); // 0-80% rápido como backend
         });
-      }, 600); // Mais rápido
+      }, 400); // Mais responsivo
 
     try {
       // Clean CNPJ by removing formatting characters before sending to API
@@ -1820,8 +1822,8 @@ const Dashboard = () => {
         page
       };
 
-      // Timeout otimizado - mais rápido
-      const timeoutMs = companyLimit >= 25000 ? 90000 : 60000; // 1.5min para 25k+, 1min para outros
+      // Timeout inteligente baseado na quantidade de empresas
+      const timeoutMs = companyLimit >= 50000 ? 180000 : companyLimit >= 25000 ? 120000 : companyLimit >= 10000 ? 60000 : 30000;
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
