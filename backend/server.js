@@ -47,6 +47,9 @@ const PORT = process.env.PORT || 6000;
 const { JWT_SECRET } = require('./config/jwt');
 const { authenticateToken, generateToken, verifyToken } = require('./middleware/authUnified');
 
+// Cache para prevenir requisições duplicadas (StrictMode / Double-clicks)
+const requestCache = new Map();
+
 // Middleware para verificar acesso do usuário (trial ou assinatura ativa)
 async function checkUserAccess(req, res, next) {
   try {
@@ -3753,6 +3756,29 @@ app.post('/api/companies/filtered', async (req, res) => {
       decoded = jwt.verify(token, JWT_SECRET);
     } catch (error) {
       return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    // Prevenção de requisições duplicadas (StrictMode / Double-clicks)
+    const requestKey = `${decoded.id}-${JSON.stringify(req.body)}`;
+    const now = Date.now();
+    
+    if (requestCache.has(requestKey)) {
+      const lastRequest = requestCache.get(requestKey);
+      // Se a última requisição idêntica foi feita nos últimos 5 segundos, ignore
+      if (now - lastRequest < 5000) {
+        console.log('⚠️ Duplicate request detected and ignored:', requestKey);
+        return res.status(429).json({ error: 'Duplicate request ignored' });
+      }
+    }
+    
+    // Armazena timestamp da requisição atual
+    requestCache.set(requestKey, now);
+    
+    // Limpa cache antigas (mais de 10 segundos)
+    for (const [key, timestamp] of requestCache.entries()) {
+      if (now - timestamp > 10000) {
+        requestCache.delete(key);
+      }
     }
     
     // Verificar acesso do usuário (trial ou assinatura)

@@ -1877,6 +1877,12 @@ const Dashboard = () => {
   // Simplified search - no complex counting needed
 
   const handleSearch = async (page = 1) => {
+    // Prevenir double-clicks e múltiplas chamadas simultâneas
+    if (loading) {
+      console.log('⚠️ Search already in progress, ignoring duplicate request');
+      return;
+    }
+
     // Verificar se os créditos carregaram e se são suficientes
     if (credits.amount === null || credits.loading) {
       toast.error('Aguarde os créditos carregarem...');
@@ -2029,35 +2035,16 @@ const Dashboard = () => {
   };
 
   const exportToCSV = async () => {
-    if (!filters.uf && !filters.segmentoNegocio) {
-      toast.error('Defina pelo menos um filtro antes de exportar');
+    // Verificar se há dados para exportar
+    if (!empresas || empresas.length === 0) {
+      toast.error('Realize uma busca primeiro antes de exportar');
       return;
     }
 
-    toast.info('Preparando exportação... Isso pode levar alguns minutos.');
+    toast.info('Preparando exportação CSV...');
     
     try {
-      // Make API call to get all companies with current filters
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/companies/filtered', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...filters,
-          companyLimit: companyLimit // Use the actual selected limit
-        }),
-      });
-
-      const data = await response.json();
-      if (!data.success) {
-        toast.error('Erro ao buscar dados para exportação');
-        return;
-      }
-
-      const allEmpresas = data.data;
+      const allEmpresas = empresas;
 
       // Find max number of socios to create appropriate columns
       const maxSocios = Math.max(...allEmpresas.map(empresa => empresa.socios?.length || 0));
@@ -2148,35 +2135,16 @@ const Dashboard = () => {
   };
 
   const exportToExcel = async () => {
-    if (!filters.uf && !filters.segmentoNegocio) {
-      toast.error('Defina pelo menos um filtro antes de exportar');
+    // Verificar se há dados para exportar
+    if (!empresas || empresas.length === 0) {
+      toast.error('Realize uma busca primeiro antes de exportar');
       return;
     }
 
-    toast.info('Preparando exportação Excel... Isso pode levar alguns minutos.');
+    toast.info('Preparando exportação Excel...');
     
     try {
-      // Make API call to get all companies with current filters
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/companies/filtered', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...filters,
-          companyLimit: companyLimit // Use the actual selected limit
-        }),
-      });
-
-      const data = await response.json();
-      if (!data.success) {
-        toast.error('Erro ao buscar dados para exportação');
-        return;
-      }
-
-      const allEmpresas = data.data;
+      const allEmpresas = empresas;
 
       // Find max number of socios to create appropriate columns
       const maxSocios = Math.max(...allEmpresas.map(empresa => empresa.socios?.length || 0));
