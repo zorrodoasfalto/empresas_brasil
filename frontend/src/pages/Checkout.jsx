@@ -621,7 +621,7 @@ const Checkout = () => {
                     Renovados automaticamente todo mês
                   </div>
                   <div style={{ color: '#475569', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    Empresas Brasil: 1 crédito | Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
+                    Empresas Brasil: 2 créditos | Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
                   </div>
                 </div>
                 
