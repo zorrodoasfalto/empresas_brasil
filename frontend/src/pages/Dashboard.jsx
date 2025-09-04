@@ -1393,7 +1393,14 @@ const Dashboard = () => {
   const [progress, setProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 1000;
+  // Dynamic page size based on total results
+  const getItemsPerPage = (totalResults) => {
+    if (totalResults >= 50000) return 10000; // For 50k companies: 5 pages
+    if (totalResults >= 25000) return 5000;  // For 25k companies: 5 pages  
+    if (totalResults >= 10000) return 2500;  // For 10k companies: 4 pages
+    if (totalResults >= 5000) return 1000;   // For 5k companies: 5 pages
+    return 500; // For smaller results: smaller pages for better navigation
+  };
   const [totalPages, setTotalPages] = useState(1);
   const [expandedSocios, setExpandedSocios] = useState({});
   const [filterOptions, setFilterOptions] = useState({
@@ -1879,12 +1886,13 @@ const Dashboard = () => {
   // Client-side pagination handler - no API calls
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    const startIndex = (page - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const itemsPerPage = getItemsPerPage(allEmpresas.length);
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
     const pageCompanies = allEmpresas.slice(startIndex, endIndex);
     setEmpresas(pageCompanies);
     
-    toast.success(`✅ Página ${page}/${Math.ceil(allEmpresas.length / ITEMS_PER_PAGE)} carregada - ${pageCompanies.length} empresas`);
+    toast.success(`✅ Página ${page}/${Math.ceil(allEmpresas.length / itemsPerPage)} carregada - ${pageCompanies.length} empresas`);
   };
 
   // Simplified search - fetch ALL data at once, no pagination
@@ -1984,18 +1992,22 @@ const Dashboard = () => {
         // Store all companies
         setAllEmpresas(data.data);
         
+        // Calculate dynamic page size
+        const itemsPerPage = getItemsPerPage(data.data.length);
+        
         // Show first page
-        const firstPage = data.data.slice(0, ITEMS_PER_PAGE);
+        const firstPage = data.data.slice(0, itemsPerPage);
         setEmpresas(firstPage);
         
         // Set pagination
         setCurrentPage(1);
-        setTotalPages(Math.ceil(data.data.length / ITEMS_PER_PAGE));
+        setTotalPages(Math.ceil(data.data.length / itemsPerPage));
         
         console.log('📊 Dados recebidos:', {
           totalEmpresasCount: data.data.length,
           firstPageCount: firstPage.length,
-          totalPages: Math.ceil(data.data.length / ITEMS_PER_PAGE)
+          itemsPerPage: itemsPerPage,
+          totalPages: Math.ceil(data.data.length / itemsPerPage)
         });
         
         // Debitar 1 crédito 
@@ -2004,7 +2016,7 @@ const Dashboard = () => {
           console.log(`💎 1 crédito debitado. Restam: ${debitResult.remainingCredits}`);
         }
         
-        toast.success(`✅ ${data.data.length} empresas carregadas - Exibindo página 1/${Math.ceil(data.data.length / ITEMS_PER_PAGE)}`);
+        toast.success(`✅ ${data.data.length} empresas carregadas - Exibindo página 1/${Math.ceil(data.data.length / itemsPerPage)} (${itemsPerPage} por página)`);
         
         // Hide progress bar after showing success
         setTimeout(() => {
