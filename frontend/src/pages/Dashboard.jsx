@@ -1388,10 +1388,12 @@ const Dashboard = () => {
   const [hoveredSegment, setHoveredSegment] = useState(null);
   
   const [empresas, setEmpresas] = useState([]);
+  const [allEmpresas, setAllEmpresas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 1000;
   const [totalPages, setTotalPages] = useState(1);
   const [expandedSocios, setExpandedSocios] = useState({});
   const [filterOptions, setFilterOptions] = useState({
@@ -1874,14 +1876,28 @@ const Dashboard = () => {
   };
 
 
-  // Simplified search - no complex counting needed
+  // Client-side pagination handler - no API calls
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pageCompanies = allEmpresas.slice(startIndex, endIndex);
+    setEmpresas(pageCompanies);
+    
+    toast.success(`✅ Página ${page}/${Math.ceil(allEmpresas.length / ITEMS_PER_PAGE)} carregada - ${pageCompanies.length} empresas`);
+  };
 
-  const handleSearch = async (page = 1) => {
+  // Simplified search - fetch ALL data at once, no pagination
+  const handleSearch = async () => {
     // Prevenir double-clicks e múltiplas chamadas simultâneas
     if (loading) {
       console.log('⚠️ Search already in progress, ignoring duplicate request');
       return;
     }
+
+    // Reset pagination state
+    setCurrentPage(1);
+    setAllEmpresas([]);
 
     // Verificar se os créditos carregaram e se são suficientes
     if (credits.amount === null || credits.loading) {
@@ -1931,8 +1947,7 @@ const Dashboard = () => {
       
       const searchData = {
         ...cleanedFilters,
-        companyLimit,
-        page
+        companyLimit
       };
 
       // Timeout inteligente baseado na quantidade de empresas
@@ -1966,33 +1981,30 @@ const Dashboard = () => {
       setProgress(100);
       
       if (data.success) {
+        // Store all companies
+        setAllEmpresas(data.data);
         
-        if (page === 1) {
-          setEmpresas(data.data);
-          
-          // Debitar 1 crédito apenas na primeira busca
-          const debitResult = await debitCredits('empresas_brasil', 1, searchData);
-          if (debitResult.success) {
-            console.log(`💎 1 crédito debitado. Restam: ${debitResult.remainingCredits}`);
-          }
-        } else {
-          setEmpresas(prev => [...prev, ...data.data]);
-        }
+        // Show first page
+        const firstPage = data.data.slice(0, ITEMS_PER_PAGE);
+        setEmpresas(firstPage);
         
-        setCurrentPage(page);
-        setTotalPages(Math.ceil(companyLimit / 1000));
+        // Set pagination
+        setCurrentPage(1);
+        setTotalPages(Math.ceil(data.data.length / ITEMS_PER_PAGE));
         
         console.log('📊 Dados recebidos:', {
-          empresasCount: data.data.length,
-          currentPage: page,
-          totalPages: Math.ceil(companyLimit / 1000)
+          totalEmpresasCount: data.data.length,
+          firstPageCount: firstPage.length,
+          totalPages: Math.ceil(data.data.length / ITEMS_PER_PAGE)
         });
         
-        if (page === 1) {
-          toast.success(`✅ Página ${page}/${Math.ceil(companyLimit / 1000)} carregada - ${data.data.length} empresas`);
-        } else {
-          toast.success(`✅ Página ${page} carregada - ${data.data.length} empresas`);
+        // Debitar 1 crédito 
+        const debitResult = await debitCredits('empresas_brasil', 1, searchData);
+        if (debitResult.success) {
+          console.log(`💎 1 crédito debitado. Restam: ${debitResult.remainingCredits}`);
         }
+        
+        toast.success(`✅ ${data.data.length} empresas carregadas - Exibindo página 1/${Math.ceil(data.data.length / ITEMS_PER_PAGE)}`);
         
         // Hide progress bar after showing success
         setTimeout(() => {
@@ -2999,7 +3011,7 @@ const Dashboard = () => {
             {totalPages > 1 && (
               <PaginationContainer>
                 <PageButton
-                  onClick={() => handleSearch(currentPage - 1)}
+                  onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage <= 1 || loading}
                 >
                   ← Anterior
@@ -3010,7 +3022,7 @@ const Dashboard = () => {
                 </PageInfo>
                 
                 <PageButton
-                  onClick={() => handleSearch(currentPage + 1)}
+                  onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage >= totalPages || loading}
                 >
                   Próxima →
