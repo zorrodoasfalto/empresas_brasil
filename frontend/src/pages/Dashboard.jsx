@@ -1958,26 +1958,59 @@ const Dashboard = () => {
         companyLimit
       };
 
-      // Timeout inteligente baseado na quantidade de empresas
-      const timeoutMs = companyLimit >= 50000 ? 180000 : companyLimit >= 25000 ? 120000 : companyLimit >= 10000 ? 60000 : 30000;
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
+      // Sistema de busca paginada - busca todas as páginas necessárias
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/companies/filtered', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(searchData),
-        signal: controller.signal
-      });
+      const allCompanies = [];
+      let currentPage = 1;
+      let totalCollected = 0;
       
-      clearTimeout(timeoutId);
-
-      const data = await response.json();
+      // Função que replica a lógica do backend para saber quantas páginas
+      const getItemsPerPageBackend = (totalRequested) => {
+        if (totalRequested >= 50000) return 10000;
+        if (totalRequested >= 25000) return 5000;
+        if (totalRequested >= 10000) return 2500;
+        if (totalRequested >= 5000) return 1000;
+        return 500;
+      };
+      
+      const itemsPerPageBackend = getItemsPerPageBackend(companyLimit);
+      const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
+      
+      // Buscar páginas sequencialmente
+      for (let page = 1; page <= totalPagesNeeded && totalCollected < companyLimit; page++) {
+        const pageSearchData = { ...searchData, page };
+        
+        const response = await fetch('/api/companies/filtered', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(pageSearchData)
+        });
+        
+        const pageData = await response.json();
+        
+        if (!pageData.success) {
+          throw new Error(pageData.message || `Erro na página ${page}`);
+        }
+        
+        allCompanies.push(...pageData.data);
+        totalCollected += pageData.data.length;
+        
+        // Atualizar progress baseado nas páginas coletadas
+        const pageProgress = 15 + (page / totalPagesNeeded) * 80; // 15-95%
+        setProgress(Math.min(pageProgress, 95));
+        
+        // Se coletamos o suficiente, parar
+        if (totalCollected >= companyLimit) break;
+      }
+      
+      // Limitar ao companyLimit exato
+      const data = {
+        success: true,
+        data: allCompanies.slice(0, companyLimit)
+      };
       
       // Clear progress interval FIRST
       if (progressInterval) {

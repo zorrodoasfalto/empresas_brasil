@@ -3999,8 +3999,16 @@ app.post('/api/companies/filtered', async (req, res) => {
     
     const whereClause = 'WHERE ' + conditions.join(' AND ');
     
-    // Paginação SEMPRE 1000 empresas por página
-    const perPage = 1000;
+    // Paginação dinâmica baseada no companyLimit - SEM HARDCODE
+    const getItemsPerPage = (totalRequested) => {
+      if (totalRequested >= 50000) return 10000; // 50k = 5 páginas de 10k
+      if (totalRequested >= 25000) return 5000;  // 25k = 5 páginas de 5k  
+      if (totalRequested >= 10000) return 2500;  // 10k = 4 páginas de 2.5k
+      if (totalRequested >= 5000) return 1000;   // 5k = 5 páginas de 1k
+      return 500; // Menores = 500 por página
+    };
+    
+    const perPage = getItemsPerPage(companyLimit);
     const offset = (page - 1) * perPage;
     const limitPerPage = perPage;
     
