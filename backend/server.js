@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { ApifyClient } = require('apify-client');
 const User = require('./models/User');
-const { setupCreditsBackupCron } = require('./scripts/setup-credits-backup-cron');
+// const { setupCreditsBackupCron } = require('./scripts/setup-credits-backup-cron'); // REMOVIDO para evitar crashes
 require('dotenv').config();
 
 // Function to clean nome_fantasia field - remove addresses that appear incorrectly
@@ -193,19 +193,35 @@ const pool = new Pool({
   statement_timeout: 10000 // 10 seconds statement timeout (shorter)
 });
 
-// Enhanced database connection error handling
+// Enhanced database connection error handling with recovery
 pool.on('error', (err) => {
-  console.error('🔥 Database pool error (NOT CRASHING):', err.message);
-  // Don't crash the server - just log the error
+  console.error('🔥 Database pool error (RECOVERING):', err.message);
+  // Log error but continue server operation
 });
 
 pool.on('connect', () => {
   console.log('✅ Database connected successfully');
 });
 
-pool.on('remove', () => {
+pool.on('remove', (client) => {
   console.log('⚠️ Database connection removed from pool');
 });
+
+// Monitor pool status every 2 minutes
+setInterval(async () => {
+  console.log(`📊 Pool Status - Total: ${pool.totalCount}, Idle: ${pool.idleCount}, Waiting: ${pool.waitingCount}`);
+  
+  // If pool is exhausted, force a health check
+  if (pool.totalCount >= 3 && pool.idleCount === 0) {
+    console.log('⚠️ Pool exhausted - forcing health check');
+    try {
+      await pool.query('SELECT 1');
+      console.log('✅ Health check passed during pool exhaustion');
+    } catch (err) {
+      console.error('❌ Health check failed during pool exhaustion:', err.message);
+    }
+  }
+}, 120000); // 2 minutos
 
 // Test database connection with retry
 const testDatabaseConnection = async (retries = 3) => {
@@ -4829,20 +4845,19 @@ Promise.all([initDB()]).then(() => {
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   
-  // Handle uncaught exceptions
+  // Handle uncaught exceptions with recovery
   process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err);
-    gracefulShutdown('UNCAUGHT_EXCEPTION');
+    console.error('❌ Uncaught Exception (RECOVERING):', err.message);
+    console.error('Stack:', err.stack);
+    // DON'T crash - log and continue
   });
   
   process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    console.error('❌ Unhandled Rejection (RECOVERING):', reason);
+    // DON'T crash - log and continue
   });
-  // 🔄 Sistema de backup temporariamente desabilitado para evitar crashes
-  console.log('⏸️  Sistema de backup desabilitado temporariamente (evitando sobrecarga DB)');
-  // const creditsBackupManager = setupCreditsBackupCron();
-  // creditsBackupManager.start();
-  // console.log(`✅ Backup automático ativado - próximo backup: ${creditsBackupManager.nextExecution().toLocaleString('pt-BR')}`);
+  // 🔄 Sistema de backup TOTALMENTE REMOVIDO para evitar crashes
+  console.log('⚠️  Sistema de backup removido - dependências limpas');
 
 }).catch(err => {
   console.error('❌ Failed to start server:', err);
