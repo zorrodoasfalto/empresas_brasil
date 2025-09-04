@@ -621,10 +621,15 @@ const Checkout = () => {
                     Renovados automaticamente todo mês
                   </div>
                   <div style={{ color: '#16a34a', fontSize: '0.85rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 'bold' }}>
-                    ⚡ Empresas Brasil: 1 crédito por busca (independente da quantidade!)
+                    💳 Empresas Brasil: Sistema de batches inteligente
                   </div>
                   <div style={{ color: '#475569', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                    Seja 100 ou 50.000 empresas, você paga apenas 1 crédito por busca completa
+                    • <strong>Até 10.000 empresas:</strong> 1 crédito por batch de 2.500 (máx 4 créditos)<br/>
+                    • <strong>25.000 empresas:</strong> 1 crédito por batch de 5.000 (5 créditos)<br/>
+                    • <strong>50.000 empresas:</strong> 1 crédito por batch de 10.000 (5 créditos)
+                  </div>
+                  <div style={{ color: '#16a34a', fontSize: '0.75rem', marginTop: '0.3rem' }}>
+                    ✅ Sistema otimizado: Batches maiores = menos créditos proporcionalmente
                   </div>
                   <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.2rem' }}>
                     Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
