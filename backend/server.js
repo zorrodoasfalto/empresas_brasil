@@ -3807,16 +3807,28 @@ app.post('/api/companies/filtered', async (req, res) => {
     console.log('✅ Access granted, proceeding to credit check');
     
     
-    // 🔒 ATOMIC CREDIT DEDUCTION - Prevents double charging at database level
-    const requiredCredits = 1; // Empresas Brasil costs 1 credit
+    // 🔒 FIXED SINGLE CREDIT: Only charge on first page (page=1 or undefined)
+    // This prevents multiple charges when frontend makes multiple page requests
+    let shouldChargeCredit = (!page || page === 1);
     
-    console.log('💳 Attempting atomic credit deduction...');
-    const deductionResult = await pool.query(`
-      UPDATE user_credits 
-      SET credits = credits - $1, updated_at = NOW() 
-      WHERE user_id = $2 AND credits >= $1
-      RETURNING credits, credits + $1 as original_credits
-    `, [requiredCredits, decoded.id]);
+    if (shouldChargeCredit) {
+      const requiredCredits = 1; // Empresas Brasil costs 1 credit total (not per page)
+      
+      console.log('💳 First page - attempting atomic credit deduction...');
+      var deductionResult = await pool.query(`
+        UPDATE user_credits 
+        SET credits = credits - $1, updated_at = NOW() 
+        WHERE user_id = $2 AND credits >= $1
+        RETURNING credits, credits + $1 as original_credits
+      `, [requiredCredits, decoded.id]);
+    } else {
+      console.log(`💰 Page ${page} - FREE (credit already charged on first page)`);
+      
+      // For subsequent pages, just verify user still has access (don't charge)
+      var deductionResult = await pool.query(`
+        SELECT credits, credits as original_credits FROM user_credits WHERE user_id = $1
+      `, [decoded.id]);
+    }
     
     // Check if deduction was successful
     if (deductionResult.rows.length === 0) {
@@ -4009,8 +4021,18 @@ app.post('/api/companies/filtered', async (req, res) => {
     };
     
     const perPage = getItemsPerPage(companyLimit);
-    const offset = (page - 1) * perPage;
-    const limitPerPage = perPage;
+    
+    // 🔒 SINGLE CREDIT MODE: If no page specified, return ALL companyLimit results
+    let offset, limitPerPage;
+    if (!page) {
+      console.log(`💰 Single credit mode: returning ALL ${companyLimit} companies directly`);
+      offset = 0;
+      limitPerPage = companyLimit; // Return exactly what was requested
+    } else {
+      // Legacy pagination mode - processes one page at a time
+      offset = (page - 1) * perPage;
+      limitPerPage = perPage;
+    }
     
     // Dynamic ORDER BY based on search mode
     let orderByClause = 'ORDER BY est.cnpj_basico'; // default

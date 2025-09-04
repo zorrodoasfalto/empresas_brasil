@@ -1958,7 +1958,7 @@ const Dashboard = () => {
         companyLimit
       };
 
-      // Sistema de busca paginada - busca todas as páginas necessárias
+      // 🔒 FIXED SINGLE CREDIT: Multiple pages but backend charges only 1 credit total
       const token = localStorage.getItem('token');
       const allCompanies = [];
       let currentPage = 1;
@@ -1976,7 +1976,9 @@ const Dashboard = () => {
       const itemsPerPageBackend = getItemsPerPageBackend(companyLimit);
       const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
       
-      // Buscar páginas sequencialmente
+      console.log(`💰 Fixed credit mode: ${totalPagesNeeded} pages, but only 1 credit charged total`);
+      
+      // Buscar páginas sequencialmente - backend só cobra na primeira página
       for (let page = 1; page <= totalPagesNeeded && totalCollected < companyLimit; page++) {
         const pageSearchData = { ...searchData, page };
         

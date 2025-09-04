@@ -620,8 +620,14 @@ const Checkout = () => {
                   <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
                     Renovados automaticamente todo mês
                   </div>
-                  <div style={{ color: '#475569', fontSize: '0.75rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                    Empresas Brasil: 2 créditos | Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
+                  <div style={{ color: '#16a34a', fontSize: '0.85rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 'bold' }}>
+                    ⚡ Empresas Brasil: 1 crédito por busca (independente da quantidade!)
+                  </div>
+                  <div style={{ color: '#475569', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                    Seja 100 ou 50.000 empresas, você paga apenas 1 crédito por busca completa
+                  </div>
+                  <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                    Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
                   </div>
                 </div>
                 
