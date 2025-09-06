@@ -1754,41 +1754,59 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
-  // Carregar créditos quando user estiver disponível
+  // CORREÇÃO DEFINITIVA: Carregar créditos de forma consistente (mesma lógica do login SEMPRE)
+  useEffect(() => {
+    console.log('🔍 useEffect MOUNTED - starting credits check');
+    
+    // Função que verifica e carrega créditos (independente do state do AuthContext)
+    const forceLoadCredits = () => {
+      const storedUser = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      
+      console.log('🔍 forceLoadCredits - storedUser:', !!storedUser, 'storedToken:', !!storedToken);
+      console.log('🔍 forceLoadCredits - credits.amount:', credits.amount, 'credits.loading:', credits.loading);
+      
+      // Se existem user e token no localStorage, carregar créditos (mesma lógica do login)
+      if (storedUser && storedToken && credits.amount === null && !credits.loading) {
+        console.log('✅ FORÇANDO carregamento de créditos (ignore AuthContext state)');
+        loadCredits();
+        return true; // Indica que tentou carregar
+      }
+      return false; // Não tentou carregar
+    };
+    
+    // Tenta carregar imediatamente (para casos onde AuthContext já processou)
+    const attempted1 = forceLoadCredits();
+    
+    // Se não conseguiu carregar na primeira, tenta após 300ms (tempo para AuthContext processar)
+    if (!attempted1) {
+      const timer1 = setTimeout(() => {
+        console.log('🔍 RETRY 300ms - tentando novamente');
+        const attempted2 = forceLoadCredits();
+        
+        // Se ainda não conseguiu, tenta uma última vez após mais 700ms
+        if (!attempted2) {
+          const timer2 = setTimeout(() => {
+            console.log('🔍 FINAL RETRY 1000ms - última tentativa');
+            forceLoadCredits();
+          }, 700);
+          
+          return () => clearTimeout(timer2);
+        }
+      }, 300);
+      
+      return () => clearTimeout(timer1);
+    }
+  }, []); // Executa apenas uma vez na montagem do componente
+  
+  // Manter useEffect para mudanças durante a sessão (login manual)
   useEffect(() => {
     console.log('🔍 useEffect [user] triggered - user:', !!user);
-    // CORREÇÃO: Fix race condition - verifica diretamente o localStorage se user existe
-    if (user) {
-      const storedToken = localStorage.getItem('token');
-      console.log('🔍 User exists, checking token - storedToken:', !!storedToken);
-      if (storedToken) {
-        console.log('🔍 Both user and token exist - calling loadCredits()');
-        loadCredits();
-      } else {
-        console.log('❌ User exists but no token in localStorage');
-      }
-    } else {
-      console.log('❌ No user in useEffect - skipping loadCredits');
+    if (user && credits.amount === null && !credits.loading) {
+      console.log('🔍 User state changed - loading credits');
+      loadCredits();
     }
-  }, [user]); // Remove 'token' dependency para evitar race condition
-
-  // FALLBACK: Garantir carregamento de créditos após inicialização completa
-  useEffect(() => {
-    console.log('🔍 FALLBACK useEffect - checking credits after 1000ms');
-    const fallbackTimer = setTimeout(() => {
-      console.log('🔍 FALLBACK executing - credits.amount:', credits.amount, 'user:', !!user);
-      // Se após 1 segundo o user existe mas os créditos não carregaram, tentar novamente
-      if (user && (credits.amount === null || credits.amount === undefined) && !credits.loading) {
-        const storedToken = localStorage.getItem('token');
-        if (storedToken) {
-          console.log('🔄 FALLBACK: Tentando carregar créditos novamente...');
-          loadCredits();
-        }
-      }
-    }, 1000);
-    
-    return () => clearTimeout(fallbackTimer);
-  }, []); // Executa apenas uma vez na montagem
+  }, [user]);
 
   // Debug: Monitor adminStats changes
   useEffect(() => {
