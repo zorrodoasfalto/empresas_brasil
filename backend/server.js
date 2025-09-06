@@ -301,7 +301,7 @@ app.get('/api/debug/check-user', async (req, res) => {
       const token = jwt.sign(
         { id: user.id, email: user.email },
         JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '2h' }
       );
       
       return res.json({
@@ -317,7 +317,7 @@ app.get('/api/debug/check-user', async (req, res) => {
       const token = jwt.sign(
         { id: user.id, email: user.email },
         JWT_SECRET,
-        { expiresIn: '7d' }
+        { expiresIn: '2h' }
       );
       
       return res.json({
@@ -574,7 +574,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '2h' }
     );
     
     res.json({
@@ -632,7 +632,7 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '2h' }
     );
     
     res.json({
@@ -4507,7 +4507,7 @@ app.post('/api/debug/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '2h' }
     );
     
     res.json({

@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+
   const login = async (email, password) => {
     try {
       console.log('🔍 AuthContext: Iniciando login para:', email);

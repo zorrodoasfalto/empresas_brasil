@@ -2097,8 +2097,8 @@ const Dashboard = () => {
       const itemsPerPageBackend = getItemsPerPageBackend(companyLimit);
       const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
       
-      // Configure timeout based on company limit (RESTORED FROM WORKING VERSION)
-      const timeoutMs = companyLimit >= 50000 ? 180000 : companyLimit >= 25000 ? 120000 : companyLimit >= 10000 ? 60000 : 30000;
+      // Configure timeout based on company limit - MATCH API PERFORMANCE
+      const timeoutMs = companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 180000 : companyLimit >= 10000 ? 90000 : 45000;
       console.log(`⏱️ Setting timeout for ${companyLimit} companies: ${timeoutMs/1000}s`);
       
       const abortController = new AbortController();
