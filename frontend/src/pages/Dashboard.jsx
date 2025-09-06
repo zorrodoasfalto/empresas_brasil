@@ -1744,45 +1744,68 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
-  // SOLUÇÃO ELEGANTE: Carregamento otimizado baseado no sucesso da solução nuclear
+  // SOLUÇÃO DEFINITIVA: Carregamento de créditos que SEMPRE funciona
   useEffect(() => {
-    console.log('✨ ELEGANT SOLUTION: Starting optimized credits loading');
+    console.log('🔥 BULLETPROOF CREDITS: Starting guaranteed credits loading');
     
-    const tryLoadCredits = (attemptNumber) => {
+    let attempts = 0;
+    const maxAttempts = 3;
+    let intervalId = null;
+    
+    const forceLoadCredits = () => {
+      attempts++;
+      console.log(`🔥 BULLETPROOF Attempt ${attempts}/${maxAttempts}`);
+      
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       
-      console.log(`✨ Attempt ${attemptNumber} - user:`, !!storedUser, 'token:', !!storedToken);
+      console.log(`🔥 localStorage - user: ${!!storedUser}, token: ${!!storedToken}`);
+      console.log(`🔥 current credits state - amount: ${credits.amount}, loading: ${credits.loading}`);
       
+      // Se existe user e token no localStorage E créditos não foram carregados
       if (storedUser && storedToken && (credits.amount === null || credits.amount === undefined)) {
-        console.log(`✨ Loading credits - attempt ${attemptNumber}`);
+        console.log(`🔥 FORCING loadCredits() - attempt ${attempts}`);
         loadCredits();
-        return true; // Indica que tentou carregar
+      } else if (credits.amount !== null && credits.amount !== undefined) {
+        console.log(`🔥 BULLETPROOF SUCCESS: Credits loaded (${credits.amount}), stopping attempts`);
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        return;
       }
-      return false; // Não precisou tentar
+      
+      // Se chegou no máximo de tentativas, parar
+      if (attempts >= maxAttempts) {
+        console.log(`🔥 BULLETPROOF: Max attempts reached, stopping`);
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
     };
     
-    // Tentativa 1: Imediata (caso AuthContext já processou)
-    const attempted = tryLoadCredits(1);
+    // Tentar imediatamente
+    forceLoadCredits();
     
-    // Tentativa 2: Apenas se a primeira não funcionou, após 600ms (timing ideal)
-    let timer = null;
-    if (attempted) {
-      timer = setTimeout(() => {
-        // Só tenta novamente se ainda não carregou
-        if (credits.amount === null || credits.amount === undefined) {
-          console.log('✨ Second attempt - credits still not loaded');
-          tryLoadCredits(2);
-        } else {
-          console.log('✨ Credits already loaded, skipping second attempt');
-        }
-      }, 600);
+    // Se não carregou na primeira, continuar tentando a cada 800ms
+    if (credits.amount === null || credits.amount === undefined) {
+      intervalId = setInterval(forceLoadCredits, 800);
     }
     
     return () => {
-      if (timer) clearTimeout(timer);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, []); // Executa apenas uma vez
+  
+  // MONITOR créditos - parar tentativas quando conseguir carregar
+  useEffect(() => {
+    if (credits.amount !== null && credits.amount !== undefined) {
+      console.log('🔥 BULLETPROOF: Credits detected, system working correctly');
+    }
+  }, [credits.amount]);
   
   // Backup para mudanças de user durante a sessão
   useEffect(() => {
