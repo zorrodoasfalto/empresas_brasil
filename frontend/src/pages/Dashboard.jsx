@@ -1748,14 +1748,15 @@ const Dashboard = () => {
 
   // Carregar créditos quando user estiver disponível
   useEffect(() => {
-    if (user && token) {
-      // Ensure token is set before making API call
+    // CORREÇÃO: Fix race condition - verifica diretamente o localStorage se user existe
+    if (user) {
       const storedToken = localStorage.getItem('token');
       if (storedToken) {
+        console.log('🔍 Loading credits - user:', !!user, 'storedToken:', !!storedToken);
         loadCredits();
       }
     }
-  }, [user, token]);
+  }, [user]); // Remove 'token' dependency para evitar race condition
 
   // Debug: Monitor adminStats changes
   useEffect(() => {
