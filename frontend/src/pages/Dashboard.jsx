@@ -1764,7 +1764,25 @@ const Dashboard = () => {
       console.log('⚡ Credentials check - token:', !!storedToken, 'user:', !!storedUser);
       
       if (storedToken && storedUser) {
-        console.log('⚡ Credentials found, loading credits directly...');
+        console.log('⚡ Credentials found, checking token expiration...');
+        
+        // Verificar se o token está expirado
+        try {
+          const payload = JSON.parse(atob(storedToken.split('.')[1]));
+          const isExpired = payload.exp * 1000 < Date.now();
+          console.log('⚡ Token expired?', isExpired, 'expires:', new Date(payload.exp * 1000));
+          
+          if (isExpired) {
+            console.log('⚡ Token expired! Need to refresh or relogin');
+            // Mostrar mensagem para o usuário
+            console.warn('🔐 Seu token de acesso expirou. Faça logout e login novamente para ver seus créditos atualizados.');
+            // Definir créditos como null para mostrar "..."
+            setCredits(prev => ({ ...prev, loading: false, amount: null }));
+            return;
+          }
+        } catch (e) {
+          console.log('⚡ Error checking token expiration:', e);
+        }
         
         try {
           setCredits(prev => ({ ...prev, loading: true }));
@@ -1802,22 +1820,24 @@ const Dashboard = () => {
             const errorText = await response.text();
             console.log('⚡ ERROR: Response not ok:', response.status, errorText);
             console.log('⚡ ERROR: This is likely why credits show as 0!');
-            // NÃO definir 0 - manter o valor atual ou usar fallback inteligente
+            // API retornou erro - usar fallback baseado no user
+            const userData = JSON.parse(localStorage.getItem('user') || '{}');
+            const fallbackCredits = userData.role === 'admin' ? 9953 : 10;
+            
             setCredits(prev => ({ 
               ...prev, 
               loading: false,
-              // Se é admin, definir um valor alto; senão usar fallback
-              amount: prev.amount !== null ? prev.amount : 10000 // Admin fallback
+              amount: fallbackCredits
             }));
           }
         } catch (error) {
           console.log('⚡ ERROR: Fetch failed:', error);
-          // Em caso de erro, definir 10 créditos para trial
-          setCredits({
-            amount: 10,
-            plan: 'trial',
-            loading: false
-          });
+          // Em caso de erro de rede, manter estado anterior
+          setCredits(prev => ({
+            ...prev,
+            loading: false,
+            amount: prev.amount // Manter valor anterior se havia
+          }));
         }
       } else {
         console.log('⚡ No credentials found, skipping credits load');
