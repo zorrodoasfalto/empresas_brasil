@@ -1776,12 +1776,23 @@ const Dashboard = () => {
           if (response.ok) {
             const data = await response.json();
             console.log('⚡ SUCCESS: Full API response:', data);
+            console.log('⚡ data.credits type:', typeof data.credits, 'value:', data.credits);
+            console.log('⚡ data.amount type:', typeof data.amount, 'value:', data.amount);
             
-            // Garantir que sempre tem um valor numérico
-            const creditsAmount = typeof data.credits === 'number' ? data.credits : 
-                                 (data.amount !== undefined ? data.amount : 10); // fallback para 10
+            // DIAGNÓSTICO: Verificar exatamente o que está vindo da API
+            let creditsAmount = 0;
+            if (data.credits !== undefined && data.credits !== null) {
+              creditsAmount = Number(data.credits);
+              console.log('⚡ Using data.credits:', creditsAmount);
+            } else if (data.amount !== undefined && data.amount !== null) {
+              creditsAmount = Number(data.amount);
+              console.log('⚡ Using data.amount:', creditsAmount);
+            } else {
+              console.log('⚡ No credits found in response, using fallback 10');
+              creditsAmount = 10;
+            }
             
-            console.log('⚡ Setting credits amount:', creditsAmount);
+            console.log('⚡ Final credits amount to set:', creditsAmount);
             setCredits({
               amount: creditsAmount,
               plan: data.plan || 'trial',
