@@ -1470,34 +1470,42 @@ const Dashboard = () => {
   // Funções para sistema de créditos
   const loadCredits = async () => {
     try {
+      console.log('🔍 LOAD CREDITS STARTED - setting loading true');
       setCredits(prev => ({ ...prev, loading: true }));
       const token = localStorage.getItem('token');
       
+      console.log('🔍 Token from localStorage:', token ? 'EXISTS' : 'NULL');
       if (!token) {
-        console.error('Erro ao carregar créditos - token não encontrado');
+        console.error('❌ Erro ao carregar créditos - token não encontrado');
         setCredits(prev => ({ ...prev, loading: false }));
         return;
       }
       
+      console.log('🔍 Making fetch to /api/credits...');
       const response = await fetch('/api/credits', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
+      console.log('🔍 Response received:', response.status, response.ok);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Credits data received:', data);
         setCredits({
           amount: data.credits,
           plan: data.plan,
           loading: false
         });
+        console.log('✅ Credits set successfully:', data.credits);
       } else {
-        console.error('Erro ao carregar créditos - possivelmente token expirado');
+        const errorText = await response.text();
+        console.error('❌ Erro ao carregar créditos - response not ok:', response.status, errorText);
         
         // Se token expirado/inválido, forçar novo login
         if (response.status === 401 || response.status === 404) {
-          console.log('Token inválido detectado - fazendo logout automático');
+          console.log('🚪 Token inválido detectado - fazendo logout automático');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
@@ -1507,10 +1515,10 @@ const Dashboard = () => {
         setCredits(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
-      console.error('Erro ao carregar créditos:', error);
+      console.error('❌ CATCH: Erro ao carregar créditos:', error);
       
       // Em caso de erro de rede, também pode ser token inválido
-      console.log('Erro de rede - possivelmente token expirado');
+      console.log('🌐 Erro de rede - possivelmente token expirado');
       setCredits(prev => ({ ...prev, loading: false }));
     }
   };
@@ -1748,13 +1756,19 @@ const Dashboard = () => {
 
   // Carregar créditos quando user estiver disponível
   useEffect(() => {
+    console.log('🔍 useEffect [user] triggered - user:', !!user);
     // CORREÇÃO: Fix race condition - verifica diretamente o localStorage se user existe
     if (user) {
       const storedToken = localStorage.getItem('token');
+      console.log('🔍 User exists, checking token - storedToken:', !!storedToken);
       if (storedToken) {
-        console.log('🔍 Loading credits - user:', !!user, 'storedToken:', !!storedToken);
+        console.log('🔍 Both user and token exist - calling loadCredits()');
         loadCredits();
+      } else {
+        console.log('❌ User exists but no token in localStorage');
       }
+    } else {
+      console.log('❌ No user in useEffect - skipping loadCredits');
     }
   }, [user]); // Remove 'token' dependency para evitar race condition
 
