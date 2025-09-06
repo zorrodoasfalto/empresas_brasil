@@ -751,11 +751,22 @@ app.get('/api/credits', async (req, res) => {
     }
 
     const credits = creditsResult.rows[0];
+    
+    // CORREÇÃO: Verificar se credits existe antes de acessar propriedades
+    if (!credits) {
+      console.error('🔍 CREDITS API: No credits record found after query!');
+      return res.status(500).json({ success: false, message: 'Credits record not found' });
+    }
+    
     console.log('🔍 CREDITS API: Returning credits:', credits.credits);
+    
+    // CORREÇÃO: Garantir que credits.credits é um número válido
+    const creditsAmount = typeof credits.credits === 'number' ? credits.credits : 0;
+    
     res.json({
       success: true,
-      credits: credits.credits,
-      plan: credits.plan,
+      credits: creditsAmount,
+      plan: credits.plan || 'trial',
       lastReset: credits.last_reset
     });
 
