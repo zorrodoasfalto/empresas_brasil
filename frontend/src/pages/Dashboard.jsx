@@ -2081,21 +2081,6 @@ const Dashboard = () => {
 
       // Sistema de busca paginada - busca todas as páginas necessárias
       const token = localStorage.getItem('token');
-      const allCompanies = [];
-      let currentPage = 1;
-      let totalCollected = 0;
-      
-      // Função que replica a lógica do backend para saber quantas páginas
-      const getItemsPerPageBackend = (totalRequested) => {
-        if (totalRequested >= 50000) return 10000;
-        if (totalRequested >= 25000) return 5000;
-        if (totalRequested >= 10000) return 2500;
-        if (totalRequested >= 5000) return 1000;
-        return 500;
-      };
-      
-      const itemsPerPageBackend = getItemsPerPageBackend(companyLimit);
-      const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
       
       // Configure timeout based on company limit - MATCH API PERFORMANCE
       const timeoutMs = companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 180000 : companyLimit >= 10000 ? 90000 : 45000;
@@ -2106,42 +2091,22 @@ const Dashboard = () => {
         abortController.abort();
       }, timeoutMs);
       
-      // Buscar páginas sequencialmente
-      for (let page = 1; page <= totalPagesNeeded && totalCollected < companyLimit; page++) {
-        const pageSearchData = { ...searchData, page };
-        
-        const response = await fetch('/api/companies/filtered', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(pageSearchData),
-          signal: abortController.signal // ADD TIMEOUT SUPPORT
-        });
-        
-        const pageData = await response.json();
-        
-        if (!pageData.success) {
-          throw new Error(pageData.message || `Erro na página ${page}`);
-        }
-        
-        allCompanies.push(...pageData.data);
-        totalCollected += pageData.data.length;
-        
-        // Atualizar progress baseado nas páginas coletadas
-        const pageProgress = 15 + (page / totalPagesNeeded) * 80; // 15-95%
-        setProgress(Math.min(pageProgress, 95));
-        
-        // Se coletamos o suficiente, parar
-        if (totalCollected >= companyLimit) break;
-      }
+      // SINGLE REQUEST - Match API performance exactly like curl
+      const response = await fetch('/api/companies/filtered', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(searchData),
+        signal: abortController.signal
+      });
       
-      // Limitar ao companyLimit exato
-      const data = {
-        success: true,
-        data: allCompanies.slice(0, companyLimit)
-      };
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Erro na busca');
+      }
       
       // Clear progress interval FIRST
       if (progressInterval) {
