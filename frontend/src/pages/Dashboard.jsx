@@ -1473,6 +1473,12 @@ const Dashboard = () => {
       setCredits(prev => ({ ...prev, loading: true }));
       const token = localStorage.getItem('token');
       
+      if (!token) {
+        console.error('Erro ao carregar créditos - token não encontrado');
+        setCredits(prev => ({ ...prev, loading: false }));
+        return;
+      }
+      
       const response = await fetch('/api/credits', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1742,10 +1748,14 @@ const Dashboard = () => {
 
   // Carregar créditos quando user estiver disponível
   useEffect(() => {
-    if (user) {
-      loadCredits();
+    if (user && token) {
+      // Ensure token is set before making API call
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        loadCredits();
+      }
     }
-  }, [user]);
+  }, [user, token]);
 
   // Debug: Monitor adminStats changes
   useEffect(() => {

@@ -24,9 +24,12 @@ export const AuthProvider = ({ children }) => {
     if (storedToken && userData) {
       const parsedUser = JSON.parse(userData);
       
+      // CRITICAL: Configure auth token FIRST before setting user state
+      // This ensures API calls triggered by user state changes will have proper authorization
+      authService.setAuthToken(storedToken);
+      
       setToken(storedToken);
       setUser(parsedUser);
-      authService.setAuthToken(storedToken);
     }
     
     setLoading(false);
