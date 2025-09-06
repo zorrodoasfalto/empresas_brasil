@@ -1362,7 +1362,7 @@ const PageInfo = styled.div`
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   // const { subscriptionStatus } = useSubscription(); // REMOVIDO - ARQUIVO DELETADO
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
