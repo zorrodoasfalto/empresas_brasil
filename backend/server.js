@@ -3771,25 +3771,29 @@ app.post('/api/companies/filtered', async (req, res) => {
       return res.status(401).json({ error: 'Token inválido' });
     }
 
-    // Prevenção de requisições duplicadas (StrictMode / Double-clicks)
-    const requestKey = `${decoded.id}-${JSON.stringify(req.body)}`;
+    // 💳 GARANTIA: TODA BUSCA = 1 CRÉDITO APENAS
+    // Use chave simples baseada no usuário (não nos parâmetros)
+    const requestKey = `user-${decoded.id}-company-search`;
     const now = Date.now();
     
     if (requestCache.has(requestKey)) {
       const lastRequest = requestCache.get(requestKey);
-      // Se a última requisição idêntica foi feita nos últimos 5 segundos, ignore
-      if (now - lastRequest < 5000) {
-        console.log('⚠️ Duplicate request detected and ignored:', requestKey);
-        return res.status(429).json({ error: 'Duplicate request ignored' });
+      // 🔒 PROTEÇÃO: Máximo 1 crédito por minuto por usuário
+      if (now - lastRequest < 60000) {
+        console.log('⚠️ User credit protection - only 1 search per minute allowed');
+        return res.status(429).json({ 
+          error: 'Para evitar cobrança múltipla: aguarde 1 minuto entre buscas',
+          waitTime: Math.ceil((60000 - (now - lastRequest)) / 1000)
+        });
       }
     }
     
-    // Armazena timestamp da requisição atual
-    requestCache.set(requestKey, now);
+    // ❌ REMOVED: Do NOT set cache here - it allows multiple credit charges!
+    // Cache is set ONLY after successful credit deduction (line ~3857)
     
-    // Limpa cache antigas (mais de 10 segundos)
+    // Limpa cache antigas (mais de 60 segundos) 
     for (const [key, timestamp] of requestCache.entries()) {
-      if (now - timestamp > 10000) {
+      if (now - timestamp > 60000) {
         requestCache.delete(key);
       }
     }
@@ -3856,9 +3860,9 @@ app.post('/api/companies/filtered', async (req, res) => {
     // Set cache ONLY after successful credit deduction to prevent duplicates
     requestCache.set(requestKey, now);
     
-    // Clean old cache entries
+    // Clean old cache entries (keep for 60 seconds)
     for (const [key, timestamp] of requestCache.entries()) {
-      if (now - timestamp > 10000) {
+      if (now - timestamp > 60000) {
         requestCache.delete(key);
       }
     }
