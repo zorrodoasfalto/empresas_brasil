@@ -621,18 +621,18 @@ const Checkout = () => {
                     Renovados automaticamente todo mês
                   </div>
                   <div style={{ color: '#16a34a', fontSize: '0.85rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 'bold' }}>
-                    💳 Empresas Brasil: Sistema de batches inteligente
+                    🆓 Busca de Empresas Brasil: 100% GRÁTIS!
                   </div>
-                  <div style={{ color: '#475569', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                    • <strong>Até 10.000 empresas:</strong> 1 crédito por batch de 2.500 (máx 4 créditos)<br/>
-                    • <strong>25.000 empresas:</strong> 1 crédito por batch de 5.000 (5 créditos)<br/>
-                    • <strong>50.000 empresas:</strong> 1 crédito por batch de 10.000 (5 créditos)
+                  <div style={{ color: '#059669', fontSize: '0.75rem', marginTop: '0.2rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '6px', fontWeight: '600' }}>
+                    ✅ <strong>Busca ilimitada de empresas:</strong> ZERO créditos!<br/>
+                    ✅ <strong>Até 50.000 empresas por consulta:</strong> Sempre gratuito<br/>
+                    ✅ <strong>Exportação Excel/CSV:</strong> Sem custo adicional
                   </div>
                   <div style={{ color: '#16a34a', fontSize: '0.75rem', marginTop: '0.3rem' }}>
-                    ✅ Sistema otimizado: Batches maiores = menos créditos proporcionalmente
+                    💡 Créditos são usados apenas para prospecção externa
                   </div>
                   <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                    Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
+                    Google Maps: 10 créditos | Instagram: 10 créditos | LinkedIn: 50 créditos
                   </div>
                 </div>
                 
