@@ -1773,11 +1773,12 @@ const Dashboard = () => {
           console.log('⚡ Token expired?', isExpired, 'expires:', new Date(payload.exp * 1000));
           
           if (isExpired) {
-            console.log('⚡ Token expired! Need to refresh or relogin');
-            // Mostrar mensagem para o usuário
-            console.warn('🔐 Seu token de acesso expirou. Faça logout e login novamente para ver seus créditos atualizados.');
-            // Definir créditos como null para mostrar "..."
-            setCredits(prev => ({ ...prev, loading: false, amount: null }));
+            console.log('⚡ Token expired! Auto-logout...');
+            // LOGOUT AUTOMÁTICO quando token expira
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // Redirecionar para login
+            window.location.href = '/';
             return;
           }
         } catch (e) {
@@ -1819,8 +1820,17 @@ const Dashboard = () => {
           } else {
             const errorText = await response.text();
             console.log('⚡ ERROR: Response not ok:', response.status, errorText);
-            console.log('⚡ ERROR: This is likely why credits show as 0!');
-            // API retornou erro - usar fallback baseado no user
+            
+            // Se for erro 401 ou JWT relacionado, fazer logout automático
+            if (response.status === 401 || errorText.includes('jwt') || errorText.includes('token')) {
+              console.log('⚡ JWT/Auth error detected! Auto-logout...');
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              window.location.href = '/';
+              return;
+            }
+            
+            // Para outros erros, usar fallback
             const userData = JSON.parse(localStorage.getItem('user') || '{}');
             const fallbackCredits = userData.role === 'admin' ? 9953 : 10;
             
@@ -2088,7 +2098,7 @@ const Dashboard = () => {
       const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
       
       // Configure timeout based on company limit (RESTORED FROM WORKING VERSION)
-      const timeoutMs = companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 240000 : companyLimit >= 10000 ? 120000 : 60000; // 5min, 4min, 2min, 1min
+      const timeoutMs = companyLimit >= 50000 ? 180000 : companyLimit >= 25000 ? 120000 : companyLimit >= 10000 ? 60000 : 30000;
       console.log(`⏱️ Setting timeout for ${companyLimit} companies: ${timeoutMs/1000}s`);
       
       const abortController = new AbortController();
