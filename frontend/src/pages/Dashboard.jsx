@@ -1470,42 +1470,35 @@ const Dashboard = () => {
   // Funções para sistema de créditos
   const loadCredits = async () => {
     try {
-      console.log('🔍 LOAD CREDITS STARTED - setting loading true');
       setCredits(prev => ({ ...prev, loading: true }));
       const token = localStorage.getItem('token');
       
-      console.log('🔍 Token from localStorage:', token ? 'EXISTS' : 'NULL');
       if (!token) {
-        console.error('❌ Erro ao carregar créditos - token não encontrado');
+        console.error('Erro ao carregar créditos - token não encontrado');
         setCredits(prev => ({ ...prev, loading: false }));
         return;
       }
       
-      console.log('🔍 Making fetch to /api/credits...');
       const response = await fetch('/api/credits', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      console.log('🔍 Response received:', response.status, response.ok);
-      
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Credits data received:', data);
+        console.log('✅ Credits loaded successfully:', data.credits);
         setCredits({
           amount: data.credits,
           plan: data.plan,
           loading: false
         });
-        console.log('✅ Credits set successfully:', data.credits);
       } else {
-        const errorText = await response.text();
-        console.error('❌ Erro ao carregar créditos - response not ok:', response.status, errorText);
+        console.error('Erro ao carregar créditos - response status:', response.status);
         
         // Se token expirado/inválido, forçar novo login
         if (response.status === 401 || response.status === 404) {
-          console.log('🚪 Token inválido detectado - fazendo logout automático');
+          console.log('Token inválido detectado - fazendo logout automático');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
@@ -1515,10 +1508,7 @@ const Dashboard = () => {
         setCredits(prev => ({ ...prev, loading: false }));
       }
     } catch (error) {
-      console.error('❌ CATCH: Erro ao carregar créditos:', error);
-      
-      // Em caso de erro de rede, também pode ser token inválido
-      console.log('🌐 Erro de rede - possivelmente token expirado');
+      console.error('Erro ao carregar créditos:', error);
       setCredits(prev => ({ ...prev, loading: false }));
     }
   };
@@ -1754,51 +1744,50 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
-  // SOLUÇÃO NUCLEAR: Forçar carregamento de créditos até conseguir
+  // SOLUÇÃO ELEGANTE: Carregamento otimizado baseado no sucesso da solução nuclear
   useEffect(() => {
-    console.log('🚀 NUCLEAR SOLUTION: Starting aggressive credits loading');
+    console.log('✨ ELEGANT SOLUTION: Starting optimized credits loading');
     
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    const aggressiveLoadCredits = () => {
-      attempts++;
-      console.log(`💣 ATTEMPT ${attempts}/${maxAttempts}`);
-      
+    const tryLoadCredits = (attemptNumber) => {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       
-      console.log('💣 localStorage check - user:', !!storedUser, 'token:', !!storedToken);
-      console.log('💣 current credits state:', credits);
+      console.log(`✨ Attempt ${attemptNumber} - user:`, !!storedUser, 'token:', !!storedToken);
       
-      if (storedUser && storedToken) {
-        if (credits.amount === null || credits.amount === undefined) {
-          console.log('💣 FORCING loadCredits() - attempt', attempts);
-          loadCredits();
-        } else {
-          console.log('✅ NUCLEAR SUCCESS: Credits loaded:', credits.amount);
-          return; // Para o loop
-        }
+      if (storedUser && storedToken && (credits.amount === null || credits.amount === undefined)) {
+        console.log(`✨ Loading credits - attempt ${attemptNumber}`);
+        loadCredits();
+        return true; // Indica que tentou carregar
       }
-      
-      // Se ainda não carregou e há tentativas restantes, tenta novamente
-      if (attempts < maxAttempts && (credits.amount === null || credits.amount === undefined)) {
-        setTimeout(aggressiveLoadCredits, 500 * attempts); // Delay crescente
-      } else if (attempts >= maxAttempts) {
-        console.log('💥 NUCLEAR FAILED: Max attempts reached, credits still not loaded');
-      }
+      return false; // Não precisou tentar
     };
     
-    // Inicia imediatamente
-    aggressiveLoadCredits();
+    // Tentativa 1: Imediata (caso AuthContext já processou)
+    const attempted = tryLoadCredits(1);
     
-    // Cleanup não é necessário pois usa setTimeout, não setInterval
-  }, []); // Roda apenas uma vez
+    // Tentativa 2: Apenas se a primeira não funcionou, após 600ms (timing ideal)
+    let timer = null;
+    if (attempted) {
+      timer = setTimeout(() => {
+        // Só tenta novamente se ainda não carregou
+        if (credits.amount === null || credits.amount === undefined) {
+          console.log('✨ Second attempt - credits still not loaded');
+          tryLoadCredits(2);
+        } else {
+          console.log('✨ Credits already loaded, skipping second attempt');
+        }
+      }, 600);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []); // Executa apenas uma vez
   
-  // Backup useEffect para mudanças de user durante sessão
+  // Backup para mudanças de user durante a sessão
   useEffect(() => {
     if (user && (credits.amount === null || credits.amount === undefined)) {
-      console.log('🔄 User changed, loading credits as backup');
+      console.log('✨ User state changed - loading credits');
       loadCredits();
     }
   }, [user]);
