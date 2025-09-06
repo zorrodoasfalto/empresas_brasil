@@ -1772,6 +1772,24 @@ const Dashboard = () => {
     }
   }, [user]); // Remove 'token' dependency para evitar race condition
 
+  // FALLBACK: Garantir carregamento de créditos após inicialização completa
+  useEffect(() => {
+    console.log('🔍 FALLBACK useEffect - checking credits after 1000ms');
+    const fallbackTimer = setTimeout(() => {
+      console.log('🔍 FALLBACK executing - credits.amount:', credits.amount, 'user:', !!user);
+      // Se após 1 segundo o user existe mas os créditos não carregaram, tentar novamente
+      if (user && (credits.amount === null || credits.amount === undefined) && !credits.loading) {
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+          console.log('🔄 FALLBACK: Tentando carregar créditos novamente...');
+          loadCredits();
+        }
+      }
+    }, 1000);
+    
+    return () => clearTimeout(fallbackTimer);
+  }, []); // Executa apenas uma vez na montagem
+
   // Debug: Monitor adminStats changes
   useEffect(() => {
     console.log('🔍 adminStats changed:', adminStats);
