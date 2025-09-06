@@ -705,18 +705,24 @@ app.post('/api/auth/change-password', async (req, res) => {
 // Get user credits
 app.get('/api/credits', async (req, res) => {
   try {
+    console.log('🔍 CREDITS API: Request received');
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
+      console.log('🔍 CREDITS API: No token provided');
       return res.status(401).json({ success: false, message: 'Token não fornecido' });
     }
 
+    console.log('🔍 CREDITS API: Verifying token...');
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.id;
+    console.log('🔍 CREDITS API: Token valid, userId:', userId);
 
     // Get or create user credits (restored original logic for admin compatibility)
+    console.log('🔍 CREDITS API: Querying user_credits table...');
     let creditsResult = await pool.query(`
       SELECT * FROM user_credits WHERE user_id = $1
     `, [userId]);
+    console.log('🔍 CREDITS API: Credits query result:', creditsResult.rows.length, 'rows');
 
     if (creditsResult.rows.length === 0) {
       // Create credits record with default values based on user role
@@ -745,6 +751,7 @@ app.get('/api/credits', async (req, res) => {
     }
 
     const credits = creditsResult.rows[0];
+    console.log('🔍 CREDITS API: Returning credits:', credits.credits);
     res.json({
       success: true,
       credits: credits.credits,
