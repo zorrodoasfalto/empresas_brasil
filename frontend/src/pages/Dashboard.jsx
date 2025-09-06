@@ -2021,6 +2021,15 @@ const Dashboard = () => {
       const itemsPerPageBackend = getItemsPerPageBackend(companyLimit);
       const totalPagesNeeded = Math.ceil(companyLimit / itemsPerPageBackend);
       
+      // Configure timeout based on company limit (RESTORED FROM WORKING VERSION)
+      const timeoutMs = companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 240000 : companyLimit >= 10000 ? 120000 : 60000; // 5min, 4min, 2min, 1min
+      console.log(`⏱️ Setting timeout for ${companyLimit} companies: ${timeoutMs/1000}s`);
+      
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, timeoutMs);
+      
       // Buscar páginas sequencialmente
       for (let page = 1; page <= totalPagesNeeded && totalCollected < companyLimit; page++) {
         const pageSearchData = { ...searchData, page };
@@ -2031,7 +2040,8 @@ const Dashboard = () => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(pageSearchData)
+          body: JSON.stringify(pageSearchData),
+          signal: abortController.signal // ADD TIMEOUT SUPPORT
         });
         
         const pageData = await response.json();
@@ -2096,6 +2106,11 @@ const Dashboard = () => {
         
         toast.success(`✅ ${data.data.length} empresas carregadas - Exibindo página 1/${Math.ceil(data.data.length / itemsPerPage)} (${itemsPerPage} por página)`);
         
+        // Clear timeout when successful
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
         // Hide progress bar after showing success
         setTimeout(() => {
           setShowProgress(false);
@@ -2115,6 +2130,11 @@ const Dashboard = () => {
       
       if (progressInterval) {
         clearInterval(progressInterval);
+      }
+      
+      // Clear timeout on error
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
       
       if (error.name === 'AbortError') {
