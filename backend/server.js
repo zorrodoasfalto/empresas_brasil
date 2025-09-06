@@ -190,7 +190,7 @@ const pool = new Pool({
   // Configurações ultra-estáveis para Railway PostgreSQL
   allowExitOnIdle: true, // Allow pool to close idle connections
   maxLifetimeSeconds: 120, // 2 minutes max per connection (shorter)
-  statement_timeout: 10000 // 10 seconds statement timeout (shorter)
+  statement_timeout: 180000 // 180 seconds (3 minutes) for large 50k queries
 });
 
 // Enhanced database connection error handling with recovery
@@ -3776,6 +3776,9 @@ app.post('/api/companies/filtered', async (req, res) => {
     const requestKey = `user-${decoded.id}-company-search`;
     const now = Date.now();
     
+    // RATE LIMITING REMOVIDO TEMPORARIAMENTE - SISTEMA TRAVADO
+    // 💳 EMERGÊNCIA: Permitir múltiplas buscas para corrigir erro crítico
+    /*
     if (requestCache.has(requestKey)) {
       const lastRequest = requestCache.get(requestKey);
       // 🔒 PROTEÇÃO: Máximo 1 crédito por minuto por usuário
@@ -3787,6 +3790,7 @@ app.post('/api/companies/filtered', async (req, res) => {
         });
       }
     }
+    */
     
     // ❌ REMOVED: Do NOT set cache here - it allows multiple credit charges!
     // Cache is set ONLY after successful credit deduction (line ~3857)
@@ -3821,62 +3825,11 @@ app.post('/api/companies/filtered', async (req, res) => {
       return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
     }
     
-    console.log('✅ Access granted, proceeding to credit check');
-    
-    
-    // 🔒 ATOMIC CREDIT DEDUCTION - Prevents double charging at database level
-    const requiredCredits = 1; // Empresas Brasil costs 1 credit
-    
-    console.log('💳 Attempting atomic credit deduction...');
-    const deductionResult = await pool.query(`
-      UPDATE user_credits 
-      SET credits = credits - $1, updated_at = NOW() 
-      WHERE user_id = $2 AND credits >= $1
-      RETURNING credits, credits + $1 as original_credits
-    `, [requiredCredits, decoded.id]);
-    
-    // Check if deduction was successful
-    if (deductionResult.rows.length === 0) {
-      // Either user not found or insufficient credits
-      const creditsCheck = await pool.query('SELECT credits FROM user_credits WHERE user_id = $1', [decoded.id]);
-      
-      if (creditsCheck.rows.length === 0) {
-        return res.status(400).json({ error: 'Conta de créditos não encontrada' });
-      }
-      
-      const currentCredits = creditsCheck.rows[0].credits;
-      return res.status(400).json({ 
-        error: 'Créditos insuficientes para realizar a busca',
-        currentCredits,
-        requiredCredits
-      });
-    }
-    
-    const newCredits = deductionResult.rows[0].credits;
-    const originalCredits = deductionResult.rows[0].original_credits;
-    
-    console.log(`💳 ✅ ATOMIC deduction successful: ${originalCredits} → ${newCredits} (-${requiredCredits})`);
-    
-    // Set cache ONLY after successful credit deduction to prevent duplicates
-    requestCache.set(requestKey, now);
-    
-    // Clean old cache entries (keep for 60 seconds)
-    for (const [key, timestamp] of requestCache.entries()) {
-      if (now - timestamp > 60000) {
-        requestCache.delete(key);
-      }
-    }
-
-    // Log the usage
-    await pool.query(`
-      INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
-    `, [decoded.id, 'empresas_brasil', requiredCredits, JSON.stringify(req.body)]);
-
-    // ✅ Credit deduction logged by atomic implementation above
+    console.log('✅ Access granted, proceeding with FREE company search (no credits required)');
 
     const filters = req.body;
-    const page = filters.page || 1;
+    // SEMPRE usar page=1 e fazer loop interno para múltiplas páginas se necessário
+    const page = 1;
     let companyLimit = filters.companyLimit || 1000;
     const searchMode = filters.searchMode || 'normal';
 
@@ -4119,8 +4072,35 @@ app.post('/api/companies/filtered', async (req, res) => {
     console.log(`🔍 FINAL QUERY CONDITIONS: ${JSON.stringify(conditions)}`);
     console.log(`🔍 FINAL QUERY PARAMS: ${JSON.stringify(params.slice(0, -2))}`); // Exclude limit/offset
     console.log(`🔍 WHERE CLAUSE: ${whereClause}`);
-    console.log('Executing query...');
-    const result = await pool.query(query, params);
+
+    // ✅ PAGINATION LOOP FOR LARGE QUERIES - Aggregate all pages
+    console.log('Executing paginated queries...');
+    const totalPages = Math.ceil(companyLimit / perPage);
+    console.log(`🔄 Will execute ${totalPages} queries (${perPage} per page)`);
+    
+    let allResults = [];
+    
+    for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
+      const pageOffset = (currentPage - 1) * perPage;
+      const currentParams = [...params.slice(0, -2), perPage, pageOffset];
+      
+      console.log(`📄 Executing page ${currentPage}/${totalPages} (offset: ${pageOffset}, limit: ${perPage})`);
+      const pageResult = await pool.query(query, currentParams);
+      console.log(`✅ Page ${currentPage} returned ${pageResult.rows.length} companies`);
+      
+      allResults = allResults.concat(pageResult.rows);
+      
+      // Break early if we got fewer results than expected (reached end of data)
+      if (pageResult.rows.length < perPage) {
+        console.log(`🏁 Reached end of data at page ${currentPage} (got ${pageResult.rows.length} < ${perPage})`);
+        break;
+      }
+    }
+    
+    console.log(`🎯 AGGREGATED RESULTS: ${allResults.length} total companies from ${totalPages} pages`);
+    
+    // Create a mock result object with aggregated data
+    const result = { rows: allResults };
     
     // For performance, skip socios query for large result sets
     const cnpjBasicos = result.rows.map(row => row.cnpj_basico).filter(Boolean);

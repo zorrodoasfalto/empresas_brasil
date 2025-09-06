@@ -2150,11 +2150,7 @@ const Dashboard = () => {
           totalPages: Math.ceil(data.data.length / itemsPerPage)
         });
         
-        // Debitar 1 crédito 
-        const debitResult = await debitCredits('empresas_brasil', 1, searchData);
-        if (debitResult.success) {
-          console.log(`💎 1 crédito debitado. Restam: ${debitResult.remainingCredits}`);
-        }
+        // ✅ COMPANY SEARCH IS FREE - No credit deduction required
         
         toast.success(`✅ ${data.data.length} empresas carregadas - Exibindo página 1/${Math.ceil(data.data.length / itemsPerPage)} (${itemsPerPage} por página)`);
         
