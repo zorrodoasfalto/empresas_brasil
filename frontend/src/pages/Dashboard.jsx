@@ -1392,6 +1392,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showProgress, setShowProgress] = useState(false);
+  const [progressMessage, setProgressMessage] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   // Dynamic page size based on total results
   const getItemsPerPage = (totalResults) => {
@@ -2053,19 +2054,29 @@ const Dashboard = () => {
     // Progress bar for all queries
     setShowProgress(true);
     setProgress(5);
+    setProgressMessage('🔍 Iniciando busca na base de dados...');
     toast.info(`Buscando ${companyLimit.toLocaleString()} empresas...`);
 
     // Progress bar simulation - reflete velocidade real do backend
     progressInterval = setInterval(() => {
         setProgress(prev => {
-          if (prev > 95) {
-            return Math.min(prev + 0.3, 99); // Últimos 5% mais lentos
-          } else if (prev > 80) {
-            return Math.min(prev + Math.random() * 3 + 1, 95); // 80-95% moderado
+          // Update message based on progress
+          if (prev > 90) {
+            setProgressMessage('📋 Carregando dados dos sócios...');
+            return Math.min(prev + 0.5, 99); // Final stage slower
+          } else if (prev > 70) {
+            setProgressMessage('🏢 Processando informações das empresas...');
+            return Math.min(prev + Math.random() * 3 + 2, 90); // Processing stage
+          } else if (prev > 40) {
+            setProgressMessage('🗃️ Consultando registros na base...');
+            return Math.min(prev + Math.random() * 4 + 3, 70); // Database query stage
+          } else if (prev > 10) {
+            setProgressMessage('⚡ Aplicando filtros de busca...');
+            return Math.min(prev + Math.random() * 6 + 4, 40); // Filter stage
           }
-          return Math.min(prev + Math.random() * 12 + 5, 80); // 0-80% rápido como backend
+          return Math.min(prev + Math.random() * 5 + 3, 10); // Initial stage
         });
-      }, 400); // Mais responsivo
+      }, 600); // Slightly slower for better UX
 
     try {
       // Clean CNPJ by removing formatting characters before sending to API
@@ -2947,17 +2958,17 @@ const Dashboard = () => {
               <ProgressBar width={progress} />
             </ProgressBarContainer>
             <ProgressText>
-              {progress < 95 
-                ? `Processando... ${Math.round(progress)}%`
-                : progress < 100
-                ? `Carregando sócios... ${Math.round(progress)}%`
-                : 'Finalizando consulta...'
+              {progress === 100 
+                ? '✅ Consulta finalizada!'
+                : `${progressMessage} ${Math.round(progress)}%`
               }
             </ProgressText>
             <ProgressSubtext>
-              {progress >= 95 && progress < 100
-                ? '⏳ Os últimos 5% podem levar até 1 minuto (carregando dados dos sócios)'
-                : `Buscando ${companyLimit.toLocaleString()} empresas na base de dados`
+              {progress === 100
+                ? `✅ ${companyLimit.toLocaleString()} empresas encontradas com sucesso`
+                : progress >= 90
+                ? '⏳ Finalizando consulta - carregando dados dos sócios...'
+                : `🗃️ Consultando base de dados com ${companyLimit.toLocaleString()} empresas`
               }
             </ProgressSubtext>
           </ProgressContainer>
