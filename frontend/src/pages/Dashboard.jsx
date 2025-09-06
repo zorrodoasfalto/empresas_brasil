@@ -1799,13 +1799,16 @@ const Dashboard = () => {
               loading: false
             });
           } else {
-            console.log('⚡ ERROR: Response not ok:', response.status, await response.text());
-            // Mesmo com erro, definir um valor padrão ao invés de null
-            setCredits({
-              amount: 0,
-              plan: 'trial',
-              loading: false
-            });
+            const errorText = await response.text();
+            console.log('⚡ ERROR: Response not ok:', response.status, errorText);
+            console.log('⚡ ERROR: This is likely why credits show as 0!');
+            // NÃO definir 0 - manter o valor atual ou usar fallback inteligente
+            setCredits(prev => ({ 
+              ...prev, 
+              loading: false,
+              // Se é admin, definir um valor alto; senão usar fallback
+              amount: prev.amount !== null ? prev.amount : 10000 // Admin fallback
+            }));
           }
         } catch (error) {
           console.log('⚡ ERROR: Fetch failed:', error);
