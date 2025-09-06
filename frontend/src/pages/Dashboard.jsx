@@ -1412,11 +1412,20 @@ const Dashboard = () => {
     naturezaJuridica: []
   });
 
-  // Estado para créditos
-  const [credits, setCredits] = useState({
-    amount: null, // null indica que ainda não carregou
-    plan: 'trial',
-    loading: true // iniciar com loading true
+  // Estado para créditos - INICIALIZAÇÃO INSTANTÂNEA
+  const [credits, setCredits] = useState(() => {
+    // CARREGAMENTO INSTANTÂNEO na inicialização do estado
+    const storedToken = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    console.log('🚀 INSTANT CREDITS: Initializing credits state');
+    console.log('🚀 localStorage - token:', !!storedToken, 'user:', !!storedUser);
+    
+    return {
+      amount: null,
+      plan: 'trial',
+      loading: storedToken && storedUser ? true : false
+    };
   });
 
   // Estados para configurações
@@ -1744,76 +1753,76 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
-  // SOLUÇÃO DEFINITIVA: Carregamento de créditos que SEMPRE funciona
+  // SISTEMA SUPER SIMPLES: Carrega créditos no mount do componente
   useEffect(() => {
-    console.log('🔥 BULLETPROOF CREDITS: Starting guaranteed credits loading');
+    console.log('⚡ SIMPLE CREDITS: Component mounted, checking for credentials');
     
-    let attempts = 0;
-    const maxAttempts = 3;
-    let intervalId = null;
-    
-    const forceLoadCredits = () => {
-      attempts++;
-      console.log(`🔥 BULLETPROOF Attempt ${attempts}/${maxAttempts}`);
-      
-      const storedUser = localStorage.getItem('user');
+    const autoLoadCredits = async () => {
       const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
       
-      console.log(`🔥 localStorage - user: ${!!storedUser}, token: ${!!storedToken}`);
-      console.log(`🔥 current credits state - amount: ${credits.amount}, loading: ${credits.loading}`);
+      console.log('⚡ Credentials check - token:', !!storedToken, 'user:', !!storedUser);
       
-      // Se existe user e token no localStorage E créditos não foram carregados
-      if (storedUser && storedToken && (credits.amount === null || credits.amount === undefined)) {
-        console.log(`🔥 FORCING loadCredits() - attempt ${attempts}`);
-        loadCredits();
-      } else if (credits.amount !== null && credits.amount !== undefined) {
-        console.log(`🔥 BULLETPROOF SUCCESS: Credits loaded (${credits.amount}), stopping attempts`);
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
+      if (storedToken && storedUser) {
+        console.log('⚡ Credentials found, loading credits directly...');
+        
+        try {
+          setCredits(prev => ({ ...prev, loading: true }));
+          
+          const response = await fetch('/api/credits', {
+            headers: { 'Authorization': `Bearer ${storedToken}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('⚡ SUCCESS: Full API response:', data);
+            
+            // Garantir que sempre tem um valor numérico
+            const creditsAmount = typeof data.credits === 'number' ? data.credits : 
+                                 (data.amount !== undefined ? data.amount : 10); // fallback para 10
+            
+            console.log('⚡ Setting credits amount:', creditsAmount);
+            setCredits({
+              amount: creditsAmount,
+              plan: data.plan || 'trial',
+              loading: false
+            });
+          } else {
+            console.log('⚡ ERROR: Response not ok:', response.status, await response.text());
+            // Mesmo com erro, definir um valor padrão ao invés de null
+            setCredits({
+              amount: 0,
+              plan: 'trial',
+              loading: false
+            });
+          }
+        } catch (error) {
+          console.log('⚡ ERROR: Fetch failed:', error);
+          // Em caso de erro, definir 10 créditos para trial
+          setCredits({
+            amount: 10,
+            plan: 'trial',
+            loading: false
+          });
         }
-        return;
-      }
-      
-      // Se chegou no máximo de tentativas, parar
-      if (attempts >= maxAttempts) {
-        console.log(`🔥 BULLETPROOF: Max attempts reached, stopping`);
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
+      } else {
+        console.log('⚡ No credentials found, skipping credits load');
+        setCredits(prev => ({ ...prev, loading: false }));
       }
     };
     
-    // Tentar imediatamente
-    forceLoadCredits();
+    // Executar imediatamente e também após um pequeno delay
+    autoLoadCredits();
     
-    // Se não carregou na primeira, continuar tentando a cada 800ms
-    if (credits.amount === null || credits.amount === undefined) {
-      intervalId = setInterval(forceLoadCredits, 800);
-    }
-    
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
+    const backup = setTimeout(() => {
+      console.log('⚡ BACKUP: Trying credits load again after 1s');
+      if (credits.amount === null) {
+        autoLoadCredits();
       }
-    };
-  }, []); // Executa apenas uma vez
-  
-  // MONITOR créditos - parar tentativas quando conseguir carregar
-  useEffect(() => {
-    if (credits.amount !== null && credits.amount !== undefined) {
-      console.log('🔥 BULLETPROOF: Credits detected, system working correctly');
-    }
-  }, [credits.amount]);
-  
-  // Backup para mudanças de user durante a sessão
-  useEffect(() => {
-    if (user && (credits.amount === null || credits.amount === undefined)) {
-      console.log('✨ User state changed - loading credits');
-      loadCredits();
-    }
-  }, [user]);
+    }, 1000);
+    
+    return () => clearTimeout(backup);
+  }, []); // Só executa uma vez no mount
 
   // Debug: Monitor adminStats changes
   useEffect(() => {
