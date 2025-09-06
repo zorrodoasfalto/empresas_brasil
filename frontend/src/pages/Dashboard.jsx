@@ -1754,56 +1754,51 @@ const Dashboard = () => {
     // NÃO carregar stats na inicialização - apenas quando modal admin abrir
   }, []);
 
-  // CORREÇÃO DEFINITIVA: Carregar créditos de forma consistente (mesma lógica do login SEMPRE)
+  // SOLUÇÃO NUCLEAR: Forçar carregamento de créditos até conseguir
   useEffect(() => {
-    console.log('🔍 useEffect MOUNTED - starting credits check');
+    console.log('🚀 NUCLEAR SOLUTION: Starting aggressive credits loading');
     
-    // Função que verifica e carrega créditos (independente do state do AuthContext)
-    const forceLoadCredits = () => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const aggressiveLoadCredits = () => {
+      attempts++;
+      console.log(`💣 ATTEMPT ${attempts}/${maxAttempts}`);
+      
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
       
-      console.log('🔍 forceLoadCredits - storedUser:', !!storedUser, 'storedToken:', !!storedToken);
-      console.log('🔍 forceLoadCredits - credits.amount:', credits.amount, 'credits.loading:', credits.loading);
+      console.log('💣 localStorage check - user:', !!storedUser, 'token:', !!storedToken);
+      console.log('💣 current credits state:', credits);
       
-      // Se existem user e token no localStorage, carregar créditos (mesma lógica do login)
-      if (storedUser && storedToken && credits.amount === null && !credits.loading) {
-        console.log('✅ FORÇANDO carregamento de créditos (ignore AuthContext state)');
-        loadCredits();
-        return true; // Indica que tentou carregar
+      if (storedUser && storedToken) {
+        if (credits.amount === null || credits.amount === undefined) {
+          console.log('💣 FORCING loadCredits() - attempt', attempts);
+          loadCredits();
+        } else {
+          console.log('✅ NUCLEAR SUCCESS: Credits loaded:', credits.amount);
+          return; // Para o loop
+        }
       }
-      return false; // Não tentou carregar
+      
+      // Se ainda não carregou e há tentativas restantes, tenta novamente
+      if (attempts < maxAttempts && (credits.amount === null || credits.amount === undefined)) {
+        setTimeout(aggressiveLoadCredits, 500 * attempts); // Delay crescente
+      } else if (attempts >= maxAttempts) {
+        console.log('💥 NUCLEAR FAILED: Max attempts reached, credits still not loaded');
+      }
     };
     
-    // Tenta carregar imediatamente (para casos onde AuthContext já processou)
-    const attempted1 = forceLoadCredits();
+    // Inicia imediatamente
+    aggressiveLoadCredits();
     
-    // Se não conseguiu carregar na primeira, tenta após 300ms (tempo para AuthContext processar)
-    if (!attempted1) {
-      const timer1 = setTimeout(() => {
-        console.log('🔍 RETRY 300ms - tentando novamente');
-        const attempted2 = forceLoadCredits();
-        
-        // Se ainda não conseguiu, tenta uma última vez após mais 700ms
-        if (!attempted2) {
-          const timer2 = setTimeout(() => {
-            console.log('🔍 FINAL RETRY 1000ms - última tentativa');
-            forceLoadCredits();
-          }, 700);
-          
-          return () => clearTimeout(timer2);
-        }
-      }, 300);
-      
-      return () => clearTimeout(timer1);
-    }
-  }, []); // Executa apenas uma vez na montagem do componente
+    // Cleanup não é necessário pois usa setTimeout, não setInterval
+  }, []); // Roda apenas uma vez
   
-  // Manter useEffect para mudanças durante a sessão (login manual)
+  // Backup useEffect para mudanças de user durante sessão
   useEffect(() => {
-    console.log('🔍 useEffect [user] triggered - user:', !!user);
-    if (user && credits.amount === null && !credits.loading) {
-      console.log('🔍 User state changed - loading credits');
+    if (user && (credits.amount === null || credits.amount === undefined)) {
+      console.log('🔄 User changed, loading credits as backup');
       loadCredits();
     }
   }, [user]);
