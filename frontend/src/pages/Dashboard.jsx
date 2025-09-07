@@ -1359,6 +1359,65 @@ const PageInfo = styled.div`
   font-size: 0.9rem;
 `;
 
+// Tooltip components
+const TooltipContainer = styled.div`
+  position: relative;
+  display: inline-block;
+  cursor: help;
+`;
+
+const TooltipContent = styled.div`
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
+  color: #ffffff;
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 5px;
+  border: 1px solid rgba(0, 255, 170, 0.3);
+  opacity: ${props => props.show ? 1 : 0};
+  visibility: ${props => props.show ? 'visible' : 'hidden'};
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.95);
+  }
+`;
+
+const LabelWithTooltip = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #e0e0e0;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+`;
+
+const InfoIcon = styled.span`
+  color: #00ffaa;
+  font-size: 0.9rem;
+  font-weight: bold;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #00ffaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+`;
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1386,6 +1445,7 @@ const Dashboard = () => {
   
   const [companyLimit, setCompanyLimit] = useState(1000);
   const [hoveredSegment, setHoveredSegment] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
   
   const [empresas, setEmpresas] = useState([]);
   const [allEmpresas, setAllEmpresas] = useState([]);
@@ -1476,6 +1536,18 @@ const Dashboard = () => {
   // Estados para admin de saques
   const [adminWithdrawals, setAdminWithdrawals] = useState([]);
   const [adminWithdrawalsLoading, setAdminWithdrawalsLoading] = useState(false);
+
+  // Função para obter texto do tooltip baseado no limite de empresas
+  const getTooltipText = (limit) => {
+    const tooltips = {
+      1000: '🏃‍♂️ ~5-10 segundos - Busca rápida',
+      5000: '⚡ ~20-30 segundos - Busca moderada',
+      10000: '⏳ ~40-60 segundos - Busca padrão',
+      25000: '⏰ ~2-3 minutos - Busca extensa',
+      50000: '🚀 ~3-5 minutos - Busca completa ⚠️'
+    };
+    return tooltips[limit] || 'Tempo estimado para busca';
+  };
 
   // Funções para sistema de créditos
   const loadCredits = async () => {
@@ -2904,10 +2976,25 @@ const Dashboard = () => {
             </FormGroup>
 
             <FormGroup>
-              <Label>Limite de Empresas</Label>
+              <TooltipContainer
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+              >
+                <Label>Limite de Empresas ⓘ</Label>
+                <TooltipContent show={showTooltip}>
+                  {getTooltipText(companyLimit)}
+                </TooltipContent>
+              </TooltipContainer>
               <Select
                 value={companyLimit}
-                onChange={(e) => setCompanyLimit(Number(e.target.value))}
+                onChange={(e) => {
+                  setCompanyLimit(Number(e.target.value));
+                  // Force tooltip to update content if it's showing
+                  if (showTooltip) {
+                    setShowTooltip(false);
+                    setTimeout(() => setShowTooltip(true), 50);
+                  }
+                }}
               >
                 <option value="1000">1.000 empresas</option>
                 <option value="5000">5.000 empresas</option>

@@ -138,7 +138,7 @@ class SecurityUtils {
       payload,
       JWT_SECRET,
       { 
-        expiresIn: '15m',
+        expiresIn: '2h',
         issuer: 'empresas-brasil',
         audience: 'web-app'
       }
