@@ -1395,28 +1395,6 @@ const TooltipContent = styled.div`
   }
 `;
 
-const LabelWithTooltip = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #e0e0e0;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-`;
-
-const InfoIcon = styled.span`
-  color: #00ffaa;
-  font-size: 0.9rem;
-  font-weight: bold;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid #00ffaa;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: help;
-`;
 
 const Dashboard = () => {
   const navigate = useNavigate();
