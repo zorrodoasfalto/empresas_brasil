@@ -1000,24 +1000,34 @@ router.post('/forgot-password', async (req, res) => {
     const resetResult = await AuthUser.resetPasswordWithEmail(email, clientIP, req.headers['user-agent']);
 
     if (resetResult.success) {
-      // Enviar email com a nova senha
-      const emailResult = await emailService.sendPasswordResetEmail(
-        resetResult.user.email,
-        resetResult.user.name,
-        resetResult.newPassword
-      );
+      // Check if user object exists and has required data
+      if (resetResult.user && resetResult.user.email && resetResult.newPassword) {
+        // Enviar email com a nova senha
+        const emailResult = await emailService.sendPasswordResetEmail(
+          resetResult.user.email,
+          resetResult.user.name,
+          resetResult.newPassword
+        );
 
-      if (emailResult.success) {
-        console.log(`✅ Password reset email sent to: ${resetResult.user.email}`);
+        if (emailResult.success) {
+          console.log(`✅ Password reset email sent to: ${resetResult.user.email}`);
+          res.json({
+            success: true,
+            message: 'Se o email existir em nossa base, você receberá uma nova senha em alguns minutos.'
+          });
+        } else {
+          console.error('❌ Failed to send password reset email:', emailResult.message);
+          res.status(500).json({
+            success: false,
+            message: 'Erro ao enviar email. Tente novamente mais tarde.'
+          });
+        }
+      } else {
+        // Success but no user data - treat as security response (email not found)
+        console.log(`🔐 Password reset requested for non-existent or invalid user`);
         res.json({
           success: true,
           message: 'Se o email existir em nossa base, você receberá uma nova senha em alguns minutos.'
-        });
-      } else {
-        console.error('❌ Failed to send password reset email:', emailResult.message);
-        res.status(500).json({
-          success: false,
-          message: 'Erro ao enviar email. Tente novamente mais tarde.'
         });
       }
     } else {

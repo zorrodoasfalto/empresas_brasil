@@ -1,11 +1,12 @@
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 class AuthUser {
   constructor() {
     this.pool = new Pool({
-      connectionString: 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-      ssl: { rejectUnauthorized: false },
+      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       max: 10,
       min: 2,
       idleTimeoutMillis: 30000,
