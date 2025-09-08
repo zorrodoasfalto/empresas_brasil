@@ -293,7 +293,7 @@ class AuthUser {
       try {
         await client.query('BEGIN');
 
-        // Update user password
+        // Update password in BOTH tables to ensure login works
         await client.query(`
           UPDATE user_profiles 
           SET password_hash = $1, 
@@ -302,6 +302,14 @@ class AuthUser {
               updated_at = NOW()
           WHERE id = $2
         `, [passwordHash, user.id]);
+
+        // Also update the main users table (needed for login authentication)
+        await client.query(`
+          UPDATE users 
+          SET password_hash = $1,
+              updated_at = NOW()
+          WHERE email = $2
+        `, [passwordHash, email]);
 
         // Log the password reset for security
         await client.query(`
