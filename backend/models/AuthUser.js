@@ -113,11 +113,26 @@ class AuthUser {
 
   async findUserByEmail(email) {
     try {
-      const result = await this.pool.query(`
+      // Primeiro procurar na tabela user_profiles
+      let result = await this.pool.query(`
         SELECT id, email, password_hash, name, is_active, email_verified, 
                failed_login_attempts, locked_until, last_login, created_at
         FROM user_profiles
         WHERE email = $1 AND is_active = true
+      `, [email.toLowerCase().trim()]);
+      
+      if (result.rows[0]) {
+        return result.rows[0];
+      }
+      
+      // Se não encontrou, procurar na tabela users (para compatibilidade)
+      result = await this.pool.query(`
+        SELECT id, email, password_hash, email as name, 
+               true as is_active, true as email_verified,
+               0 as failed_login_attempts, null as locked_until, 
+               null as last_login, created_at
+        FROM users
+        WHERE email = $1 AND status = 'active'
       `, [email.toLowerCase().trim()]);
       
       return result.rows[0] || null;

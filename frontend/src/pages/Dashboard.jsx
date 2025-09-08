@@ -965,6 +965,51 @@ const Input = styled.input`
   }
 `;
 
+const PerformanceWarning = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #ffcd39;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  
+  .icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  
+  .content {
+    flex: 1;
+  }
+  
+  .warning-text {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+  
+  .sub-text {
+    opacity: 0.8;
+    font-size: 0.85rem;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    
+    .icon {
+      font-size: 1.1rem;
+    }
+    
+    .sub-text {
+      font-size: 0.8rem;
+    }
+  }
+`;
+
 const SearchButton = styled.button`
   background: linear-gradient(135deg, #00ffaa, #00ccff);
   border: none;
@@ -1421,7 +1466,7 @@ const Dashboard = () => {
     porteEmpresa: ''
   });
   
-  const [companyLimit, setCompanyLimit] = useState(1000);
+  const [companyLimit, setCompanyLimit] = useState(10000);
   const [hoveredSegment, setHoveredSegment] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
   
@@ -2107,26 +2152,20 @@ const Dashboard = () => {
     setProgressMessage('🔍 Iniciando busca na base de dados...');
     toast.info(`Buscando ${companyLimit.toLocaleString()} empresas...`);
 
-    // Progress bar simulation - reflete velocidade real do backend
+    // Progress bar simulation - reflete velocidade real do backend (RÁPIDA)
     progressInterval = setInterval(() => {
         setProgress(prev => {
-          // Update message based on progress
-          if (prev > 90) {
+          if (prev > 95) {
             setProgressMessage('📋 Carregando dados dos sócios...');
-            return Math.min(prev + 0.5, 99); // Final stage slower
-          } else if (prev > 70) {
+            return Math.min(prev + 0.3, 99); // Últimos 5% mais lentos
+          } else if (prev > 80) {
             setProgressMessage('🏢 Processando informações das empresas...');
-            return Math.min(prev + Math.random() * 3 + 2, 90); // Processing stage
-          } else if (prev > 40) {
-            setProgressMessage('🗃️ Consultando registros na base...');
-            return Math.min(prev + Math.random() * 4 + 3, 70); // Database query stage
-          } else if (prev > 10) {
-            setProgressMessage('⚡ Aplicando filtros de busca...');
-            return Math.min(prev + Math.random() * 6 + 4, 40); // Filter stage
+            return Math.min(prev + Math.random() * 3 + 1, 95); // 80-95% moderado
           }
-          return Math.min(prev + Math.random() * 5 + 3, 10); // Initial stage
+          setProgressMessage('⚡ Consultando base de dados...');
+          return Math.min(prev + Math.random() * 12 + 5, 80); // 0-80% rápido como backend
         });
-      }, 600); // Slightly slower for better UX
+      }, 400); // Mais responsivo
 
     try {
       // Clean CNPJ by removing formatting characters before sending to API
@@ -2144,7 +2183,7 @@ const Dashboard = () => {
       const token = localStorage.getItem('token');
       
       // Configure timeout based on company limit - MATCH API PERFORMANCE
-      const timeoutMs = companyLimit >= 50000 ? 300000 : companyLimit >= 25000 ? 180000 : companyLimit >= 10000 ? 90000 : 45000;
+      const timeoutMs = companyLimit >= 50000 ? 180000 : companyLimit >= 25000 ? 120000 : companyLimit >= 10000 ? 60000 : 30000;
       console.log(`⏱️ Setting timeout for ${companyLimit} companies: ${timeoutMs/1000}s`);
       
       const abortController = new AbortController();
@@ -2236,7 +2275,7 @@ const Dashboard = () => {
       }
       
       if (error.name === 'AbortError') {
-        toast.error(`Consulta cancelada - limite de tempo excedido (${companyLimit >= 50000 ? '5' : companyLimit >= 25000 ? '4' : '2'} minutos). Tente filtros mais específicos.`);
+        toast.error(`Consulta cancelada - limite de tempo excedido (${companyLimit >= 50000 ? '3' : companyLimit >= 25000 ? '2' : '1'} minuto${companyLimit >= 25000 ? 's' : ''}). Tente filtros mais específicos.`);
       } else {
         toast.error('Erro na busca: ' + (error.message || 'Erro desconhecido'));
       }
@@ -2982,6 +3021,13 @@ const Dashboard = () => {
               </Select>
             </FormGroup>
           </FiltersGrid>
+
+          {/* Performance Warning for Large Searches */}
+          {companyLimit >= 50000 && (
+            <PerformanceWarning>
+              <strong>⏱️ AVISO:</strong> A busca por {companyLimit.toLocaleString()} empresas pode levar até 3 minutos e demorar muito. Seja paciente durante o processamento.
+            </PerformanceWarning>
+          )}
 
           {/* Search Mode Info */}
           {filters.searchMode && filters.searchMode !== 'normal' && (

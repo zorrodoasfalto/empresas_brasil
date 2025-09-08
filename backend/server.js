@@ -146,6 +146,35 @@ async function getSmartUserId(decodedToken, providedUserId = null) {
   }
 }
 
+// Helper function to get CNAEs for a business segment
+function getSegmentCnaes(segmentId) {
+  const businessSegments = [
+    { id: 1, cnaes: ["4781400", "1412601", "4782201"] },
+    { id: 2, cnaes: ["5611203", "5611201", "5620104", "5612100"] },
+    { id: 3, cnaes: ["9602501", "9602502", "4772500"] },
+    { id: 4, cnaes: ["4712100", "4711301", "4729699", "4723700"] },
+    { id: 5, cnaes: ["4399103", "4321500", "4120400", "4330404", "4744099"] },
+    { id: 6, cnaes: ["4930201", "4930202", "5320202", "5229099"] },
+    { id: 7, cnaes: ["6202300", "6201501", "6204000"] },
+    { id: 8, cnaes: ["6201500", "6201501", "6202300", "6203100"] },
+    { id: 9, cnaes: ["4771701", "8712300", "8630501", "8650099"] },
+    { id: 10, cnaes: ["8599699", "8599604", "8513900", "8520100"] },
+    { id: 11, cnaes: ["4520008", "4520001", "4530703"] },
+    { id: 12, cnaes: ["8112500", "9491000", "9499500", "9430800"] },
+    { id: 13, cnaes: ["4781400", "4782201", "4789099", "4754701", "4744001"] },
+    { id: 14, cnaes: ["1091101", "1091102", "1099699", "1094100"] },
+    { id: 15, cnaes: ["9700500", "8121400", "8122200", "8129000"] },
+    { id: 16, cnaes: ["9001901", "9001902", "9002701"] },
+    { id: 17, cnaes: ["7490104", "7490199", "8299799"] },
+    { id: 18, cnaes: ["4110700", "4120400", "4291000"] },
+    { id: 19, cnaes: ["8630502", "8630503", "8640205", "8640299"] },
+    { id: 20, cnaes: ["4661300", "4661301", "4669999"] }
+  ];
+  
+  const segment = businessSegments.find(s => s.id === parseInt(segmentId));
+  return segment ? segment.cnaes : [];
+}
+
 // Apify configuration - API key loaded from environment variables only
 const APIFY_API_KEY = process.env.APIFY_API_KEY;
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
@@ -3893,7 +3922,7 @@ app.post('/api/companies/filtered', async (req, res) => {
       // Mapear segmento para CNAEs (usando dados do businessSegments)
       const segmentId = parseInt(filters.segmentoNegocio);
       const businessSegments = [
-        { id: 1, cnaes: ["5611201", "5611203", "5612100", "5620104"] },
+        { id: 1, cnaes: ["4781400", "1412601", "4782201"] },
         { id: 2, cnaes: ["5611203", "5611201", "5620104", "5612100"] },
         { id: 3, cnaes: ["9602501", "9602502", "4772500"] },
         { id: 4, cnaes: ["4530703", "4530705", "4541205"] },
@@ -4118,22 +4147,14 @@ app.post('/api/companies/filtered', async (req, res) => {
     // Optimized socios fetch - limit per company for better performance on large queries
     if (cnpjBasicos.length > 0) {
       console.log(`Fetching socios data for ${cnpjBasicos.length} companies...`);
-      // Ultra-aggressive limits for 50k queries to prevent timeout
-      let maxSociosPerCompany = 5;
-      let totalSociosLimit = 50000;
+      // Optimized limits for better performance
+      let maxSociosPerCompany = 2; // Padrão: 2 sócios
+      let totalSociosLimit = companyLimit * 2;
       
+      // Para consultas de 50k empresas: apenas 1 sócio por empresa
       if (companyLimit >= 50000) {
-        maxSociosPerCompany = 1; // Only 1 socio per company for 50k+ queries  
-        totalSociosLimit = 25000; // Max 25k total socios
-      } else if (companyLimit >= 25000) {
-        maxSociosPerCompany = 2; // Max 2 socios per company for 25k+ queries
-        totalSociosLimit = 50000;
-      } else if (companyLimit >= 5000) {
-        maxSociosPerCompany = 3; // Max 3 socios per company for 5k+ queries
-        totalSociosLimit = 15000;
-      } else if (companyLimit >= 1000) {
-        maxSociosPerCompany = 4; // Max 4 socios per company for 1k+ queries
-        totalSociosLimit = 5000;
+        maxSociosPerCompany = 1;
+        totalSociosLimit = companyLimit; // 1 sócio por empresa
       }
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);

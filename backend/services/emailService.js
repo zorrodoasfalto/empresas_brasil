@@ -34,7 +34,17 @@ class EmailService {
       this.sendgridEnabled = false;
     }
 
-    if (!this.resendEnabled && !this.twilioEnabled && !this.sendgridEnabled) {
+    // Configurar Hostinger se credenciais disponíveis (para reset de senha)
+    if (process.env.HOSTINGER_SMTP_HOST && 
+        process.env.HOSTINGER_SMTP_USER && 
+        process.env.HOSTINGER_SMTP_PASS) {
+      this.hostingerEnabled = true;
+      console.log('✅ Hostinger SMTP configurado (password reset)');
+    } else {
+      this.hostingerEnabled = false;
+    }
+
+    if (!this.resendEnabled && !this.twilioEnabled && !this.sendgridEnabled && !this.hostingerEnabled) {
       console.log('⚠️ Nenhum provedor de email configurado - usando Ethereal fallback');
     }
     
@@ -708,12 +718,12 @@ Empresas Brasil - A maior base de dados empresariais do Brasil
    */
   createHostingerTransporter() {
     return nodemailer.createTransport({
-      host: 'smtp.hostinger.com',
-      port: 465,
+      host: process.env.HOSTINGER_SMTP_HOST || 'smtp.hostinger.com',
+      port: parseInt(process.env.HOSTINGER_SMTP_PORT) || 465,
       secure: true, // true for port 465
       auth: {
-        user: 'contato@dataatlas.com.br',
-        pass: 'Blackboard12!@'
+        user: process.env.HOSTINGER_SMTP_USER || 'contato@dataatlas.com.br',
+        pass: process.env.HOSTINGER_SMTP_PASS || 'Blackboard12!@'
       },
       tls: {
         rejectUnauthorized: false
