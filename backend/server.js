@@ -710,11 +710,38 @@ app.post('/api/auth/change-password', async (req, res) => {
     const saltRounds = 10;
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
     
-    // Update password in database
-    await pool.query(
-      'UPDATE simple_users SET password = $1 WHERE id = $2',
-      [hashedNewPassword, decoded.id]
-    );
+    // Update password in ALL user tables (synchronized system)
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Update simple_users table (main)
+      await client.query(
+        'UPDATE simple_users SET password = $1 WHERE id = $2',
+        [hashedNewPassword, decoded.id]
+      );
+      
+      // Update users table (for authentication)
+      await client.query(
+        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+        [hashedNewPassword, decoded.id]
+      );
+      
+      // Update user_profiles table (for password reset)
+      await client.query(
+        'UPDATE user_profiles SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+        [hashedNewPassword, decoded.id]
+      );
+      
+      await client.query('COMMIT');
+      console.log(`✅ Password updated in ALL tables for user ID: ${decoded.id}`);
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
     
     res.json({
       success: true,
@@ -1441,6 +1468,259 @@ app.post('/api/debug/sync-users', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao sincronizar usuários',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Fix Victor's admin credits
+app.post('/api/debug/fix-victor-credits', async (req, res) => {
+  try {
+    console.log('🔧 FIXING VICTOR ADMIN CREDITS...');
+    
+    const email = 'victormagalhaesg@gmail.com';
+    const adminCredits = 10000;
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Update simple_users table
+      const simpleUserUpdate = await client.query(`
+        UPDATE simple_users 
+        SET credits = $1, role = 'admin'
+        WHERE email = $2
+        RETURNING id, email, credits, role
+      `, [adminCredits, email]);
+      
+      // Update users table  
+      const usersUpdate = await client.query(`
+        UPDATE users 
+        SET role = 'admin'
+        WHERE email = $1
+        RETURNING id, email, role
+      `, [email]);
+      
+      // Update user_profiles table
+      const profilesUpdate = await client.query(`
+        UPDATE user_profiles 
+        SET is_active = true
+        WHERE email = $1
+        RETURNING id, email, is_active
+      `, [email]);
+      
+      await client.query('COMMIT');
+      
+      console.log('✅ Victor credits fixed successfully');
+      
+      res.json({
+        success: true,
+        message: `Victor's credits updated to ${adminCredits}`,
+        updates: {
+          simple_users: simpleUserUpdate.rows[0],
+          users: usersUpdate.rows[0],
+          user_profiles: profilesUpdate.rows[0]
+        }
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ Victor credits fix error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao corrigir créditos do Victor',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Check ID inconsistencies across tables
+app.post('/api/debug/check-id-inconsistencies', async (req, res) => {
+  try {
+    console.log('🔍 CHECKING ID INCONSISTENCIES ACROSS TABLES...');
+    
+    const client = await pool.connect();
+    try {
+      // Get all users with their IDs from all tables
+      const query = `
+        SELECT 
+          su.id as simple_users_id,
+          su.email as simple_users_email,
+          su.role as simple_users_role,
+          su.credits as simple_users_credits,
+          u.id as users_id,
+          u.email as users_email, 
+          u.role as users_role,
+          up.id as user_profiles_id,
+          up.email as user_profiles_email,
+          up.name as user_profiles_name,
+          up.is_active as user_profiles_active
+        FROM simple_users su
+        FULL OUTER JOIN users u ON su.email = u.email
+        FULL OUTER JOIN user_profiles up ON COALESCE(su.email, u.email) = up.email
+        WHERE su.email IS NOT NULL OR u.email IS NOT NULL OR up.email IS NOT NULL
+        ORDER BY COALESCE(su.email, u.email, up.email)
+      `;
+      
+      const result = await client.query(query);
+      
+      let inconsistencies = [];
+      let totalUsers = 0;
+      
+      for (const row of result.rows) {
+        totalUsers++;
+        const email = row.simple_users_email || row.users_email || row.user_profiles_email;
+        
+        const ids = [
+          { table: 'simple_users', id: row.simple_users_id },
+          { table: 'users', id: row.users_id },
+          { table: 'user_profiles', id: row.user_profiles_id }
+        ].filter(item => item.id !== null);
+        
+        // Check if IDs are different
+        if (ids.length > 1) {
+          const uniqueIds = [...new Set(ids.map(item => item.id))];
+          if (uniqueIds.length > 1) {
+            inconsistencies.push({
+              email,
+              ids: ids,
+              problem: 'Different IDs across tables'
+            });
+          }
+        }
+        
+        // Check if user exists in some tables but not others
+        const existsIn = [];
+        if (row.simple_users_id) existsIn.push('simple_users');
+        if (row.users_id) existsIn.push('users'); 
+        if (row.user_profiles_id) existsIn.push('user_profiles');
+        
+        if (existsIn.length < 3) {
+          inconsistencies.push({
+            email,
+            existsIn,
+            missing: ['simple_users', 'users', 'user_profiles'].filter(t => !existsIn.includes(t)),
+            problem: 'User missing in some tables'
+          });
+        }
+      }
+      
+      console.log(`Found ${inconsistencies.length} inconsistencies out of ${totalUsers} users`);
+      
+      res.json({
+        success: true,
+        totalUsers,
+        inconsistenciesFound: inconsistencies.length,
+        inconsistencies: inconsistencies,
+        summary: {
+          differentIds: inconsistencies.filter(i => i.problem === 'Different IDs across tables').length,
+          missingInTables: inconsistencies.filter(i => i.problem === 'User missing in some tables').length
+        }
+      });
+      
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ ID inconsistency check error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao verificar inconsistências de ID',
+      error: error.message
+    });
+  }
+});
+
+// DEBUG: Mirror ALL user data - fix ID inconsistencies completely
+app.post('/api/debug/mirror-users-completely', async (req, res) => {
+  try {
+    console.log('🔄 MIRRORING ALL USER DATA - FIXING ID INCONSISTENCIES...');
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // 1. Get all users from simple_users (source of truth)
+      const sourceUsers = await client.query(`
+        SELECT id, email, password, role, credits, created_at
+        FROM simple_users
+        ORDER BY id
+      `);
+      
+      console.log(`Found ${sourceUsers.rows.length} users in simple_users (source)`);
+      
+      // 2. Clear and rebuild users table
+      console.log('🗑️ Clearing users table...');
+      await client.query('DELETE FROM users');
+      
+      // 3. Clear and rebuild user_profiles table  
+      console.log('🗑️ Clearing user_profiles table...');
+      await client.query('DELETE FROM user_profiles');
+      
+      let fixed = 0;
+      
+      for (const user of sourceUsers.rows) {
+        console.log(`Mirroring user: ${user.email} (ID: ${user.id})`);
+        
+        // 4. Insert in users table with SAME ID
+        await client.query(`
+          INSERT INTO users (id, email, password_hash, password_salt, role, status, created_at, updated_at)
+          VALUES ($1, $2, $3, '', $4, 'active', $5, NOW())
+        `, [user.id, user.email, user.password, user.role, user.created_at]);
+        
+        // 5. Insert in user_profiles table with SAME ID and ALL COLUMNS
+        await client.query(`
+          INSERT INTO user_profiles (
+            id, email, password_hash, name, is_active, email_verified, 
+            failed_login_attempts, locked_until, last_login, created_at, updated_at
+          )
+          VALUES ($1, $2, $3, $4, true, true, 0, NULL, NULL, $5, NOW())
+        `, [user.id, user.email, user.password, user.email, user.created_at]);
+        
+        fixed++;
+      }
+      
+      // 6. Reset sequence counters to prevent future conflicts
+      const maxId = await client.query(`SELECT MAX(id) as max_id FROM simple_users`);
+      const nextId = (maxId.rows[0].max_id || 0) + 1;
+      
+      await client.query(`SELECT setval('users_id_seq', $1, false)`, [nextId]);
+      await client.query(`SELECT setval('user_profiles_id_seq', $1, false)`, [nextId]);
+      
+      await client.query('COMMIT');
+      
+      console.log(`🎉 MIRRORING COMPLETE: ${fixed} users synchronized with SAME IDs and ALL COLUMNS`);
+      
+      res.json({
+        success: true,
+        message: `All user data mirrored successfully - IDs synchronized, all columns filled`,
+        stats: {
+          usersProcessed: fixed,
+          sequenceReset: nextId,
+          source: 'simple_users',
+          mirrored: ['users', 'user_profiles']
+        }
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ User mirroring error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao espelhar dados dos usuários',
       error: error.message
     });
   }

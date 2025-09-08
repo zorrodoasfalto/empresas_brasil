@@ -15,7 +15,9 @@ import {
   EyeOff,
   Share,
   Gift,
-  ArrowLeft
+  ArrowLeft,
+  Lock,
+  Save
 } from 'lucide-react';
 import logo from '../assets/images/logo.png';
 
