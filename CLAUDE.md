@@ -1,5 +1,11 @@
 # Claude Code - Configuração do Projeto
 
+## 🔒 STABLE SAVEPOINT CREATED: `STABLE-SAVEPOINT-v6.6.1`
+**Date**: January 8, 2025 | **Commit**: `42a03c5` | **Status**: ✅ PRODUCTION READY
+**Recovery Guide**: See `SAVEPOINT-RECOVERY-GUIDE.md` for emergency restore procedures
+
+---
+
 ## ✅ SETUP VERIFICADO E FUNCIONANDO
 
 ### Portas e URLs
