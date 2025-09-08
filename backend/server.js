@@ -757,9 +757,9 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 });
 
-// CREDITS SYSTEM - ARQUITETURA SUPER SIMPLES QUE SEMPRE FUNCIONA
-app.get('/api/credits', (req, res) => {
-  console.log('💎 FLAWLESS CREDITS API: Request received');
+// CREDITS SYSTEM - BUSCA REAL NO BANCO DE DADOS
+app.get('/api/credits', async (req, res) => {
+  console.log('💎 CREDITS API: Request received');
   
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -768,7 +768,7 @@ app.get('/api/credits', (req, res) => {
       return res.status(401).json({ success: false, message: 'Token não fornecido' });
     }
 
-    // Verificar token de forma simples
+    // Verificar token
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
@@ -779,33 +779,37 @@ app.get('/api/credits', (req, res) => {
     const userId = decoded.id;
     console.log('💎 User ID:', userId);
 
-    // ARQUITETURA SIMPLES: Mapa direto de créditos por usuário
-    const creditsMap = {
-      2: { credits: 9953, plan: 'admin' },    // rodyrodrigo@gmail.com
-      1: { credits: 100, plan: 'trial' },     // outros usuários
-    };
+    // BUSCAR CRÉDITOS REAIS DO BANCO DE DADOS
+    const userResult = await pool.query(
+      'SELECT id, email, role, credits FROM simple_users WHERE id = $1',
+      [userId]
+    );
 
-    // Obter créditos do mapa ou usar padrão
-    const userCredits = creditsMap[userId] || { credits: 10, plan: 'trial' };
-    
-    console.log('💎 Returning credits:', userCredits.credits);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    }
 
-    // SEMPRE retorna sucesso
+    const user = userResult.rows[0];
+    console.log('💎 User found:', user.email, 'Role:', user.role, 'Credits:', user.credits);
+
+    // Determinar plano baseado no role
+    const plan = user.role === 'admin' ? 'admin' : 'trial';
+
     return res.json({
       success: true,
-      credits: userCredits.credits,
-      plan: userCredits.plan,
+      credits: user.credits,
+      plan: plan,
       lastReset: '2025-09-02T05:15:20.384Z'
     });
 
   } catch (error) {
     console.error('💎 Credits API error:', error);
     
-    // MESMO COM ERRO, RETORNAR FALLBACK VÁLIDO
+    // Fallback em caso de erro
     return res.json({
       success: true,
-      credits: 9953,  // Sempre retornar algo válido
-      plan: 'admin',
+      credits: 10,
+      plan: 'trial',
       lastReset: '2025-09-02T05:15:20.384Z'
     });
   }
@@ -1773,6 +1777,104 @@ app.post('/api/debug/update-roles', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erro ao atualizar sistema de roles',
+      error: error.message
+    });
+  }
+});
+
+// Debug: Search users by partial email
+app.post('/api/debug/search-users', async (req, res) => {
+  try {
+    const { emailPart } = req.body;
+    
+    if (!emailPart) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email part required'
+      });
+    }
+    
+    const result = await pool.query(`
+      SELECT id, email, role, credits, created_at
+      FROM simple_users 
+      WHERE email ILIKE $1
+      ORDER BY email
+    `, [`%${emailPart}%`]);
+    
+    res.json({
+      success: true,
+      users: result.rows,
+      count: result.rowCount
+    });
+    
+  } catch (error) {
+    console.error('Search users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao buscar usuários',
+      error: error.message
+    });
+  }
+});
+
+// Debug: Fix specific user credits
+app.post('/api/debug/fix-user-credits', async (req, res) => {
+  try {
+    const { email, credits } = req.body;
+    
+    if (!email || !credits) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and credits required'
+      });
+    }
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Update all tables with the new credits
+      await client.query(
+        'UPDATE simple_users SET credits = $1 WHERE email = $2',
+        [credits, email]
+      );
+      
+      await client.query(
+        'UPDATE users SET credits = $1 WHERE email = $2',
+        [credits, email]
+      );
+      
+      await client.query(
+        'UPDATE user_profiles SET credits = $1 WHERE email = $2',
+        [credits, email]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Check result
+      const result = await pool.query(
+        'SELECT id, email, role, credits FROM simple_users WHERE email = $1',
+        [email]
+      );
+      
+      res.json({
+        success: true,
+        message: `Credits updated for ${email}`,
+        user: result.rows[0]
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Fix user credits error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao corrigir créditos do usuário',
       error: error.message
     });
   }
