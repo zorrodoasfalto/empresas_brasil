@@ -967,4 +967,74 @@ router.post('/manual-register', async (req, res) => {
   }
 });
 
+// 🔐 PASSWORD RESET ENDPOINT
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+
+    // Validação básica
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email é obrigatório'
+      });
+    }
+
+    // Rate limiting para reset de senha
+    if (!checkRateLimit(clientIP, 'password_reset')) {
+      console.log(`🚫 Password reset rate limit exceeded for IP: ${clientIP}`);
+      return res.status(429).json({
+        success: false,
+        message: 'Muitas tentativas de recuperação de senha. Tente novamente em 15 minutos.'
+      });
+    }
+
+    console.log(`🔐 Password reset requested for: ${email} from IP: ${clientIP}`);
+
+    // Importar AuthUser e EmailService
+    const AuthUser = require('../models/AuthUser');
+    const emailService = require('../services/emailService');
+
+    // Usar o método resetPasswordWithEmail do AuthUser que já gera nova senha
+    const resetResult = await AuthUser.resetPasswordWithEmail(email, clientIP, req.headers['user-agent']);
+
+    if (resetResult.success) {
+      // Enviar email com a nova senha
+      const emailResult = await emailService.sendPasswordResetEmail(
+        resetResult.user.email,
+        resetResult.user.name,
+        resetResult.newPassword
+      );
+
+      if (emailResult.success) {
+        console.log(`✅ Password reset email sent to: ${resetResult.user.email}`);
+        res.json({
+          success: true,
+          message: 'Se o email existir em nossa base, você receberá uma nova senha em alguns minutos.'
+        });
+      } else {
+        console.error('❌ Failed to send password reset email:', emailResult.message);
+        res.status(500).json({
+          success: false,
+          message: 'Erro ao enviar email. Tente novamente mais tarde.'
+        });
+      }
+    } else {
+      // Sempre retornar sucesso por segurança (não revelar se email existe)
+      res.json({
+        success: true,
+        message: 'Se o email existir em nossa base, você receberá uma nova senha em alguns minutos.'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Password reset error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor. Tente novamente mais tarde.'
+    });
+  }
+});
+
 module.exports = router;

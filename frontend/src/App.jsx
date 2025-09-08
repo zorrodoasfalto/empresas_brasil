@@ -9,6 +9,7 @@ import TrialExpiredRedirect from './components/TrialExpiredRedirect';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import GoogleMapsSimple from './pages/GoogleMapsSimple';
 import GoogleMapsScraper from './pages/GoogleMapsScraper';
@@ -39,6 +40,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-email/:token" element={<VerifyEmail />} />
             <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/about" element={<AboutUs />} />

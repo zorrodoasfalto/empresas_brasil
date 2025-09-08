@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import styled from 'styled-components';
-import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/images/logo.png';
 
 const Container = styled.div`
@@ -65,11 +64,19 @@ const FormContainer = styled.div`
 
 const Title = styled.h1`
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   color: #0a3042;
   font-weight: 800;
-  font-size: 2rem;
+  font-size: 1.75rem;
   letter-spacing: -0.025em;
+`;
+
+const Subtitle = styled.p`
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.5;
 `;
 
 const Form = styled.form`
@@ -170,10 +177,34 @@ const ErrorMessage = styled.span`
   display: block;
 `;
 
-const Login = () => {
-  const { login, isAuthenticated, user } = useAuth();
+const SuccessMessage = styled.div`
+  background: #d1fae5;
+  border: 1px solid #34d399;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+`;
+
+const SuccessTitle = styled.h3`
+  color: #065f46;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+`;
+
+const SuccessText = styled.p`
+  color: #047857;
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.4;
+`;
+
+const ForgotPassword = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [serverMessage, setServerMessage] = useState('');
   
   const {
     register,
@@ -181,67 +212,70 @@ const Login = () => {
     formState: { errors }
   } = useForm();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      console.log('🔍 Login: useEffect detected authentication, checking user subscription status');
-      
-      // Admin always goes to dashboard
-      if (user && user.role === 'admin') {
-        console.log('🔍 Login: Admin user, navigating to dashboard');
-        navigate('/dashboard');
-        return;
-      }
-      
-      // Only redirect to checkout if user has NO subscription/role at all
-      if (user && (!user.subscription || user.subscription === 'none') && (!user.role || user.role === 'user')) {
-        console.log('🔍 Login: User without plan detected, redirecting to checkout');
-        navigate('/checkout');
-      } else {
-        console.log('🔍 Login: User with plan (trial/pro/premium/max), navigating to dashboard');
-        navigate('/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, navigate]);
-
   const onSubmit = async (data) => {
     setLoading(true);
-    console.log('🔍 Login: Submitting login form for:', data.email);
+    setServerMessage('');
     
-    const result = await login(data.email, data.password);
-    console.log('🔍 Login: Login result:', result);
-    
-    if (result.success) {
-      console.log('🔍 Login: Login successful, checking user status...');
+    try {
+      console.log('🔐 Requesting password reset for:', data.email);
       
-      // Se o trial expirou, redirecionar para página de assinatura
-      if (result.trialExpired && result.redirectToSubscription) {
-        console.log('🔍 Login: Trial expired, redirecting to subscription page');
-        navigate('/subscription');
-        setLoading(false);
-        return;
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email
+        }),
+      });
+
+      const result = await response.json();
+      console.log('🔐 Password reset response:', result);
+
+      if (result.success) {
+        setSuccess(true);
+        setServerMessage(result.message);
+      } else {
+        setServerMessage(result.message || 'Erro ao processar solicitação');
       }
       
-      // Admin always goes to dashboard
-      if (result.user && result.user.role === 'admin') {
-        console.log('🔍 Login: Admin user, navigating to dashboard');
-        navigate('/dashboard');
-        setLoading(false);
-        return;
-      }
-      
-      // Only redirect to checkout if user has NO subscription/role at all
-      if (result.user && (!result.user.subscription || result.user.subscription === 'none') && (!result.user.role || result.user.role === 'user')) {
-        console.log('🔍 Login: User without plan detected, redirecting to checkout');
-        navigate('/checkout');
-        setLoading(false);
-        return;
-      }
-      
-      // Premium user goes to dashboard (useEffect will handle this case)
+    } catch (error) {
+      console.error('❌ Password reset request error:', error);
+      setServerMessage('Erro de conexão. Tente novamente mais tarde.');
     }
     
     setLoading(false);
   };
+
+  if (success) {
+    return (
+      <Container>
+        <Header>
+          <nav>
+            <div className="nav-content">
+              <div className="logo">
+                <img src={logo} alt="Logo" />
+              </div>
+            </div>
+          </nav>
+        </Header>
+        
+        <MainContent>
+          <FormContainer>
+            <SuccessMessage>
+              <SuccessTitle>✅ Solicitação Enviada</SuccessTitle>
+              <SuccessText>{serverMessage}</SuccessText>
+            </SuccessMessage>
+            
+            <LinkText>
+              Lembre-se de verificar sua caixa de spam.{' '}
+              <StyledLink to="/login">Voltar para Login</StyledLink>
+            </LinkText>
+          </FormContainer>
+        </MainContent>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -257,17 +291,27 @@ const Login = () => {
       
       <MainContent>
         <FormContainer>
-          <Title>Login</Title>
+          <Title>Esqueci minha senha</Title>
+          <Subtitle>
+            Digite seu email abaixo e enviaremos uma nova senha para você acessar sua conta.
+          </Subtitle>
+          
+          {serverMessage && !success && (
+            <ErrorMessage style={{ textAlign: 'center', marginBottom: '1rem' }}>
+              {serverMessage}
+            </ErrorMessage>
+          )}
+          
           <Form onSubmit={handleSubmit(onSubmit)}>
             <FormGroup>
               <Label>Email</Label>
               <Input
                 type="email"
-                placeholder="Digite seu email"
+                placeholder="Digite seu email cadastrado"
                 {...register('email', {
                   required: 'Email é obrigatório',
                   pattern: {
-                    value: /^\S+@\S+$/i,
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
                     message: 'Email inválido'
                   }
                 })}
@@ -275,25 +319,14 @@ const Login = () => {
               {errors.email && <ErrorMessage>{errors.email.message}</ErrorMessage>}
             </FormGroup>
             
-            <FormGroup>
-              <Label>Senha</Label>
-              <Input
-                type="password"
-                placeholder="Digite sua senha"
-                {...register('password', {
-                  required: 'Senha é obrigatória'
-                })}
-              />
-              {errors.password && <ErrorMessage>{errors.password.message}</ErrorMessage>}
-            </FormGroup>
-            
             <Button type="submit" disabled={loading}>
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? 'Enviando...' : 'Enviar Nova Senha'}
             </Button>
           </Form>
           
-          <LinkText style={{ marginTop: '1rem' }}>
-            <StyledLink to="/forgot-password">Esqueci minha senha</StyledLink>
+          <LinkText>
+            Lembrou da senha?{' '}
+            <StyledLink to="/login">Fazer Login</StyledLink>
           </LinkText>
           
           <LinkText>
@@ -306,4 +339,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default ForgotPassword;

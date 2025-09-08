@@ -34,9 +34,51 @@ class AuthUser {
         await setup.close();
       }
       
+      // Criar tabela de tokens de reset se não existir
+      await this.createPasswordResetTable();
+      
       console.log('✅ Sistema de usuários permanentes ativo');
     } catch (error) {
       console.error('❌ Erro ao inicializar sistema de usuários:', error.message);
+    }
+  }
+
+  async createPasswordResetTable() {
+    try {
+      await this.pool.query(`
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            token VARCHAR(64) NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            ip_address INET,
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            used_at TIMESTAMP,
+            
+            -- Foreign key constraint
+            CONSTRAINT fk_password_reset_user 
+                FOREIGN KEY (user_id) 
+                REFERENCES user_profiles(id) 
+                ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes
+      await this.pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)
+      `);
+      await this.pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)
+      `);
+      await this.pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at)
+      `);
+
+      console.log('✅ Tabela password_reset_tokens inicializada');
+    } catch (error) {
+      console.error('❌ Erro ao criar tabela password_reset_tokens:', error.message);
     }
   }
 
@@ -200,6 +242,219 @@ class AuthUser {
     } catch (error) {
       console.error('Erro ao desativar usuário:', error);
       throw error;
+    }
+  }
+
+  // 🔐 PASSWORD RESET METHODS
+
+  generateSecurePassword(length = 12) {
+    // Generate a secure, user-friendly password
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const symbols = '!@#$%&*';
+    
+    const all = lowercase + uppercase + numbers + symbols;
+    
+    let password = '';
+    
+    // Ensure at least one character from each type
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    // Fill the rest randomly
+    for (let i = password.length; i < length; i++) {
+      password += all[Math.floor(Math.random() * all.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  async resetPasswordWithEmail(email, ipAddress = null, userAgent = null) {
+    try {
+      const user = await this.findUserByEmail(email);
+      if (!user) {
+        // Security: Don't reveal if email exists or not
+        return { 
+          success: true, 
+          message: 'Se o email existir, você receberá uma nova senha em alguns minutos.' 
+        };
+      }
+
+      // Generate new secure password
+      const newPassword = this.generateSecurePassword();
+      const passwordHash = await this.hashPassword(newPassword);
+
+      // Start transaction
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Update user password
+        await client.query(`
+          UPDATE user_profiles 
+          SET password_hash = $1, 
+              failed_login_attempts = 0, 
+              locked_until = NULL,
+              updated_at = NOW()
+          WHERE id = $2
+        `, [passwordHash, user.id]);
+
+        // Log the password reset for security
+        await client.query(`
+          INSERT INTO password_reset_tokens (user_id, token, expires_at, ip_address, user_agent, used, used_at)
+          VALUES ($1, $2, NOW() + INTERVAL '1 day', $3, $4, TRUE, NOW())
+        `, [user.id, `AUTO_RESET_${Date.now()}`, ipAddress, userAgent]);
+
+        await client.query('COMMIT');
+
+        return {
+          success: true,
+          user: { id: user.id, email: user.email, name: user.name },
+          newPassword, // Will be used to send email
+          message: 'Nova senha gerada com sucesso. Enviando por email...'
+        };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Erro ao resetar senha:', error);
+      return { 
+        success: false, 
+        message: 'Erro interno do servidor. Tente novamente mais tarde.' 
+      };
+    }
+  }
+
+  async validateResetToken(token) {
+    try {
+      const result = await this.pool.query(`
+        SELECT 
+          prt.id, prt.user_id, prt.token, prt.expires_at, prt.used,
+          up.email, up.name, up.is_active
+        FROM password_reset_tokens prt
+        JOIN user_profiles up ON prt.user_id = up.id
+        WHERE prt.token = $1 AND prt.used = FALSE AND up.is_active = TRUE
+      `, [token]);
+
+      if (result.rows.length === 0) {
+        return { 
+          success: false, 
+          message: 'Token inválido ou expirado.' 
+        };
+      }
+
+      const tokenData = result.rows[0];
+      
+      // Check if token is expired
+      if (new Date() > new Date(tokenData.expires_at)) {
+        return { 
+          success: false, 
+          message: 'Token expirado. Solicite um novo link de recuperação.' 
+        };
+      }
+
+      return {
+        success: true,
+        tokenData,
+        user: {
+          id: tokenData.user_id,
+          email: tokenData.email,
+          name: tokenData.name
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao validar token:', error);
+      return { 
+        success: false, 
+        message: 'Erro interno do servidor.' 
+      };
+    }
+  }
+
+  async resetPassword(token, newPassword) {
+    try {
+      // First validate the token
+      const validation = await this.validateResetToken(token);
+      if (!validation.success) {
+        return validation;
+      }
+
+      const { user } = validation;
+
+      // Hash the new password
+      const passwordHash = await this.hashPassword(newPassword);
+
+      // Start transaction
+      const client = await this.pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Update password
+        await client.query(`
+          UPDATE user_profiles 
+          SET password_hash = $1, updated_at = NOW()
+          WHERE id = $2
+        `, [passwordHash, user.id]);
+
+        // Mark token as used
+        await client.query(`
+          UPDATE password_reset_tokens 
+          SET used = TRUE, used_at = NOW()
+          WHERE token = $1
+        `, [token]);
+
+        // Reset any failed login attempts
+        await client.query(`
+          UPDATE user_profiles 
+          SET failed_login_attempts = 0, locked_until = NULL
+          WHERE id = $1
+        `, [user.id]);
+
+        await client.query('COMMIT');
+
+        return {
+          success: true,
+          message: 'Senha alterada com sucesso. Você pode fazer login com a nova senha.'
+        };
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Erro ao resetar senha:', error);
+      return { 
+        success: false, 
+        message: 'Erro interno do servidor. Tente novamente mais tarde.' 
+      };
+    }
+  }
+
+  async cleanupExpiredTokens() {
+    try {
+      const result = await this.pool.query(`
+        DELETE FROM password_reset_tokens 
+        WHERE expires_at < NOW() - INTERVAL '24 hours'
+        RETURNING COUNT(*) as deleted_count
+      `);
+      
+      const deletedCount = result.rows[0]?.deleted_count || 0;
+      if (deletedCount > 0) {
+        console.log(`🧹 Cleaned up ${deletedCount} expired reset tokens`);
+      }
+      
+      return { success: true, deletedCount };
+    } catch (error) {
+      console.error('Erro ao limpar tokens expirados:', error);
+      return { success: false, error: error.message };
     }
   }
 

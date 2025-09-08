@@ -704,17 +704,197 @@ Empresas Brasil - A maior base de dados empresariais do Brasil
   }
 
   /**
-   * Enviar email de recuperação de senha
+   * Configurar transportador Hostinger para password reset
    */
-  async sendPasswordResetEmail(email, token, name) {
-    // TODO: Implementar email de recuperação
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:4001';
-    const resetUrl = `${baseUrl}/reset-password/${token}`;
-    
-    console.log('📧 Password reset email would be sent to:', email);
-    console.log('🔗 Reset URL:', resetUrl);
-    
-    return { success: true, resetUrl };
+  createHostingerTransporter() {
+    return nodemailer.createTransport({
+      host: 'smtp.hostinger.com',
+      port: 465,
+      secure: true, // true for port 465
+      auth: {
+        user: 'contato@dataatlas.com.br',
+        pass: 'Blackboard12!@'
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+
+  /**
+   * Template HTML para email de nova senha
+   */
+  getPasswordResetEmailTemplate(userName, newPassword, userEmail) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Nova Senha - DataAtlas Brasil</title>
+    </head>
+    <body style="font-family: 'Inter', 'Roboto', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        
+        <!-- Header -->
+        <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #36e961;">
+            <h1 style="color: #0a3042; font-size: 28px; margin: 0; font-weight: 800;">
+                🔐 DataAtlas Brasil
+            </h1>
+            <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 14px;">
+                Sistema de Empresas do Brasil
+            </p>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 30px 0;">
+            <h2 style="color: #0a3042; font-size: 24px; margin-bottom: 20px;">
+                Nova Senha Gerada
+            </h2>
+            
+            <p style="font-size: 16px; margin-bottom: 20px;">
+                Olá <strong>${userName || 'usuário'}</strong>,
+            </p>
+            
+            <p style="font-size: 16px; margin-bottom: 25px;">
+                Uma nova senha foi gerada para sua conta no <strong>DataAtlas Brasil</strong>.
+                Use as credenciais abaixo para fazer login:
+            </p>
+
+            <!-- Login Box -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin: 25px 0;">
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #374151; display: block; margin-bottom: 5px;">📧 Email:</strong>
+                    <code style="background: white; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 6px; font-size: 14px; display: inline-block;">${userEmail}</code>
+                </div>
+                
+                <div>
+                    <strong style="color: #374151; display: block; margin-bottom: 5px;">🔑 Nova Senha:</strong>
+                    <code style="background: #36e961; color: #0a3042; border: 1px solid #22c55e; padding: 12px 16px; border-radius: 6px; font-size: 16px; font-weight: 700; display: inline-block; letter-spacing: 1px;">${newPassword}</code>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://dataatlas.com.br/login" 
+                   style="background: linear-gradient(135deg, #36e961, #64ee85); 
+                          color: #0a3042; 
+                          text-decoration: none; 
+                          padding: 12px 30px; 
+                          border-radius: 8px; 
+                          font-weight: 700; 
+                          font-size: 16px;
+                          display: inline-block;
+                          box-shadow: 0 4px 12px rgba(54, 233, 97, 0.3);">
+                    🚀 Acessar Sistema
+                </a>
+            </div>
+
+            <!-- Security Notice -->
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 25px 0; border-radius: 4px;">
+                <h4 style="color: #92400e; margin: 0 0 10px 0; font-size: 14px;">
+                    ⚠️ Recomendação de Segurança
+                </h4>
+                <p style="color: #92400e; margin: 0; font-size: 14px;">
+                    Após fazer login, recomendamos alterar sua senha para uma de sua preferência através das configurações da conta.
+                </p>
+            </div>
+
+            <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+                Se você não solicitou esta alteração de senha, entre em contato conosco imediatamente através do email 
+                <a href="mailto:contato@dataatlas.com.br" style="color: #36e961;">contato@dataatlas.com.br</a>.
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+            <p style="margin: 0;">
+                © ${new Date().getFullYear()} DataAtlas Brasil - Sistema de Empresas do Brasil<br>
+                Este é um email automático, não responda a esta mensagem.
+            </p>
+        </div>
+    </body>
+    </html>`;
+  }
+
+  /**
+   * Template texto para email de nova senha
+   */
+  getPasswordResetEmailText(userName, newPassword, userEmail) {
+    return `
+🔐 DataAtlas Brasil - Nova Senha Gerada
+
+Olá ${userName || 'usuário'},
+
+Uma nova senha foi gerada para sua conta no DataAtlas Brasil.
+
+DADOS PARA LOGIN:
+📧 Email: ${userEmail}
+🔑 Nova Senha: ${newPassword}
+
+Acesse o sistema em: https://dataatlas.com.br/login
+
+⚠️ RECOMENDAÇÃO DE SEGURANÇA:
+Após fazer login, recomendamos alterar sua senha para uma de sua preferência através das configurações da conta.
+
+Se você não solicitou esta alteração de senha, entre em contato conosco imediatamente através do email contato@dataatlas.com.br.
+
+---
+© ${new Date().getFullYear()} DataAtlas Brasil - Sistema de Empresas do Brasil
+Este é um email automático, não responda a esta mensagem.
+    `;
+  }
+
+  /**
+   * Enviar email de recuperação de senha com nova senha
+   */
+  async sendPasswordResetEmail(userEmail, userName, newPassword) {
+    try {
+      const transporter = this.createHostingerTransporter();
+      
+      // Verificar conexão
+      await transporter.verify();
+      console.log('✅ Conexão com Hostinger SMTP verificada');
+
+      const mailOptions = {
+        from: {
+          name: 'DataAtlas Brasil',
+          address: 'contato@dataatlas.com.br'
+        },
+        to: userEmail,
+        subject: '🔐 Nova Senha - DataAtlas Brasil',
+        html: this.getPasswordResetEmailTemplate(userName, newPassword, userEmail),
+        text: this.getPasswordResetEmailText(userName, newPassword, userEmail)
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent successfully:', info.messageId);
+      
+      return {
+        success: true,
+        messageId: info.messageId,
+        message: 'Email enviado com sucesso'
+      };
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Erro ao enviar email. Tente novamente.'
+      };
+    }
+  }
+
+  /**
+   * Testar conexão com Hostinger SMTP
+   */
+  async testHostingerConnection() {
+    try {
+      const transporter = this.createHostingerTransporter();
+      await transporter.verify();
+      return { success: true, message: 'Conexão com Hostinger SMTP OK' };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
   }
 }
 
