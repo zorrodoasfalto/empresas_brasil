@@ -3515,7 +3515,7 @@ const Dashboard = () => {
                   </div>
 
                   <button
-                    onClick={handlePasswordChange}
+                    onClick={handlePasswordSubmit}
                     style={{
                       background: 'linear-gradient(135deg, #ff6b7a, #ff4757)',
                       border: 'none',
