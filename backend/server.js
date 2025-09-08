@@ -1344,6 +1344,108 @@ app.post('/api/debug/reset-password', async (req, res) => {
   }
 });
 
+// DEBUG: Sync all users between user_profiles and users tables
+app.post('/api/debug/sync-users', async (req, res) => {
+  try {
+    console.log('🔄 SYNCING ALL USERS BETWEEN TABLES...');
+    
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Get all users from both tables
+      const usersFromOldTable = await client.query(`
+        SELECT id, email, password_hash, role, status, created_at, updated_at
+        FROM users 
+        WHERE status = 'active'
+      `);
+      
+      const usersFromNewTable = await client.query(`
+        SELECT id, email, password_hash, name, created_at, updated_at
+        FROM user_profiles 
+        WHERE is_active = true
+      `);
+      
+      console.log(`Found ${usersFromOldTable.rows.length} users in old table`);
+      console.log(`Found ${usersFromNewTable.rows.length} users in new table`);
+      
+      let migrated = 0;
+      let updated = 0;
+      
+      // Migrate users from old table to new table
+      for (const user of usersFromOldTable.rows) {
+        const existingInNew = await client.query(`
+          SELECT id FROM user_profiles WHERE email = $1
+        `, [user.email]);
+        
+        if (existingInNew.rows.length === 0) {
+          // Create in user_profiles
+          await client.query(`
+            INSERT INTO user_profiles (email, password_hash, name, is_active, email_verified, created_at, updated_at)
+            VALUES ($1, $2, $3, true, true, $4, $5)
+          `, [user.email, user.password_hash, user.email, user.created_at, user.updated_at]);
+          migrated++;
+          console.log(`✅ Migrated ${user.email} to user_profiles`);
+        } else {
+          // Update existing in user_profiles
+          await client.query(`
+            UPDATE user_profiles 
+            SET password_hash = $1, name = $2, updated_at = NOW()
+            WHERE email = $3
+          `, [user.password_hash, user.email, user.email]);
+          updated++;
+          console.log(`🔄 Updated ${user.email} in user_profiles`);
+        }
+      }
+      
+      // Also ensure all user_profiles users exist in users table
+      for (const user of usersFromNewTable.rows) {
+        const existingInOld = await client.query(`
+          SELECT id FROM users WHERE email = $1
+        `, [user.email]);
+        
+        if (existingInOld.rows.length === 0) {
+          // Create in users table
+          await client.query(`
+            INSERT INTO users (email, password_hash, password_salt, status, role, created_at, updated_at)
+            VALUES ($1, $2, '', 'active', 'user', $3, $4)
+          `, [user.email, user.password_hash, user.created_at, user.updated_at]);
+          migrated++;
+          console.log(`✅ Migrated ${user.email} to users`);
+        }
+      }
+      
+      await client.query('COMMIT');
+      console.log(`🎉 Sync complete: ${migrated} migrated, ${updated} updated`);
+      
+      res.json({
+        success: true,
+        message: `Users synced successfully: ${migrated} migrated, ${updated} updated`,
+        stats: {
+          oldTable: usersFromOldTable.rows.length,
+          newTable: usersFromNewTable.rows.length,
+          migrated,
+          updated
+        }
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('❌ User sync error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Erro ao sincronizar usuários',
+      error: error.message
+    });
+  }
+});
+
 // DEBUG: Update roles to new system (free, trial, pro, premium, max)
 app.post('/api/debug/update-roles', async (req, res) => {
   try {
