@@ -11,7 +11,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 console.log('🔧 Iniciando servidor via run-server.js (evita timeout)...');
 console.log('🔧 Loading .env from parent directory...');
 
-const serverProcess = spawn('node', ['server.js'], {
+const serverPath = path.join(__dirname, 'server.js');
+const serverProcess = spawn('node', [serverPath], {
   stdio: 'inherit',
   shell: true
 });
