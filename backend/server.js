@@ -286,7 +286,21 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json({ charset: 'utf-8' }));
+
+// CRITICAL: Stripe webhook MUST get raw body before any JSON parsing
+// Apply raw parsing to webhook routes BEFORE any other body parsing middleware
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
+// For all other routes, use JSON parsing 
+app.use((req, res, next) => {
+  // Skip JSON parsing for webhook route (already processed as raw)
+  if (req.path.startsWith('/api/stripe/webhook')) {
+    return next();
+  }
+  // Apply JSON parsing to all other routes
+  express.json({ charset: 'utf-8' })(req, res, next);
+});
+
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
 // Using unified authentication middleware from ./middleware/authUnified.js

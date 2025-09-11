@@ -432,8 +432,8 @@ router.get('/affiliate-status', authenticateToken, async (req, res) => {
   }
 });
 
-// Stripe webhook
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// Stripe webhook (raw body middleware aplicado no server.js)
+router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
