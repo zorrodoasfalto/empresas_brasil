@@ -3973,9 +3973,10 @@ app.post('/api/companies/filtered', async (req, res) => {
     const getItemsPerPage = (totalRequested) => {
       // OTIMIZAÇÃO CRÍTICA: Query única até 3k empresas apenas (fix 10% stuck bug)
       if (totalRequested <= 3000) return totalRequested; // Query única sem paginação
-      if (totalRequested >= 50000) return 5000; // 50k = 10 páginas de 5k
-      if (totalRequested >= 25000) return 3000;  // 25k = 8-9 páginas de 3k
-      if (totalRequested >= 10000) return 2500;  // 10k = 4 páginas de 2.5k
+      if (totalRequested >= 50000) return 2000; // 50k = 25 páginas de 2k (ultra-safe)
+      if (totalRequested >= 25000) return 1500;  // 25k = 17 páginas de 1.5k (CRITICAL FIX for 5% stuck)
+      if (totalRequested >= 10000) return 2000;  // 10k = 5 páginas de 2k
+      if (totalRequested >= 5000) return 1500;   // 5k = 3-4 páginas de 1.5k
       return 1500; // Demais = páginas de 1.5k
     };
     
