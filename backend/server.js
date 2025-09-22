@@ -3971,11 +3971,12 @@ app.post('/api/companies/filtered', async (req, res) => {
     
     // Paginação dinâmica OTIMIZADA - Query única para pequenas consultas
     const getItemsPerPage = (totalRequested) => {
-      // OTIMIZAÇÃO CRÍTICA: Query única até 10k empresas
-      if (totalRequested <= 10000) return totalRequested; // Query única sem paginação
-      if (totalRequested >= 50000) return 10000; // 50k = 5 páginas de 10k
-      if (totalRequested >= 25000) return 5000;  // 25k = 5 páginas de 5k
-      return 2500; // Demais = páginas de 2.5k
+      // OTIMIZAÇÃO CRÍTICA: Query única até 3k empresas apenas (fix 10% stuck bug)
+      if (totalRequested <= 3000) return totalRequested; // Query única sem paginação
+      if (totalRequested >= 50000) return 5000; // 50k = 10 páginas de 5k
+      if (totalRequested >= 25000) return 3000;  // 25k = 8-9 páginas de 3k
+      if (totalRequested >= 10000) return 2500;  // 10k = 4 páginas de 2.5k
+      return 1500; // Demais = páginas de 1.5k
     };
     
     const perPage = getItemsPerPage(companyLimit);
@@ -4109,9 +4110,9 @@ app.post('/api/companies/filtered', async (req, res) => {
     // Optimized socios fetch - limit per company for better performance on large queries
     if (cnpjBasicos.length > 0) {
       console.log(`Fetching socios data for ${cnpjBasicos.length} companies...`);
-      // 🚀 ULTRA OTIMIZADO: Sócios dinâmicos para máxima performance
-      let maxSociosPerCompany = 2; // DEFAULT: 2 sócios máximo
-      let totalSociosLimit = 10000; // DEFAULT: 10k sócios total
+      // 🚀 ULTRA OTIMIZADO: Sócios dinâmicos para máxima performance (FIXED for 10% stuck bug)
+      let maxSociosPerCompany = 3; // DEFAULT: 3 sócios máximo
+      let totalSociosLimit = 3000; // DEFAULT: 3k sócios total
 
       if (companyLimit >= 25000) {
         maxSociosPerCompany = 0; // ZERO sócios para 25k+ (busca posterior se necessário)
@@ -4120,11 +4121,14 @@ app.post('/api/companies/filtered', async (req, res) => {
         maxSociosPerCompany = 1; // 1 sócio para 10k-25k
         totalSociosLimit = 10000;
       } else if (companyLimit >= 5000) {
-        maxSociosPerCompany = 1; // 1 sócio para 5k-10k
+        maxSociosPerCompany = 1; // 1 sócio para 5k-10k (CRITICAL FIX)
         totalSociosLimit = 5000;
+      } else if (companyLimit >= 3000) {
+        maxSociosPerCompany = 2; // 2 sócios para 3k-5k
+        totalSociosLimit = 6000;
       } else if (companyLimit >= 1000) {
-        maxSociosPerCompany = 2; // 2 sócios para 1k-5k
-        totalSociosLimit = 2000;
+        maxSociosPerCompany = 3; // 3 sócios para 1k-3k
+        totalSociosLimit = 3000;
       }
       
       console.log(`📊 Max ${maxSociosPerCompany} socios per company, total limit: ${totalSociosLimit}`);

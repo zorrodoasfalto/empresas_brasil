@@ -23,7 +23,12 @@
       "Bash(npm install:*)",
       "Bash(touch:*)",
       "WebFetch(domain:console.apify.com)",
-      "WebFetch(domain:www.ghostgenius.fr)"
+      "WebFetch(domain:www.ghostgenius.fr)",
+      "Bash(git checkout:*)",
+      "Bash(railway login:*)",
+      "Bash(railway up:*)",
+      "Bash(deploy-railway.bat)",
+      "Bash(railway deploy:*)"
     ],
     "deny": []
   }
