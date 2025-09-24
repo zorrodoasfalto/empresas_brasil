@@ -61,6 +61,8 @@ VITE_API_URL=/api
 ⚠️ **NUNCA MUDE PARA http://localhost:5001/api - ISSO QUEBRA O LOGIN!**
 ✅ **SEMPRE USE /api PARA O PROXY FUNCIONAR CORRETAMENTE**
 
+> 💡 **Novo:** o alvo real do proxy local agora vem da variável de ambiente `BACKEND_PROXY_URL`. Ela é opcional (padrão `http://localhost:6000`) e pode ser definida direto no terminal antes de rodar `npm run dev` caso você precise apontar para outro backend, sem alterar o `frontend/.env`.
+
 ## 🎯 Como Inicializar CORRETAMENTE
 
 ### ⚠️ IMPORTANTE: EXECUTE SEMPRE NO CLAUDE CODE!

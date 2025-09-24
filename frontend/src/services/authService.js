@@ -22,7 +22,6 @@ const authService = {
       console.log('🔍 AuthService: Attempting login for', email);
       const response = await api.post('/auth/login', { email, password });
       console.log('✅ AuthService: Raw response status:', response.status);
-      console.log('✅ AuthService: Raw response data:', response.data);
       
       if (!response.data) {
         console.error('❌ AuthService: No data in response');

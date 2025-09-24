@@ -208,7 +208,7 @@ const Login = () => {
     console.log('🔍 Login: Submitting login form for:', data.email);
     
     const result = await login(data.email, data.password);
-    console.log('🔍 Login: Login result:', result);
+    console.log('🔍 Login: Login response received');
     
     if (result.success) {
       console.log('🔍 Login: Login successful, checking user status...');
