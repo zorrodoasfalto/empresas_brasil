@@ -284,7 +284,12 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários  
+if (stripeRoutes?.stripeConfigured) {
+  app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários
+} else {
+  console.warn('⚠️ Stripe não configurado - rotas /api/stripe desativadas');
+}
+
 app.use('/api/auth', authRoutes); // Rotas de autenticação reativadas
 
 // DEBUG: Check if user ID 1 exists and generate token
@@ -4380,7 +4385,7 @@ const path = require('path');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
-  app.get('*', (req, res) => {
+  app.get('/*', (req, res) => {
     if (!req.path.startsWith('/api/')) {
       res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
     }
