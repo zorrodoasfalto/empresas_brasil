@@ -4,7 +4,7 @@
 ## 📋 Pré-requisitos
 
 - Node.js (versão 18 ou superior)
-- PostgreSQL (Railway) 
+- SQL Server 2025 (pode ser local ou hospedado)
 - Git
 - **node-cache** (instalado automaticamente pelo start-all.bat)
 
@@ -13,7 +13,7 @@
 ### 🚀 Performance Melhoradas v4:
 - **Query única com JOINs otimizados** - elimina múltiplas consultas
 - **Cache inteligente** - lookup tables em cache (1 hora TTL)
-- **Connection pooling aprimorado** - gestão otimizada Railway PostgreSQL  
+- **Connection pooling aprimorado** - otimizado para SQL Server 2025
 - **Busca paralela** - partners e business segments em paralelo
 - **Barra progresso otimizada** - UX profissional SEM overhead performance
 - **Logs otimizados** - Backend com logging mínimo para máxima velocidade
@@ -22,10 +22,10 @@
 - **Resultado**: ~36s para 50.000 empresas, ~1.8s para 1.000 empresas
 
 ### 🔧 Configuração Técnica:
-- Pool de conexões: 5-20 conexões simultâneas
+- Pool de conexões: 5-20 conexões simultâneas (SQL Server)
 - Cache TTL: 3600s (lookup data), 86400s (static data)
 - Timeout: 60s para queries grandes
-- Memory: Otimizado para Railway shared limits
+- Memory: Ajustado para ambientes SQL Server gerenciados
 
 ## 🗂️ Estrutura do Projeto
 
@@ -48,7 +48,7 @@ Youtube Aula/
 ### 1. Backend (.env)
 Crie o arquivo `backend/.env` com:
 ```
-DATABASE_URL=postgresql://postgres:SENHA@HOST:PORT/railway
+DATABASE_URL=sqlserver://USUARIO:SENHA@HOST:PORT/BANCO?encrypt=false&trustServerCertificate=true
 NODE_ENV=production
 PORT=5001
 ```
@@ -60,6 +60,8 @@ VITE_API_URL=/api
 ```
 ⚠️ **NUNCA MUDE PARA http://localhost:5001/api - ISSO QUEBRA O LOGIN!**
 ✅ **SEMPRE USE /api PARA O PROXY FUNCIONAR CORRETAMENTE**
+
+> 💡 **Novo:** o alvo real do proxy local agora vem da variável de ambiente `BACKEND_PROXY_URL`. Ela é opcional (padrão `http://localhost:6000`) e pode ser definida direto no terminal antes de rodar `npm run dev` caso você precise apontar para outro backend, sem alterar o `frontend/.env`.
 
 ## 🎯 Como Inicializar CORRETAMENTE
 
@@ -175,7 +177,7 @@ npm start
 - Tem Contato (telefone/email)
 
 ### Performance (OTIMIZADA - SAVEPOINT)
-- **Consultas ultra-otimizadas** para Railway PostgreSQL
+- **Consultas ultra-otimizadas** para SQL Server 2025
 - **Tempo real**: ~30s para 50.000 empresas (TODOS os dados)
 - **Tempo normal**: 15-25s para consultas 1k-25k empresas  
 - **Cache**: Lookup tables em cache para speed boost
@@ -227,13 +229,13 @@ cd frontend && rm -rf node_modules && npm install
 - Sistema de paginação
 - Exportação Excel/CSV
 - Autenticação JWT
-- Conexão com Railway PostgreSQL
+- Conexão com SQL Server 2025
 - Performance otimizada
 
 ### 🔧 Configuração Atual:
 - Backend: Node.js + Express (porta 5001)
 - Frontend: React + Vite (porta 5173)
-- Database: PostgreSQL no Railway
+- Database: SQL Server 2025
 - Arquivo principal: `backend/server.js`
 
 ## 💡 Dicas Importantes

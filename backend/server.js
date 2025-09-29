@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
+const { Pool } = require('./utils/sqlServerPool');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
@@ -179,18 +179,10 @@ const authRoutes = require('./routes/auth');
 const { createUsersTable } = require('./database/init-users');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-  ssl: { rejectUnauthorized: false },
-  max: 3, // DRASTICALLY reduce to 3 connections max
-  min: 1,  // Just 1 minimum connection
-  idleTimeoutMillis: 10000, // 10 seconds idle timeout
-  connectionTimeoutMillis: 5000, // 5 seconds connection timeout
-  acquireTimeoutMillis: 8000, // 8 seconds acquire timeout
-  keepAlive: false, // Disable keepAlive to prevent hangs
-  // Configurações ultra-estáveis para Railway PostgreSQL
-  allowExitOnIdle: true, // Allow pool to close idle connections
-  maxLifetimeSeconds: 120, // 2 minutes max per connection (shorter)
-  statement_timeout: 180000 // 180 seconds (3 minutes) for large 50k queries
+  connectionString:
+    process.env.DATABASE_URL ||
+    process.env.SQLSERVER_URL ||
+    'sqlserver://sa:YourStrong!Passw0rd@localhost:1433/empresas_brasil?encrypt=false&trustServerCertificate=true'
 });
 
 // Enhanced database connection error handling with recovery
@@ -284,7 +276,12 @@ const flexibleAuth = (req, res, next) => {
 };
 
 // Use routes
-app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários  
+if (stripeRoutes?.stripeConfigured) {
+  app.use('/api/stripe', stripeRoutes); // Rotas do stripe reativadas para TODOS os usuários
+} else {
+  console.warn('⚠️ Stripe não configurado - rotas /api/stripe desativadas');
+}
+
 app.use('/api/auth', authRoutes); // Rotas de autenticação reativadas
 
 // DEBUG: Check if user ID 1 exists and generate token
@@ -4380,10 +4377,8 @@ const path = require('path');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/dist')));
   
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api/')) {
-      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-    }
+  app.get(/^\/(?!api\/).*/, (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
   });
 }
 

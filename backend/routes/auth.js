@@ -1,6 +1,6 @@
 const express = require('express');
 const SecurityUtils = require('../utils/security');
-const { Pool } = require('pg');
+const { Pool } = require('../utils/sqlServerPool');
 
 // 🛡️ SISTEMA DE RATE LIMITING E SEGURANÇA
 const rateLimit = new Map();
@@ -8,10 +8,12 @@ const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutos
 const MAX_REGISTRATIONS_PER_IP = 2; // Máximo 2 registros por IP em 15 min
 const MAX_REGISTRATIONS_PER_EMAIL_DOMAIN = 5; // Máximo 5 por domínio
 
-// Conectar ao banco PostgreSQL
+// Conectar ao banco SQL Server
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  connectionString:
+    process.env.DATABASE_URL ||
+    process.env.SQLSERVER_URL ||
+    'sqlserver://sa:YourStrong!Passw0rd@localhost:1433/empresas_brasil?encrypt=false&trustServerCertificate=true'
 });
 
 const router = express.Router();

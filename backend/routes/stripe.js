@@ -1,15 +1,39 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { Pool } = require('pg');
 
-// Database connection usando Railway
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+let stripe = null;
+
+if (stripeSecretKey) {
+  try {
+    stripe = require('stripe')(stripeSecretKey);
+  } catch (error) {
+    console.error('❌ Failed to initialize Stripe SDK:', error.message);
+  }
+} else {
+  console.warn('⚠️ STRIPE_SECRET_KEY not configured - Stripe routes will return 503');
+}
+const { Pool } = require('../utils/sqlServerPool');
+
+// Database connection usando SQL Server
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  connectionString:
+    process.env.DATABASE_URL ||
+    process.env.SQLSERVER_URL ||
+    'sqlserver://sa:YourStrong!Passw0rd@localhost:1433/empresas_brasil?encrypt=false&trustServerCertificate=true'
 });
 
 const router = express.Router();
+
+router.use((req, res, next) => {
+  if (!stripe) {
+    return res.status(503).json({
+      success: false,
+      message: 'Integração com Stripe desativada. Defina STRIPE_SECRET_KEY para habilitar.'
+    });
+  }
+  return next();
+});
 const { JWT_SECRET } = require('../config/jwt');
 
 // Middleware for JWT authentication
@@ -673,5 +697,7 @@ async function handleSubscriptionDeleted(subscription) {
     [subscription.id]
   );
 }
+
+router.stripeConfigured = Boolean(stripe);
 
 module.exports = router;

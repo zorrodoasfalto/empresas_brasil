@@ -1,86 +1,107 @@
-const { Pool } = require('pg');
+const { Pool } = require('../utils/sqlServerPool');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 class AuthUser {
   constructor() {
     this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL || 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway',
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-      max: 10,
-      min: 2,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000
+      connectionString:
+        process.env.DATABASE_URL ||
+        process.env.SQLSERVER_URL ||
+        'sqlserver://sa:YourStrong!Passw0rd@localhost:1433/empresas_brasil?encrypt=false&trustServerCertificate=true'
     });
-    
-    this.initDatabase();
+
+    this.initDatabase().catch((error) => {
+      console.error('❌ Erro ao inicializar sistema de usuários:', error.message);
+    });
   }
 
   async initDatabase() {
-    try {
-      // Usar a tabela permanente user_profiles (criada pelo setup-permanent-users.js)
-      // Verificar se a tabela existe, se não existir, executar o setup automático
-      const tableExists = await this.pool.query(`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_name = 'user_profiles'
-        )
-      `);
-      
-      if (!tableExists.rows[0].exists) {
-        console.log('⚠️  Tabela user_profiles não encontrada, executando setup automático...');
-        const PermanentUserSetup = require('../setup-permanent-users');
-        const setup = new PermanentUserSetup();
-        await setup.setupPermanentDatabase();
-        await setup.close();
-      }
-      
-      // Criar tabela de tokens de reset se não existir
-      await this.createPasswordResetTable();
-      
-      console.log('✅ Sistema de usuários permanentes ativo');
-    } catch (error) {
-      console.error('❌ Erro ao inicializar sistema de usuários:', error.message);
-    }
+    await this.pool.query(`
+      IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'user_profiles')
+      BEGIN
+        EXEC('CREATE TABLE user_profiles (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          email NVARCHAR(255) NOT NULL UNIQUE,
+          password_hash NVARCHAR(255) NOT NULL,
+          name NVARCHAR(255) NULL,
+          is_active BIT DEFAULT 1,
+          email_verified BIT DEFAULT 0,
+          failed_login_attempts INT DEFAULT 0,
+          locked_until DATETIME2 NULL,
+          last_login DATETIME2 NULL,
+          status NVARCHAR(50) DEFAULT ''active'',
+          role NVARCHAR(50) DEFAULT ''user'',
+          subscription_status NVARCHAR(50) NULL,
+          subscription_expires DATETIME2 NULL,
+          created_at DATETIME2 DEFAULT SYSDATETIME(),
+          updated_at DATETIME2 DEFAULT SYSDATETIME()
+        )');
+      END
+    `);
+
+    await this.createPasswordResetTable();
+
+    console.log('✅ Sistema de usuários permanentes ativo');
   }
 
   async createPasswordResetTable() {
-    try {
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            token VARCHAR(64) NOT NULL UNIQUE,
-            expires_at TIMESTAMP NOT NULL,
-            used BOOLEAN DEFAULT FALSE,
-            ip_address INET,
-            user_agent TEXT,
-            created_at TIMESTAMP DEFAULT NOW(),
-            used_at TIMESTAMP,
-            
-            -- Foreign key constraint
-            CONSTRAINT fk_password_reset_user 
-                FOREIGN KEY (user_id) 
-                REFERENCES user_profiles(id) 
-                ON DELETE CASCADE
-        )
-      `);
+    await this.pool.query(`
+      IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'password_reset_tokens')
+      BEGIN
+        CREATE TABLE password_reset_tokens (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          user_id INT NOT NULL,
+          token NVARCHAR(64) NOT NULL UNIQUE,
+          expires_at DATETIME2 NOT NULL,
+          used BIT DEFAULT 0,
+          ip_address NVARCHAR(64) NULL,
+          user_agent NVARCHAR(MAX) NULL,
+          created_at DATETIME2 DEFAULT SYSDATETIME(),
+          used_at DATETIME2 NULL
+        );
+      END
+    `);
 
-      // Create indexes
-      await this.pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token ON password_reset_tokens(token)
-      `);
-      await this.pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)
-      `);
-      await this.pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at)
-      `);
+    await this.pool.query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.foreign_keys WHERE name = 'fk_password_reset_user'
+      )
+      BEGIN
+        ALTER TABLE password_reset_tokens
+        ADD CONSTRAINT fk_password_reset_user FOREIGN KEY (user_id)
+        REFERENCES user_profiles(id) ON DELETE CASCADE;
+      END
+    `);
 
-      console.log('✅ Tabela password_reset_tokens inicializada');
-    } catch (error) {
-      console.error('❌ Erro ao criar tabela password_reset_tokens:', error.message);
-    }
+    await this.pool.query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.indexes WHERE name = 'idx_password_reset_tokens_token' AND object_id = OBJECT_ID('password_reset_tokens')
+      )
+      BEGIN
+        CREATE INDEX idx_password_reset_tokens_token ON password_reset_tokens(token);
+      END
+    `);
+
+    await this.pool.query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.indexes WHERE name = 'idx_password_reset_tokens_user_id' AND object_id = OBJECT_ID('password_reset_tokens')
+      )
+      BEGIN
+        CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+      END
+    `);
+
+    await this.pool.query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.indexes WHERE name = 'idx_password_reset_tokens_expires' AND object_id = OBJECT_ID('password_reset_tokens')
+      )
+      BEGIN
+        CREATE INDEX idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
+      END
+    `);
+
+    console.log('✅ Tabela password_reset_tokens inicializada');
   }
 
   async hashPassword(password) {
@@ -199,11 +220,11 @@ class AuthUser {
       const result = await this.pool.query(`
         UPDATE user_profiles 
         SET failed_login_attempts = failed_login_attempts + 1,
-            locked_until = CASE 
-              WHEN failed_login_attempts >= 4 THEN NOW() + INTERVAL '15 minutes'
-              ELSE locked_until 
+            locked_until = CASE
+              WHEN failed_login_attempts >= 4 THEN DATEADD(MINUTE, 15, SYSDATETIME())
+              ELSE locked_until
             END,
-            updated_at = NOW()
+            updated_at = SYSDATETIME()
         WHERE id = $1
         RETURNING failed_login_attempts
       `, [userId]);
@@ -220,8 +241,8 @@ class AuthUser {
         UPDATE user_profiles 
         SET failed_login_attempts = 0,
             locked_until = NULL,
-            last_login = NOW(),
-            updated_at = NOW()
+            last_login = SYSDATETIME(),
+            updated_at = SYSDATETIME()
         WHERE id = $1
       `, [userId]);
     } catch (error) {
@@ -249,7 +270,7 @@ class AuthUser {
     try {
       const result = await this.pool.query(`
         UPDATE user_profiles 
-        SET is_active = false, updated_at = NOW()
+        SET is_active = false, updated_at = SYSDATETIME()
         WHERE id = $1 AND is_permanent = false
         RETURNING id, email
       `, [id]);
@@ -311,26 +332,26 @@ class AuthUser {
 
         // Update password in BOTH tables to ensure login works
         await client.query(`
-          UPDATE user_profiles 
-          SET password_hash = $1, 
-              failed_login_attempts = 0, 
+          UPDATE user_profiles
+          SET password_hash = $1,
+              failed_login_attempts = 0,
               locked_until = NULL,
-              updated_at = NOW()
+              updated_at = SYSDATETIME()
           WHERE id = $2
         `, [passwordHash, user.id]);
 
         // Also update the main users table (needed for login authentication)
         await client.query(`
-          UPDATE users 
+          UPDATE users
           SET password_hash = $1,
-              updated_at = NOW()
+              updated_at = SYSDATETIME()
           WHERE email = $2
         `, [passwordHash, email]);
 
         // Log the password reset for security
         await client.query(`
           INSERT INTO password_reset_tokens (user_id, token, expires_at, ip_address, user_agent, used, used_at)
-          VALUES ($1, $2, NOW() + INTERVAL '1 day', $3, $4, TRUE, NOW())
+          VALUES ($1, $2, DATEADD(DAY, 1, SYSDATETIME()), $3, $4, TRUE, SYSDATETIME())
         `, [user.id, `AUTO_RESET_${Date.now()}`, ipAddress, userAgent]);
 
         await client.query('COMMIT');
@@ -422,15 +443,15 @@ class AuthUser {
 
         // Update password
         await client.query(`
-          UPDATE user_profiles 
-          SET password_hash = $1, updated_at = NOW()
+          UPDATE user_profiles
+          SET password_hash = $1, updated_at = SYSDATETIME()
           WHERE id = $2
         `, [passwordHash, user.id]);
 
         // Mark token as used
         await client.query(`
-          UPDATE password_reset_tokens 
-          SET used = TRUE, used_at = NOW()
+          UPDATE password_reset_tokens
+          SET used = TRUE, used_at = SYSDATETIME()
           WHERE token = $1
         `, [token]);
 
@@ -466,7 +487,7 @@ class AuthUser {
     try {
       const result = await this.pool.query(`
         DELETE FROM password_reset_tokens 
-        WHERE expires_at < NOW() - INTERVAL '24 hours'
+        WHERE expires_at < DATEADD(HOUR, -24, SYSDATETIME())
         RETURNING COUNT(*) as deleted_count
       `);
       

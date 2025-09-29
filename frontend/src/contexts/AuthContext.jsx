@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔍 AuthContext: Iniciando login para:', email);
       const response = await authService.login(email, password);
-      console.log('🔍 AuthContext: Login response received', response);
+      console.log('🔍 AuthContext: Login response received com dados básicos');
       
       if (!response.token || !response.user) {
         console.error('🔍 AuthContext: Resposta inválida - missing token or user');
@@ -60,23 +60,29 @@ export const AuthProvider = ({ children }) => {
       // Verificar se o trial expirou
       if (response.trialExpired && !response.hasAccess) {
         toast.warning('Seu período de trial de 7 dias expirou. Escolha um plano para continuar!');
-        
+
         // Force a small delay to ensure state is updated
         await new Promise(resolve => setTimeout(resolve, 100));
-        
-        return { 
-          success: true, 
-          trialExpired: true, 
-          redirectToSubscription: true 
+
+        return {
+          success: true,
+          trialExpired: true,
+          redirectToSubscription: true,
+          user: response.user,
+          token: response.token
         };
       }
-      
+
       toast.success('Login realizado com sucesso!');
-      
+
       // Force a small delay to ensure state is updated
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      return { success: true };
+
+      return {
+        success: true,
+        user: response.user,
+        token: response.token
+      };
     } catch (error) {
       console.error('🔍 AuthContext: Login error', error);
       const message = error.response?.data?.message || error.message || 'Erro ao fazer login';

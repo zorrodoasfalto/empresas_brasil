@@ -1,85 +1,118 @@
-const { Pool } = require('pg');
+const { Pool } = require('../utils/sqlServerPool');
 const bcrypt = require('bcryptjs');
-
-const CONNECTION_STRING = 'postgresql://postgres:ZYTuUEyXUgNzuSqMYjEwloTlPmJKPCYh@hopper.proxy.rlwy.net:20520/railway';
 
 class User {
   constructor() {
     this.pool = new Pool({
-      connectionString: CONNECTION_STRING,
-      ssl: { rejectUnauthorized: false },
-      max: 5,
-      min: 1,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000
+      connectionString:
+        process.env.DATABASE_URL ||
+        process.env.SQLSERVER_URL ||
+        'sqlserver://sa:YourStrong!Passw0rd@localhost:1433/empresas_brasil?encrypt=false&trustServerCertificate=true'
     });
-    
-    this.initDatabase();
+
+    this.initDatabase().catch((error) => {
+      console.error('❌ Error initializing users table:', error.message);
+    });
   }
 
   async initDatabase() {
-    try {
-      await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          email VARCHAR(255) UNIQUE NOT NULL,
-          password VARCHAR(255) NOT NULL,
-          trial_start_date TIMESTAMP DEFAULT NOW(),
-          trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
-          subscription_active BOOLEAN DEFAULT FALSE,
-          subscription_expires_at TIMESTAMP NULL,
-          created_at TIMESTAMP DEFAULT NOW(),
-          updated_at TIMESTAMP DEFAULT NOW()
-        )
-      `);
-      
-      // Create indexes
-      await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
-      
-      // Add trial fields to existing users who don't have them - BOTH TABLES
-      try {
-        // Update users table
-        await this.pool.query(`
-          ALTER TABLE users 
-          ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
-          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
-          ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
-        `);
-        
-        // Update simple_users table
-        await this.pool.query(`
-          ALTER TABLE simple_users 
-          ADD COLUMN IF NOT EXISTS trial_start_date TIMESTAMP DEFAULT NOW(),
-          ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMP DEFAULT NOW() + INTERVAL '7 days',
-          ADD COLUMN IF NOT EXISTS subscription_active BOOLEAN DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP NULL
-        `);
-        
-        // Update existing users to have 7 day trial from today
-        await this.pool.query(`
-          UPDATE users 
-          SET 
-            trial_start_date = NOW(),
-            trial_expires_at = NOW() + INTERVAL '7 days'
-        `);
-        
-        await this.pool.query(`
-          UPDATE simple_users 
-          SET 
-            trial_start_date = NOW(),
-            trial_expires_at = NOW() + INTERVAL '7 days'
-        `);
-        
-        console.log('✅ Trial updated to 7 days from today for existing users in BOTH tables');
-      } catch (error) {
-        console.log('ℹ️ Trial fields already exist or error adding them:', error.message);
-      }
-      
-      console.log('✅ Users table initialized in PostgreSQL');
-    } catch (error) {
-      console.error('❌ Error initializing users table:', error.message);
-    }
+    await this.pool.query(`
+      IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'users')
+      BEGIN
+        CREATE TABLE users (
+          id INT IDENTITY(1,1) PRIMARY KEY,
+          email NVARCHAR(255) NOT NULL UNIQUE,
+          password NVARCHAR(255) NOT NULL,
+          trial_start_date DATETIME2 DEFAULT SYSDATETIME(),
+          trial_expires_at DATETIME2 DEFAULT DATEADD(DAY, 7, SYSDATETIME()),
+          subscription_active BIT DEFAULT 0,
+          subscription_expires_at DATETIME2 NULL,
+          created_at DATETIME2 DEFAULT SYSDATETIME(),
+          updated_at DATETIME2 DEFAULT SYSDATETIME()
+        );
+      END
+    `);
+
+    await this.pool.query(`
+      IF NOT EXISTS (
+        SELECT 1 FROM sys.indexes WHERE name = 'idx_users_email' AND object_id = OBJECT_ID('users')
+      )
+      BEGIN
+        CREATE INDEX idx_users_email ON users(email);
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('users', 'trial_start_date') IS NULL
+      BEGIN
+        ALTER TABLE users ADD trial_start_date DATETIME2 DEFAULT SYSDATETIME();
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('users', 'trial_expires_at') IS NULL
+      BEGIN
+        ALTER TABLE users ADD trial_expires_at DATETIME2 DEFAULT DATEADD(DAY, 7, SYSDATETIME());
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('users', 'subscription_active') IS NULL
+      BEGIN
+        ALTER TABLE users ADD subscription_active BIT DEFAULT 0;
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('users', 'subscription_expires_at') IS NULL
+      BEGIN
+        ALTER TABLE users ADD subscription_expires_at DATETIME2 NULL;
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('simple_users', 'trial_start_date') IS NULL
+      BEGIN
+        ALTER TABLE simple_users ADD trial_start_date DATETIME2 DEFAULT SYSDATETIME();
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('simple_users', 'trial_expires_at') IS NULL
+      BEGIN
+        ALTER TABLE simple_users ADD trial_expires_at DATETIME2 DEFAULT DATEADD(DAY, 7, SYSDATETIME());
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('simple_users', 'subscription_active') IS NULL
+      BEGIN
+        ALTER TABLE simple_users ADD subscription_active BIT DEFAULT 0;
+      END
+    `);
+
+    await this.pool.query(`
+      IF COL_LENGTH('simple_users', 'subscription_expires_at') IS NULL
+      BEGIN
+        ALTER TABLE simple_users ADD subscription_expires_at DATETIME2 NULL;
+      END
+    `);
+
+    await this.pool.query(`
+      UPDATE users
+      SET
+        trial_start_date = SYSDATETIME(),
+        trial_expires_at = DATEADD(DAY, 7, SYSDATETIME())
+    `);
+
+    await this.pool.query(`
+      UPDATE simple_users
+      SET
+        trial_start_date = SYSDATETIME(),
+        trial_expires_at = DATEADD(DAY, 7, SYSDATETIME())
+    `);
+
+    console.log('✅ Users table initialized in SQL Server');
   }
 
   async create(email, password) {
@@ -143,7 +176,7 @@ class User {
       
       const result = await this.pool.query(`
         UPDATE users 
-        SET password = $1, updated_at = NOW()
+        SET password = $1, updated_at = SYSDATETIME()
         WHERE id = $2
         RETURNING id, email
       `, [hashedPassword, id]);
