@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { Pool } = require('../utils/sqlServerPool');
+const { JWT_SECRET } = require('../config/jwt');
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 let stripe = null;
@@ -13,18 +15,6 @@ if (stripeSecretKey) {
 } else {
   console.warn('⚠️ STRIPE_SECRET_KEY not configured - Stripe routes will return 503');
 }
-const { Pool } = require('pg');
-
-if (stripeSecretKey) {
-  try {
-    stripe = require('stripe')(stripeSecretKey);
-  } catch (error) {
-    console.error('❌ Failed to initialize Stripe SDK:', error.message);
-  }
-} else {
-  console.warn('⚠️ STRIPE_SECRET_KEY not configured - Stripe routes will return 503');
-}
-const { Pool } = require('../utils/sqlServerPool');
 
 // Database connection usando SQL Server
 const pool = new Pool({
@@ -45,17 +35,6 @@ router.use((req, res, next) => {
   }
   return next();
 });
-
-router.use((req, res, next) => {
-  if (!stripe) {
-    return res.status(503).json({
-      success: false,
-      message: 'Integração com Stripe desativada. Defina STRIPE_SECRET_KEY para habilitar.'
-    });
-  }
-  return next();
-});
-const { JWT_SECRET } = require('../config/jwt');
 
 // Middleware for JWT authentication
 const authenticateToken = (req, res, next) => {
