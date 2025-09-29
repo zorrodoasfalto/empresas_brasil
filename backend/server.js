@@ -344,10 +344,10 @@ app.get('/api/debug/check-user', async (req, res) => {
 app.get('/api/check-tables', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name
+      SELECT TABLE_NAME as table_name
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = 'dbo'
+      ORDER BY TABLE_NAME
     `);
     res.json({
       success: true,
@@ -369,7 +369,7 @@ app.get('/api/debug-filters', async (req, res) => {
     // Check motivo table
     try {
       const motivoResult = await pool.query('SELECT COUNT(*) as count FROM motivo');
-      const motivoSample = await pool.query('SELECT codigo, descricao FROM motivo LIMIT 5');
+      const motivoSample = await pool.query('SELECT TOP 5 codigo, descricao FROM motivo');
       results.motivo = {
         count: motivoResult.rows[0].count,
         sample: motivoSample.rows
@@ -381,7 +381,7 @@ app.get('/api/debug-filters', async (req, res) => {
     // Check qualificacao_socio table
     try {
       const qualResult = await pool.query('SELECT COUNT(*) as count FROM qualificacao_socio');
-      const qualSample = await pool.query('SELECT codigo, descricao FROM qualificacao_socio LIMIT 5');
+      const qualSample = await pool.query('SELECT TOP 5 codigo, descricao FROM qualificacao_socio');
       results.qualificacao_socio = {
         count: qualResult.rows[0].count,
         sample: qualSample.rows
@@ -393,7 +393,7 @@ app.get('/api/debug-filters', async (req, res) => {
     // Check natureza_juridica table
     try {
       const natResult = await pool.query('SELECT COUNT(*) as count FROM natureza_juridica');
-      const natSample = await pool.query('SELECT codigo, descricao FROM natureza_juridica LIMIT 5');
+      const natSample = await pool.query('SELECT TOP 5 codigo, descricao FROM natureza_juridica');
       results.natureza_juridica = {
         count: natResult.rows[0].count,
         sample: natSample.rows
@@ -418,12 +418,13 @@ async function initDB() {
   try {
     // Users table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS simple_users (
-        id SERIAL PRIMARY KEY,
+      IF OBJECT_ID('dbo.simple_users', 'U') IS NULL
+      CREATE TABLE dbo.simple_users (
+        id INT IDENTITY(1,1) PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255),
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at DATETIME2 DEFAULT SYSDATETIME()
       )
     `);
 
@@ -431,75 +432,86 @@ async function initDB() {
     
     // Leads table - stores all saved leads
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS leads (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+      IF OBJECT_ID('dbo.leads', 'U') IS NULL
+      CREATE TABLE dbo.leads (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        user_id INT NULL,
         nome VARCHAR(500) NOT NULL,
         empresa VARCHAR(500),
         telefone VARCHAR(50),
         email VARCHAR(255),
-        endereco TEXT,
+        endereco NVARCHAR(MAX),
         cnpj VARCHAR(20),
         website VARCHAR(500),
         categoria VARCHAR(255),
         rating DECIMAL(3,2),
-        reviews_count INTEGER,
-        fonte VARCHAR(100) NOT NULL, -- '66M', 'Google Maps', 'LinkedIn', etc
-        dados_originais JSONB, -- stores original data from source
-        notas TEXT,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        reviews_count INT,
+        fonte VARCHAR(100) NOT NULL,
+        dados_originais NVARCHAR(MAX),
+        notas NVARCHAR(MAX),
+        created_at DATETIME2 DEFAULT SYSDATETIME(),
+        updated_at DATETIME2 DEFAULT SYSDATETIME(),
+        CONSTRAINT FK_leads_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
       )
     `);
 
     // Funil phases table
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS funil_fases (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
+      IF OBJECT_ID('dbo.funil_fases', 'U') IS NULL
+      CREATE TABLE dbo.funil_fases (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        user_id INT NULL,
         nome VARCHAR(255) NOT NULL,
-        descricao TEXT,
-        ordem INTEGER NOT NULL DEFAULT 1,
-        cor VARCHAR(7) DEFAULT '#3B82F6', -- hex color
-        created_at TIMESTAMP DEFAULT NOW()
+        descricao NVARCHAR(MAX),
+        ordem INT NOT NULL DEFAULT 1,
+        cor VARCHAR(7) DEFAULT '#3B82F6',
+        created_at DATETIME2 DEFAULT SYSDATETIME(),
+        CONSTRAINT FK_funil_fases_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
       )
     `);
 
     // Lead pipeline tracking
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS leads_funil (
-        id SERIAL PRIMARY KEY,
-        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
-        fase_id INTEGER REFERENCES funil_fases(id) ON DELETE CASCADE,
-        data_entrada TIMESTAMP DEFAULT NOW(),
-        notas TEXT,
-        UNIQUE(lead_id) -- lead can only be in one phase at a time
+      IF OBJECT_ID('dbo.leads_funil', 'U') IS NULL
+      CREATE TABLE dbo.leads_funil (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        lead_id INT NOT NULL,
+        fase_id INT NOT NULL,
+        data_entrada DATETIME2 DEFAULT SYSDATETIME(),
+        notas NVARCHAR(MAX),
+        CONSTRAINT UQ_leads_funil_lead UNIQUE (lead_id),
+        CONSTRAINT FK_leads_funil_leads FOREIGN KEY (lead_id) REFERENCES dbo.leads(id) ON DELETE CASCADE,
+        CONSTRAINT FK_leads_funil_fases FOREIGN KEY (fase_id) REFERENCES dbo.funil_fases(id) ON DELETE CASCADE
       )
     `);
 
     // Credits table - stores user credits for searches
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS user_credits (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
-        credits INTEGER DEFAULT 0,
-        plan VARCHAR(20) DEFAULT 'trial', -- trial, pro, premium, max, admin
-        last_reset TIMESTAMP DEFAULT NOW(),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id)
+      IF OBJECT_ID('dbo.user_credits', 'U') IS NULL
+      CREATE TABLE dbo.user_credits (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        user_id INT NOT NULL,
+        credits INT DEFAULT 0,
+        plan VARCHAR(20) DEFAULT 'trial',
+        last_reset DATETIME2 DEFAULT SYSDATETIME(),
+        created_at DATETIME2 DEFAULT SYSDATETIME(),
+        updated_at DATETIME2 DEFAULT SYSDATETIME(),
+        CONSTRAINT UQ_user_credits_user UNIQUE (user_id),
+        CONSTRAINT FK_user_credits_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
       )
     `);
 
     // Credit usage log table - tracks search usage
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS credit_usage_log (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES simple_users(id) ON DELETE CASCADE,
-        search_type VARCHAR(50) NOT NULL, -- google_maps, instagram, linkedin, empresas_brasil
-        credits_used INTEGER NOT NULL,
-        search_query TEXT,
-        timestamp TIMESTAMP DEFAULT NOW()
+      IF OBJECT_ID('dbo.credit_usage_log', 'U') IS NULL
+      CREATE TABLE dbo.credit_usage_log (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        user_id INT NOT NULL,
+        search_type VARCHAR(50) NOT NULL,
+        credits_used INT NOT NULL,
+        search_query NVARCHAR(MAX),
+        timestamp DATETIME2 DEFAULT SYSDATETIME(),
+        CONSTRAINT FK_credit_usage_log_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
       )
     `);
 
@@ -619,7 +631,7 @@ app.post('/api/auth/register', async (req, res) => {
     const fullName = `${firstName} ${lastName}`;
     const result = await pool.query(`
       INSERT INTO simple_users (name, email, password, role, created_at)
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, SYSDATETIME())
       RETURNING id, name, email, role, created_at
     `, [fullName, email, hashedPassword, 'trial']);
     
@@ -793,8 +805,8 @@ app.post('/api/credits/debit', async (req, res) => {
     // Debit credits
     const newCredits = currentCredits - creditsToDebit;
     await pool.query(`
-      UPDATE user_credits 
-      SET credits = $1, updated_at = NOW() 
+      UPDATE user_credits
+      SET credits = $1, updated_at = SYSDATETIME()
       WHERE user_id = $2
     `, [newCredits, userId]);
 
@@ -936,13 +948,13 @@ app.post('/api/instagram/scrape', async (req, res) => {
     // Debit credits
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+      UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
     `, [newCredits, decoded.id]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, SYSDATETIME())
     `, [decoded.id, 'instagram', requiredCredits, JSON.stringify(req.body)]);
 
     console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
@@ -1246,7 +1258,7 @@ app.post('/api/debug/direct-register', async (req, res) => {
     const result = await pool.query(`
       INSERT INTO simple_users (
         name, email, password, created_at
-      ) VALUES ($1, $2, $3, NOW())
+      ) VALUES ($1, $2, $3, SYSDATETIME())
       RETURNING id, name, email, created_at
     `, [fullName, email, hashedPassword]);
     
@@ -1610,7 +1622,7 @@ app.get('/api/debug/user-leads-funnel/:userId', async (req, res) => {
     const { userId } = req.params;
     
     const result = await pool.query(`
-      SELECT 
+      SELECT TOP 10
         l.id, l.nome, l.user_id,
         lf.fase_id, lf.data_entrada,
         f.nome as fase_nome, f.cor as fase_cor, f.user_id as fase_user_id
@@ -1619,7 +1631,6 @@ app.get('/api/debug/user-leads-funnel/:userId', async (req, res) => {
       LEFT JOIN funil_fases f ON lf.fase_id = f.id
       WHERE l.user_id = $1
       ORDER BY l.created_at DESC
-      LIMIT 10
     `, [userId]);
     
     res.json({
@@ -1637,11 +1648,10 @@ app.get('/api/debug/user-leads-funnel/:userId', async (req, res) => {
 app.get('/api/debug/all-leads', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT l.id, l.user_id, l.nome, l.created_at, u.email 
+      SELECT TOP 20 l.id, l.user_id, l.nome, l.created_at, u.email
       FROM leads l
       LEFT JOIN simple_users u ON l.user_id = u.id
       ORDER BY l.created_at DESC
-      LIMIT 20
     `);
     
     res.json({
@@ -1663,9 +1673,9 @@ app.post('/api/debug/transfer-leads', async (req, res) => {
     if (leadIds && leadIds.length > 0) {
       // Transfer specific leads
       await pool.query(`
-        UPDATE leads 
-        SET user_id = $1 
-        WHERE id = ANY($2::int[])
+        UPDATE leads
+        SET user_id = $1
+        WHERE id IN (SELECT CAST([value] AS INT) FROM OPENJSON(@p2))
       `, [toUserId, leadIds]);
       
       res.json({ 
@@ -1717,10 +1727,9 @@ app.post('/api/debug/associate-leads-to-funnel', async (req, res) => {
     let targetPhaseId = phaseId;
     if (!targetPhaseId) {
       const phaseResult = await pool.query(`
-        SELECT id FROM funil_fases 
-        WHERE user_id = $1 
-        ORDER BY ordem ASC 
-        LIMIT 1
+        SELECT TOP 1 id FROM funil_fases
+        WHERE user_id = $1
+        ORDER BY ordem ASC
       `, [userId]);
       
       if (phaseResult.rows.length === 0) {
@@ -1733,9 +1742,9 @@ app.post('/api/debug/associate-leads-to-funnel', async (req, res) => {
     // Associate all leads to the first phase
     const insertPromises = leadsResult.rows.map(lead => 
       pool.query(`
+        IF NOT EXISTS (SELECT 1 FROM leads_funil WHERE lead_id = $1)
         INSERT INTO leads_funil (lead_id, fase_id, data_entrada)
-        VALUES ($1, $2, NOW())
-        ON CONFLICT (lead_id) DO NOTHING
+        VALUES ($1, $2, SYSDATETIME())
       `, [lead.id, targetPhaseId])
     );
     
@@ -1824,9 +1833,9 @@ app.post('/api/admin/fix-all-data', async (req, res) => {
             
             for (const lead of unassociatedLeads.rows) {
               await pool.query(`
+                IF NOT EXISTS (SELECT 1 FROM leads_funil WHERE lead_id = $1)
                 INSERT INTO leads_funil (lead_id, fase_id, data_entrada)
-                VALUES ($1, $2, NOW())
-                ON CONFLICT (lead_id) DO NOTHING
+                VALUES ($1, $2, SYSDATETIME())
               `, [lead.id, firstPhaseId]);
             }
 
@@ -1864,7 +1873,7 @@ app.get('/api/admin/user-stats', async (req, res) => {
         CASE 
           WHEN u.role = 'admin' THEN 'admin'
           WHEN u.trial_expires_at IS NULL THEN 'free'
-          WHEN u.trial_expires_at > NOW() THEN 'trial'
+          WHEN u.trial_expires_at > SYSDATETIME() THEN 'trial'
           ELSE 'expired'
         END as status
       FROM simple_users u
@@ -1991,7 +2000,7 @@ app.post('/api/debug/create-victor', async (req, res) => {
 // DEBUG: List users (temporary)
 app.get('/api/debug/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM simple_users ORDER BY created_at DESC LIMIT 10');
+    const result = await pool.query('SELECT TOP 10 * FROM simple_users ORDER BY created_at DESC');
     res.json({
       success: true,
       users: result.rows
@@ -2054,16 +2063,15 @@ app.post('/api/crm/leads', async (req, res) => {
 
     // Check for duplicates - by name, company, phone, or email for the same user
     const duplicateCheck = await pool.query(`
-      SELECT id, nome, empresa, telefone, email 
-      FROM leads 
-      WHERE user_id = $1 
+      SELECT TOP 1 id, nome, empresa, telefone, email
+      FROM leads
+      WHERE user_id = $1
       AND (
-        (nome = $2 AND nome != '') 
-        OR (empresa = $3 AND empresa != '') 
+        (nome = $2 AND nome != '')
+        OR (empresa = $3 AND empresa != '')
         OR (telefone = $4 AND telefone != '' AND telefone IS NOT NULL)
         OR (email = $5 AND email != '' AND email IS NOT NULL)
       )
-      LIMIT 1
     `, [userId, nome, empresa, telefone, email]);
 
     if (duplicateCheck.rows.length > 0) {
@@ -2093,7 +2101,7 @@ app.post('/api/crm/leads', async (req, res) => {
 
     // Add to first phase of funnel (Novo Lead)
     const firstPhase = await pool.query(
-      'SELECT id FROM funil_fases WHERE user_id = $1 ORDER BY ordem LIMIT 1',
+      'SELECT TOP 1 id FROM funil_fases WHERE user_id = $1 ORDER BY ordem',
       [userId]
     );
 
@@ -2281,15 +2289,14 @@ app.post('/api/crm/leads/check-duplicates', async (req, res) => {
       const { nome, empresa, telefone, email } = lead;
       
       const duplicateCheck = await pool.query(`
-        SELECT id FROM leads 
-        WHERE user_id = $1 
+        SELECT TOP 1 id FROM leads
+        WHERE user_id = $1
         AND (
-          (nome = $2 AND nome != '') 
-          OR (empresa = $3 AND empresa != '') 
+          (nome = $2 AND nome != '')
+          OR (empresa = $3 AND empresa != '')
           OR (telefone = $4 AND telefone != '' AND telefone IS NOT NULL)
           OR (email = $5 AND email != '' AND email IS NOT NULL)
         )
-        LIMIT 1
       `, [userId, nome, empresa, telefone, email]);
 
       if (duplicateCheck.rows.length > 0) {
@@ -2427,13 +2434,19 @@ app.put('/api/crm/leads/:leadId/fase', async (req, res) => {
 
     // Update lead phase
     await pool.query(`
-      INSERT INTO leads_funil (lead_id, fase_id, notas)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (lead_id) 
-      DO UPDATE SET 
-        fase_id = $2, 
-        data_entrada = NOW(),
-        notas = $3
+      IF EXISTS (SELECT 1 FROM leads_funil WHERE lead_id = $1)
+      BEGIN
+        UPDATE leads_funil
+        SET fase_id = $2,
+            data_entrada = SYSDATETIME(),
+            notas = $3
+        WHERE lead_id = $1;
+      END
+      ELSE
+      BEGIN
+        INSERT INTO leads_funil (lead_id, fase_id, notas, data_entrada)
+        VALUES ($1, $2, $3, SYSDATETIME());
+      END
     `, [leadId, faseId, notas]);
 
     res.json({
@@ -2593,13 +2606,13 @@ app.post('/api/apify/run/:actorId', async (req, res) => {
     // Debit credits
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+      UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
     `, [newCredits, decoded.id]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, SYSDATETIME())
     `, [decoded.id, searchType, requiredCredits, JSON.stringify({ actorId, ...inputData })]);
 
     console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
@@ -2927,13 +2940,13 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     // Debit credits
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+      UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
     `, [newCredits, decoded.id]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, SYSDATETIME())
     `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
 
     console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
@@ -3369,13 +3382,13 @@ app.post('/api/linkedin/search', async (req, res) => {
     // ✅ API SUCCESS - Now debit credits
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
-      UPDATE user_credits SET credits = $1, updated_at = NOW() WHERE user_id = $2
+      UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
     `, [newCredits, decoded.id]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
-      VALUES ($1, $2, $3, $4, NOW())
+      VALUES ($1, $2, $3, $4, SYSDATETIME())
     `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
 
     console.log(`💳 SUCCESS! Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
@@ -3907,7 +3920,7 @@ app.post('/api/companies/filtered', async (req, res) => {
       console.log(`🔍 DEBUG SEGMENT: ID=${segmentId}, Found=${!!segment}`);
       if (segment) {
         console.log(`📋 SEGMENT CNAEs: ${JSON.stringify(segment.cnaes)}`);
-        conditions.push(`est.cnae_fiscal = ANY($${params.length + 1})`);
+        conditions.push(`est.cnae_fiscal IN (SELECT [value] FROM OPENJSON(@p${params.length + 1}))`);
         params.push(segment.cnaes);
         console.log(`🎯 FILTER APPLIED: est.cnae_fiscal = ANY([${segment.cnaes.join(',')}])`);
       } else {
@@ -3932,7 +3945,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     }
     
     if (filters.razaoSocial) {
-      conditions.push(`emp.razao_social ILIKE $${params.length + 1}`);
+      conditions.push(`LOWER(emp.razao_social) LIKE LOWER($${params.length + 1})`);
       params.push(`%${filters.razaoSocial}%`);
     }
     
@@ -3985,7 +3998,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     let orderByClause = 'ORDER BY est.cnpj_basico'; // default
     switch (searchMode) {
       case 'random':
-        orderByClause = 'ORDER BY RANDOM()';
+        orderByClause = 'ORDER BY NEWID()';
         break;
       case 'alphabetic':
         orderByClause = 'ORDER BY est.razao_social ASC';
@@ -3998,9 +4011,9 @@ app.post('/api/companies/filtered', async (req, res) => {
         break;
       case 'largest':
         // Super optimized for capital social: First get companies with capital > 0, limit results
-        orderByClause = 'ORDER BY (CASE WHEN emp.capital_social IS NOT NULL AND emp.capital_social::TEXT ~ \'^[0-9]+$\' THEN emp.capital_social::BIGINT ELSE 0 END) DESC';
+        orderByClause = "ORDER BY (CASE WHEN emp.capital_social IS NOT NULL AND emp.capital_social NOT LIKE '%[^0-9]%' THEN TRY_CAST(emp.capital_social AS BIGINT) ELSE 0 END) DESC";
         // Add WHERE condition to pre-filter companies with meaningful capital
-        conditions.push(`emp.capital_social IS NOT NULL AND emp.capital_social != '0' AND emp.capital_social::TEXT ~ '^[0-9]+$'`);
+        conditions.push("emp.capital_social IS NOT NULL AND emp.capital_social != '0' AND emp.capital_social NOT LIKE '%[^0-9]%'");
         break;
       case 'reverse':
         orderByClause = 'ORDER BY est.cnpj_basico DESC';
@@ -4058,16 +4071,16 @@ app.post('/api/companies/filtered', async (req, res) => {
       LEFT JOIN simples ON est.cnpj_basico = simples.cnpj_basico
       ${whereClause}
       ${orderByClause}
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      OFFSET $${params.length + 1} ROWS FETCH NEXT $${params.length + 2} ROWS ONLY
     `;
-    
-    params.push(limitPerPage, offset);
+
+    params.push(offset, limitPerPage);
     
     console.log(`🔧 PAGINAÇÃO DEBUG:`);
     console.log(`   Page: ${page}, CompanyLimit: ${companyLimit}, PerPage: ${perPage}`);
     console.log(`   SearchMode: ${searchMode}, Offset: ${offset}, LimitPerPage: ${limitPerPage}`);
     console.log(`   OrderBy: ${orderByClause}`);
-    console.log(`   Query: LIMIT ${limitPerPage} OFFSET ${offset}`);
+    console.log(`   Query: OFFSET ${offset} ROWS FETCH NEXT ${limitPerPage} ROWS ONLY`);
     console.log(`🔍 FINAL QUERY CONDITIONS: ${JSON.stringify(conditions)}`);
     console.log(`🔍 FINAL QUERY PARAMS: ${JSON.stringify(params.slice(0, -2))}`); // Exclude limit/offset
     console.log(`🔍 WHERE CLAUSE: ${whereClause}`);
@@ -4081,7 +4094,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     
     for (let currentPage = 1; currentPage <= totalPages; currentPage++) {
       const pageOffset = (currentPage - 1) * perPage;
-      const currentParams = [...params.slice(0, -2), perPage, pageOffset];
+      const currentParams = [...params.slice(0, -2), pageOffset, perPage];
       
       console.log(`📄 Executing page ${currentPage}/${totalPages} (offset: ${pageOffset}, limit: ${perPage})`);
       const pageResult = await pool.query(query, currentParams);
@@ -4148,11 +4161,11 @@ app.post('/api/companies/filtered', async (req, res) => {
             qualificacao_representante_legal,
             faixa_etaria
           FROM socios s
-          WHERE cnpj_basico = ANY($1)
+          WHERE cnpj_basico IN (SELECT [value] FROM OPENJSON(@p1))
             AND nome_socio IS NOT NULL
             AND nome_socio != ''
           ORDER BY cnpj_basico, identificador_de_socio
-          LIMIT $2
+          OFFSET 0 ROWS FETCH NEXT @p2 ROWS ONLY
         `;
 
         try {
@@ -4519,8 +4532,8 @@ app.post('/api/test/expire-trial', async (req, res) => {
     
     // Atualizar trial_expires_at para ontem
     await pool.query(`
-      UPDATE simple_users 
-      SET trial_expires_at = NOW() - INTERVAL '1 day'
+      UPDATE simple_users
+      SET trial_expires_at = DATEADD(DAY, -1, SYSDATETIME())
       WHERE id = $1
     `, [userId]);
     
@@ -4538,10 +4551,10 @@ app.post('/api/test/restore-trial', async (req, res) => {
     
     // Atualizar trial_expires_at para 7 dias no futuro
     await pool.query(`
-      UPDATE simple_users 
-      SET 
-        trial_start_date = NOW(),
-        trial_expires_at = NOW() + INTERVAL '7 days'
+      UPDATE simple_users
+      SET
+        trial_start_date = SYSDATETIME(),
+        trial_expires_at = DATEADD(DAY, 7, SYSDATETIME())
       WHERE id = $1
     `, [userId]);
     
@@ -4571,7 +4584,7 @@ app.post('/api/test/create-trial-user', async (req, res) => {
       INSERT INTO simple_users (
         name, email, password, role,
         trial_start_date, trial_expires_at
-      ) VALUES ($1, $2, $3, 'trial', NOW(), NOW() + INTERVAL '7 days')
+      ) VALUES ($1, $2, $3, 'trial', SYSDATETIME(), DATEADD(DAY, 7, SYSDATETIME()))
       RETURNING id, email, name, role, trial_start_date, trial_expires_at
     `, [name, email, hashedPassword]);
     
@@ -4593,15 +4606,15 @@ app.post('/api/test/user-status', async (req, res) => {
     
     // Check in simple_users table
     const simpleUser = await pool.query(`
-      SELECT id, email, name, role, trial_start_date, trial_expires_at, 
-             trial_expires_at > NOW() as trial_active
+      SELECT id, email, name, role, trial_start_date, trial_expires_at,
+             CASE WHEN trial_expires_at > SYSDATETIME() THEN 1 ELSE 0 END as trial_active
       FROM simple_users WHERE email = $1
     `, [email]);
     
     // Check in users table  
     const user = await pool.query(`
       SELECT id, email, trial_start_date, trial_expires_at,
-             trial_expires_at > NOW() as trial_active
+             CASE WHEN trial_expires_at > SYSDATETIME() THEN 1 ELSE 0 END as trial_active
       FROM users WHERE email = $1
     `, [email]);
     
@@ -4622,7 +4635,7 @@ app.get('/api/test/list-admins', async (req, res) => {
     // Check for admin users in simple_users
     const adminUsers = await pool.query(`
       SELECT id, email, name, role, trial_start_date, trial_expires_at,
-             trial_expires_at > NOW() as trial_active
+             CASE WHEN trial_expires_at > SYSDATETIME() THEN 1 ELSE 0 END as trial_active
       FROM simple_users WHERE role = 'admin'
     `);
     
@@ -4656,8 +4669,8 @@ app.get('/api/admin/stats', async (req, res) => {
     
     // Get trial stats
     const trialStats = await pool.query(`
-      SELECT 
-        COUNT(*) FILTER (WHERE trial_expires_at > CURRENT_TIMESTAMP) as active_trials
+      SELECT
+        SUM(CASE WHEN trial_expires_at > SYSDATETIME() THEN 1 ELSE 0 END) as active_trials
       FROM simple_users
     `);
     
@@ -4781,7 +4794,7 @@ app.post('/api/withdrawals/request', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     await pool.query(
-      'INSERT INTO affiliate_withdrawals (user_id, amount, pix_key, status, created_at) VALUES ($1, $2, $3, $4, NOW())',
+      'INSERT INTO affiliate_withdrawals (user_id, amount, pix_key, status, created_at) VALUES ($1, $2, $3, $4, SYSDATETIME())',
       [decoded.id, amount, pixKey, 'pending']
     );
 
