@@ -9,6 +9,7 @@ export default defineConfig({
   server: {
     port: 4001,
     host: true,
+    allowedHosts: ['dataatlas.leandroo.com.br','dataatlas.com.br','www.dataatlas.com.br','localhost'],
     proxy: {
       '/api': {
         target: proxyTarget,
