@@ -13,6 +13,20 @@ if (stripeSecretKey) {
 } else {
   console.warn('⚠️ STRIPE_SECRET_KEY not configured - Stripe routes will return 503');
 }
+const { Pool } = require('pg');
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+let stripe = null;
+
+if (stripeSecretKey) {
+  try {
+    stripe = require('stripe')(stripeSecretKey);
+  } catch (error) {
+    console.error('❌ Failed to initialize Stripe SDK:', error.message);
+  }
+} else {
+  console.warn('⚠️ STRIPE_SECRET_KEY not configured - Stripe routes will return 503');
+}
 const { Pool } = require('../utils/sqlServerPool');
 
 // Database connection usando SQL Server
@@ -24,6 +38,16 @@ const pool = new Pool({
 });
 
 const router = express.Router();
+
+router.use((req, res, next) => {
+  if (!stripe) {
+    return res.status(503).json({
+      success: false,
+      message: 'Integração com Stripe desativada. Defina STRIPE_SECRET_KEY para habilitar.'
+    });
+  }
+  return next();
+});
 
 router.use((req, res, next) => {
   if (!stripe) {
@@ -697,6 +721,8 @@ async function handleSubscriptionDeleted(subscription) {
     [subscription.id]
   );
 }
+
+router.stripeConfigured = Boolean(stripe);
 
 router.stripeConfigured = Boolean(stripe);
 
