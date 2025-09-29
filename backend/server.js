@@ -3983,7 +3983,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     const getItemsPerPage = (totalRequested) => {
       // OTIMIZAÇÃO CRÍTICA: Query única até 3k empresas apenas (fix 10% stuck bug)
       if (totalRequested <= 3000) return totalRequested; // Query única sem paginação
-      if (totalRequested >= 50000) return 2000; // 50k = 25 páginas de 2k (ultra-safe)
+      if (totalRequested >= 50000) return totalRequested; // 50k = query única para máxima performance
       if (totalRequested >= 25000) return 1500;  // 25k = 17 páginas de 1.5k (CRITICAL FIX for 5% stuck)
       if (totalRequested >= 10000) return 2000;  // 10k = 5 páginas de 2k
       if (totalRequested >= 5000) return 1500;   // 5k = 3-4 páginas de 1.5k
@@ -3993,6 +3993,10 @@ app.post('/api/companies/filtered', async (req, res) => {
     const perPage = getItemsPerPage(companyLimit);
     const offset = (page - 1) * perPage;
     const limitPerPage = perPage;
+
+    if (companyLimit >= 50000 && perPage === companyLimit) {
+      console.log('🚀 Using single-query bulk fetch for 50k company limit');
+    }
     
     // Dynamic ORDER BY based on search mode
     let orderByClause = 'ORDER BY est.cnpj_basico'; // default
