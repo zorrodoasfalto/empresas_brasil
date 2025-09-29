@@ -492,7 +492,7 @@ async function initDB() {
         id INT IDENTITY(1,1) PRIMARY KEY,
         user_id INT NOT NULL,
         credits INT DEFAULT 0,
-        plan VARCHAR(20) DEFAULT 'trial',
+        [plan] VARCHAR(20) DEFAULT 'trial',
         last_reset DATETIME2 DEFAULT SYSDATETIME(),
         created_at DATETIME2 DEFAULT SYSDATETIME(),
         updated_at DATETIME2 DEFAULT SYSDATETIME(),
@@ -4664,11 +4664,11 @@ app.get('/api/admin/stats', async (req, res) => {
     // Get subscription stats based on plan types
     const subscriptionStats = await pool.query(`
       SELECT 
-        COALESCE(uc.plan, 'trial') as plan_type,
+        COALESCE(uc.[plan], 'trial') as plan_type,
         COUNT(*) as count
       FROM simple_users su
       LEFT JOIN user_credits uc ON su.id = uc.user_id
-      GROUP BY COALESCE(uc.plan, 'trial')
+      GROUP BY COALESCE(uc.[plan], 'trial')
     `);
     
     // Get trial stats
