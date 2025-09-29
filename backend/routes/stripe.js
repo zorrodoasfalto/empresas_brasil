@@ -15,9 +15,6 @@ if (stripeSecretKey) {
 }
 const { Pool } = require('pg');
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-let stripe = null;
-
 if (stripeSecretKey) {
   try {
     stripe = require('stripe')(stripeSecretKey);
