@@ -175,9 +175,6 @@ console.log('✅ Ghost Genius API configured for LinkedIn');
 const stripeRoutes = require('./routes/stripe'); // Rotas do stripe reativadas
 const authRoutes = require('./routes/auth');
 
-// Import database initialization
-const { createUsersTable } = require('./database/init-users');
-
 const pool = new Pool({
   connectionString:
     process.env.DATABASE_URL ||
@@ -199,22 +196,6 @@ pool.on('remove', (client) => {
   console.log('⚠️ Database connection removed from pool');
 });
 
-// Monitor pool status every 2 minutes
-setInterval(async () => {
-  console.log(`📊 Pool Status - Total: ${pool.totalCount}, Idle: ${pool.idleCount}, Waiting: ${pool.waitingCount}`);
-  
-  // If pool is exhausted, force a health check
-  if (pool.totalCount >= 3 && pool.idleCount === 0) {
-    console.log('⚠️ Pool exhausted - forcing health check');
-    try {
-      await pool.query('SELECT 1');
-      console.log('✅ Health check passed during pool exhaustion');
-    } catch (err) {
-      console.error('❌ Health check failed during pool exhaustion:', err.message);
-    }
-  }
-}, 120000); // 2 minutos
-
 // Test database connection with retry
 const testDatabaseConnection = async (retries = 3) => {
   for (let i = 0; i < retries; i++) {
@@ -233,8 +214,6 @@ const testDatabaseConnection = async (retries = 3) => {
     }
   }
 };
-
-testDatabaseConnection();
 
 // Configure CORS for production
 const corsOptions = {
@@ -414,145 +393,8 @@ app.get('/api/debug-filters', async (req, res) => {
   }
 });
 
-async function initDB() {
-  try {
-    // Users table
-    await pool.query(`
-      IF OBJECT_ID('dbo.simple_users', 'U') IS NULL
-      CREATE TABLE dbo.simple_users (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        name VARCHAR(255),
-        created_at DATETIME2 DEFAULT SYSDATETIME()
-      )
-    `);
+// Database bootstrap removed – tables are managed externally
 
-    // CRM Tables
-    
-    // Leads table - stores all saved leads
-    await pool.query(`
-      IF OBJECT_ID('dbo.leads', 'U') IS NULL
-      CREATE TABLE dbo.leads (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        user_id INT NULL,
-        nome VARCHAR(500) NOT NULL,
-        empresa VARCHAR(500),
-        telefone VARCHAR(50),
-        email VARCHAR(255),
-        endereco NVARCHAR(MAX),
-        cnpj VARCHAR(20),
-        website VARCHAR(500),
-        categoria VARCHAR(255),
-        rating DECIMAL(3,2),
-        reviews_count INT,
-        fonte VARCHAR(100) NOT NULL,
-        dados_originais NVARCHAR(MAX),
-        notas NVARCHAR(MAX),
-        created_at DATETIME2 DEFAULT SYSDATETIME(),
-        updated_at DATETIME2 DEFAULT SYSDATETIME(),
-        CONSTRAINT FK_leads_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Funil phases table
-    await pool.query(`
-      IF OBJECT_ID('dbo.funil_fases', 'U') IS NULL
-      CREATE TABLE dbo.funil_fases (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        user_id INT NULL,
-        nome VARCHAR(255) NOT NULL,
-        descricao NVARCHAR(MAX),
-        ordem INT NOT NULL DEFAULT 1,
-        cor VARCHAR(7) DEFAULT '#3B82F6',
-        created_at DATETIME2 DEFAULT SYSDATETIME(),
-        CONSTRAINT FK_funil_fases_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Lead pipeline tracking
-    await pool.query(`
-      IF OBJECT_ID('dbo.leads_funil', 'U') IS NULL
-      CREATE TABLE dbo.leads_funil (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        lead_id INT NOT NULL,
-        fase_id INT NOT NULL,
-        data_entrada DATETIME2 DEFAULT SYSDATETIME(),
-        notas NVARCHAR(MAX),
-        CONSTRAINT UQ_leads_funil_lead UNIQUE (lead_id),
-        CONSTRAINT FK_leads_funil_leads FOREIGN KEY (lead_id) REFERENCES dbo.leads(id) ON DELETE CASCADE,
-        CONSTRAINT FK_leads_funil_fases FOREIGN KEY (fase_id) REFERENCES dbo.funil_fases(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Credits table - stores user credits for searches
-    await pool.query(`
-      IF OBJECT_ID('dbo.user_credits', 'U') IS NULL
-      CREATE TABLE dbo.user_credits (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        user_id INT NOT NULL,
-        credits INT DEFAULT 0,
-        [plan] VARCHAR(20) DEFAULT 'trial',
-        last_reset DATETIME2 DEFAULT SYSDATETIME(),
-        created_at DATETIME2 DEFAULT SYSDATETIME(),
-        updated_at DATETIME2 DEFAULT SYSDATETIME(),
-        CONSTRAINT UQ_user_credits_user UNIQUE (user_id),
-        CONSTRAINT FK_user_credits_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Credit usage log table - tracks search usage
-    await pool.query(`
-      IF OBJECT_ID('dbo.credit_usage_log', 'U') IS NULL
-      CREATE TABLE dbo.credit_usage_log (
-        id INT IDENTITY(1,1) PRIMARY KEY,
-        user_id INT NOT NULL,
-        search_type VARCHAR(50) NOT NULL,
-        credits_used INT NOT NULL,
-        search_query NVARCHAR(MAX),
-        timestamp DATETIME2 DEFAULT SYSDATETIME(),
-        CONSTRAINT FK_credit_usage_log_simple_users FOREIGN KEY (user_id) REFERENCES dbo.simple_users(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Insert default funnel phases for new users
-    await pool.query(`
-      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
-      SELECT DISTINCT u.id, 'Novo Lead', 'Leads recém adicionados', 1, '#10B981'
-      FROM simple_users u 
-      LEFT JOIN funil_fases f ON f.user_id = u.id 
-      WHERE f.id IS NULL
-    `);
-
-    await pool.query(`
-      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
-      SELECT DISTINCT u.id, 'Qualificado', 'Leads qualificados para contato', 2, '#3B82F6'
-      FROM simple_users u 
-      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Qualificado'
-      WHERE f.id IS NULL
-    `);
-
-    await pool.query(`
-      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
-      SELECT DISTINCT u.id, 'Proposta', 'Proposta enviada', 3, '#F59E0B'
-      FROM simple_users u 
-      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Proposta'
-      WHERE f.id IS NULL
-    `);
-
-    await pool.query(`
-      INSERT INTO funil_fases (user_id, nome, descricao, ordem, cor)
-      SELECT DISTINCT u.id, 'Fechado', 'Negócio conquistado', 4, '#059669'
-      FROM simple_users u 
-      LEFT JOIN funil_fases f ON f.user_id = u.id AND f.nome = 'Fechado'
-      WHERE f.id IS NULL
-    `);
-
-    console.log('✅ Database initialized with CRM tables');
-  } catch (error) {
-    console.error('❌ Database error:', error.message);
-  }
-}
 
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -4815,8 +4657,12 @@ app.post('/api/withdrawals/request', async (req, res) => {
   }
 });
 
-Promise.all([initDB()]).then(() => {
-  // Temporarily disabled createUsersTable() due to ECONNRESET crashes with Railway PostgreSQL
+const startServer = async () => {
+  const healthy = await testDatabaseConnection();
+  if (!healthy) {
+    throw new Error('Database connection failed');
+  }
+
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log('✅ Company search: 1000-50000 companies');
@@ -4828,7 +4674,6 @@ Promise.all([initDB()]).then(() => {
     }
   });
 
-  // Graceful shutdown handling
   const gracefulShutdown = (signal) => {
     console.log(`\n🛑 ${signal} received. Shutting down gracefully...`);
     server.close(async () => {
@@ -4844,25 +4689,22 @@ Promise.all([initDB()]).then(() => {
     });
   };
 
-  // Listen for termination signals
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-  
-  // Handle uncaught exceptions with recovery
+
   process.on('uncaughtException', (err) => {
     console.error('❌ Uncaught Exception (RECOVERING):', err.message);
     console.error('Stack:', err.stack);
-    // DON'T crash - log and continue
   });
-  
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('❌ Unhandled Rejection (RECOVERING):', reason);
-    // DON'T crash - log and continue
-  });
-  // 🔄 Sistema de backup TOTALMENTE REMOVIDO para evitar crashes
-  console.log('⚠️  Sistema de backup removido - dependências limpas');
 
-}).catch(err => {
+  process.on('unhandledRejection', (reason) => {
+    console.error('❌ Unhandled Rejection (RECOVERING):', reason);
+  });
+
+  console.log('⚠️  Sistema de backup removido - dependências limpas');
+};
+
+startServer().catch(err => {
   console.error('❌ Failed to start server:', err);
   process.exit(1);
 });
