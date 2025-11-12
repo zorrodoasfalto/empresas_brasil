@@ -1924,53 +1924,18 @@ function updateProgress(sessionId, data) {
 }
 
 // LinkedIn search using Ghost Genius API (multiple pages)
-app.post('/api/linkedin/search-bulk', async (req, res) => {
+app.post('/api/linkedin/search-bulk', checkUserAccess, async (req, res) => {
   try {
-    // Verificar autenticação e acesso
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token de acesso requerido' });
-    }
-    
-    const token = authHeader.substring(7);
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Token inválido' });
-    }
-    
-    // Verificar acesso do usuário (trial ou assinatura)
-    console.log('🔍 Checking user access for LinkedIn bulk search, user ID:', decoded.id);
-    let accessCheck;
-    try {
-      accessCheck = await User.checkUserAccess(decoded.id);
-      console.log('🔍 Access check result:', accessCheck);
-    } catch (error) {
-      console.error('❌ Error during access check:', error);
-      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
-    }
-    
-    if (!accessCheck || !accessCheck.hasAccess) {
-      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
-      if (accessCheck?.reason === 'trial_expired') {
-        return res.status(403).json({ 
-          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
-          needsSubscription: true,
-          trialExpired: true
-        });
-      }
-      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
-    }
-    
-    console.log('✅ Access granted, proceeding to credit check');
-    
+    // Middleware já validou o acesso
+    const userId = req.userId;
+    console.log('✅ Access granted for LinkedIn bulk search, user ID:', userId);
+
     const { keywords, location, industries, company_size, pages = 5, companyLimit = 200, sessionId } = req.body;
-    
+
     // Check and debit credits for LinkedIn search (5 credits per search)
     const creditsResult = await pool.query(`
       SELECT * FROM user_credits WHERE user_id = $1
-    `, [decoded.id]);
+    `, [userId]);
 
     if (creditsResult.rows.length === 0) {
       return res.status(400).json({ error: 'Conta de créditos não encontrada' });
@@ -1991,15 +1956,15 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
       UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
-    `, [newCredits, decoded.id]);
+    `, [newCredits, userId]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
       VALUES ($1, $2, $3, $4, SYSDATETIME())
-    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
+    `, [userId, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
 
-    console.log(`💳 Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
+    console.log(`💳 Debited ${requiredCredits} credits from user ${userId}, remaining: ${newCredits}`);
     
     // Initialize progress tracking
     if (sessionId) {
@@ -2244,53 +2209,17 @@ app.post('/api/linkedin/search-bulk', async (req, res) => {
 });
 
 // LinkedIn search using Ghost Genius API (single page)
-app.post('/api/linkedin/search', async (req, res) => {
+app.post('/api/linkedin/search', checkUserAccess, async (req, res) => {
   try {
-    // Verificar autenticação e acesso
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token de acesso requerido' });
-    }
-    
-    const token = authHeader.substring(7);
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Token inválido' });
-    }
-    
-    // Verificar acesso do usuário (trial ou assinatura)
-    console.log('🔍 Checking user access for LinkedIn search, user ID:', decoded.id);
-    let accessCheck;
-    try {
-      accessCheck = await User.checkUserAccess(decoded.id);
-      console.log('🔍 Access check result:', accessCheck);
-    } catch (error) {
-      console.error('❌ Error during access check:', error);
-      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
-    }
-    
-    if (!accessCheck || !accessCheck.hasAccess) {
-      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
-      if (accessCheck?.reason === 'trial_expired') {
-        return res.status(403).json({ 
-          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
-          needsSubscription: true,
-          trialExpired: true
-        });
-      }
-      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
-    }
-    
-    console.log('✅ Access granted, proceeding to credit check');
-    
+    const userId = req.userId;
+    console.log('✅ Access granted for LinkedIn search, user ID:', userId);
+
     const { keywords, location, industries, company_size, page = 1, companyLimit = 200 } = req.body;
     
     // Check credits for LinkedIn search (5 credits per search) - BUT DON'T DEBIT YET
     const creditsResult = await pool.query(`
       SELECT * FROM user_credits WHERE user_id = $1
-    `, [decoded.id]);
+    `, [userId]);
 
     if (creditsResult.rows.length === 0) {
       return res.status(400).json({ error: 'Conta de créditos não encontrada' });
@@ -2433,15 +2362,15 @@ app.post('/api/linkedin/search', async (req, res) => {
     const newCredits = currentCredits - requiredCredits;
     await pool.query(`
       UPDATE user_credits SET credits = $1, updated_at = SYSDATETIME() WHERE user_id = $2
-    `, [newCredits, decoded.id]);
+    `, [newCredits, userId]);
 
     // Log the usage
     await pool.query(`
       INSERT INTO credit_usage_log (user_id, search_type, credits_used, search_query, timestamp)
       VALUES ($1, $2, $3, $4, SYSDATETIME())
-    `, [decoded.id, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
+    `, [userId, 'linkedin', requiredCredits, JSON.stringify(req.body)]);
 
-    console.log(`💳 SUCCESS! Debited ${requiredCredits} credits from user ${decoded.id}, remaining: ${newCredits}`);
+    console.log(`💳 SUCCESS! Debited ${requiredCredits} credits from user ${userId}, remaining: ${newCredits}`);
 
     res.json({
       success: true,
@@ -2812,28 +2741,15 @@ app.get('/api/filters/options', async (req, res) => {
   }
 });
 
-app.post('/api/companies/filtered', async (req, res) => {
+app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
   console.log('🔍 Starting company search...');
   const startTime = Date.now();
-  
-  try {
-    // Verificar autenticação e acesso
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token de acesso requerido' });
-    }
-    
-    const token = authHeader.substring(7);
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Token inválido' });
-    }
 
+  try {
     // 💳 GARANTIA: TODA BUSCA = 1 CRÉDITO APENAS
     // Use chave simples baseada no usuário (não nos parâmetros)
-    const requestKey = `user-${decoded.id}-company-search`;
+    const userId = req.userId;
+    const requestKey = `user-${userId}-company-search`;
     const now = Date.now();
     
     // RATE LIMITING REMOVIDO TEMPORARIAMENTE - SISTEMA TRAVADO
@@ -2860,29 +2776,6 @@ app.post('/api/companies/filtered', async (req, res) => {
       if (now - timestamp > 60000) {
         requestCache.delete(key);
       }
-    }
-    
-    // Verificar acesso do usuário (trial ou assinatura)
-    console.log('🔍 Checking user access for user ID:', decoded.id);
-    let accessCheck;
-    try {
-      accessCheck = await User.checkUserAccess(decoded.id);
-      console.log('🔍 Access check result:', accessCheck);
-    } catch (error) {
-      console.error('❌ Error during access check:', error);
-      return res.status(500).json({ error: 'Erro interno na verificação de acesso' });
-    }
-    
-    if (!accessCheck || !accessCheck.hasAccess) {
-      console.log('❌ Access denied:', accessCheck?.reason || 'unknown');
-      if (accessCheck?.reason === 'trial_expired') {
-        return res.status(403).json({ 
-          error: 'Seu período de trial de 7 dias expirou. Para continuar usando o sistema, assine um dos nossos planos.', 
-          needsSubscription: true,
-          trialExpired: true
-        });
-      }
-      return res.status(401).json({ error: 'Acesso negado', needsSubscription: true });
     }
     
     console.log('✅ Access granted, proceeding with FREE company search (no credits required)');

@@ -592,10 +592,24 @@ const LinkedInScraper = () => {
       });
       
       const data = await response.json();
-      
+
       console.log('📊 Resposta da API:', data);
       console.log(`📈 Total de empresas retornadas: ${data.data ? data.data.length : 0}`);
-      
+
+      if (!response.ok) {
+        clearInterval(progressInterval);
+        setProgress({ current: 0, total: 0, message: '' });
+
+        if (response.status === 403 && data.trialExpired) {
+          toast.warning(data.error || 'Seu período de trial de 7 dias expirou. Escolha um plano para continuar!');
+        } else {
+          toast.error(`Erro ao buscar no LinkedIn: ${data.error || data.message || 'Erro desconhecido'}`);
+        }
+
+        setIsRunning(false);
+        return;
+      }
+
       if (data.success) {
         // Stop progress polling
         clearInterval(progressInterval);
@@ -647,7 +661,7 @@ const LinkedInScraper = () => {
       } else {
         clearInterval(progressInterval);
         setProgress({ current: 0, total: 0, message: '' });
-        toast.error('Erro ao buscar no LinkedIn: ' + data.message);
+        toast.error('Erro ao buscar no LinkedIn: ' + (data.message || data.error || 'Erro desconhecido'));
         setIsRunning(false);
       }
     } catch (error) {
