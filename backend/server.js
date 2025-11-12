@@ -3021,6 +3021,8 @@ app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
       OFFSET $${params.length + 1} ROWS FETCH NEXT $${params.length + 2} ROWS ONLY
     `;
 
+    console.log(query);
+
     params.push(offset, limitPerPage);
     
     console.log(`🔧 PAGINAÇÃO DEBUG:`);
@@ -3165,7 +3167,7 @@ app.post('/api/companies/filtered', checkUserAccess, async (req, res) => {
       nomeFantasia: cleanNomeFantasia(row.nome_fantasia),
       
       // SITUAÇÃO
-      matrizFilial: row.matriz_filial === '1' ? 'Matriz' : row.matriz_filial === '2' ? 'Filial' : 'Não informado',
+      matrizFilial: row.matriz_filial == '1' ? 'Matriz' : row.matriz_filial == '2' ? 'Filial' : 'Não informado',
       situacaoCadastral: row.situacao_cadastral,
       situacaoDescricao: row.situacao_cadastral === '02' ? 'Ativa' : 
                         row.situacao_cadastral === '08' ? 'Baixada' : 
