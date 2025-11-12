@@ -330,9 +330,10 @@ router.get('/affiliate-status', authenticateToken, async (req, res) => {
 
     // Get monthly commissions
     const monthlyCommissions = await pool.query(`
-      SELECT COALESCE(SUM(amount), 0) as monthly_amount
-      FROM affiliate_commissions 
-      WHERE affiliate_id = $1 AND commission_month = DATE_TRUNC('month', CURRENT_DATE)
+      SELECT ISNULL(SUM(amount), 0) AS monthly_amount
+      FROM affiliate_commissions
+      WHERE affiliate_id = $1 AND commission_month = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+
     `, [affiliate?.id]);
 
     const monthlyAmount = monthlyCommissions.rows[0]?.monthly_amount || 0;

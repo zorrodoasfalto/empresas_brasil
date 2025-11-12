@@ -2838,7 +2838,7 @@ app.post('/api/companies/filtered', async (req, res) => {
     
     // RATE LIMITING REMOVIDO TEMPORARIAMENTE - SISTEMA TRAVADO
     // 💳 EMERGÊNCIA: Permitir múltiplas buscas para corrigir erro crítico
-    /*
+    
     if (requestCache.has(requestKey)) {
       const lastRequest = requestCache.get(requestKey);
       // 🔒 PROTEÇÃO: Máximo 1 crédito por minuto por usuário
@@ -2850,7 +2850,7 @@ app.post('/api/companies/filtered', async (req, res) => {
         });
       }
     }
-    */
+    
     
     // ❌ REMOVED: Do NOT set cache here - it allows multiple credit charges!
     // Cache is set ONLY after successful credit deduction (line ~3857)
