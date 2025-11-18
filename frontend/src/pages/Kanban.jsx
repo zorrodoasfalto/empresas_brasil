@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { toast } from 'react-toastify';
-import empresaService from '../services/empresaService';
+import { useAuth } from '../contexts/AuthContext';
 
 const Container = styled.div`
   max-width: 1600px;
@@ -277,6 +277,7 @@ const DropZone = styled.div`
 `;
 
 const Kanban = () => {
+  const { token } = useAuth();
   const [funnelData, setFunnelData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draggedLead, setDraggedLead] = useState(null);
@@ -284,16 +285,17 @@ const Kanban = () => {
 
   useEffect(() => {
     fetchFunnelData();
-  }, []);
+  }, [token]);
 
   const fetchFunnelData = async () => {
     try {
-      const token = localStorage.getItem('token');
       const userData = localStorage.getItem('user');
+      const storedToken = localStorage.getItem('token');
+      const authToken = token || storedToken;
       const headers = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+
+      if (authToken) {
+        headers.Authorization = `Bearer ${authToken}`;
       }
       
       let url = '/api/crm/kanban-direct';
@@ -302,13 +304,23 @@ const Kanban = () => {
         url += `?email=${encodeURIComponent(user.email)}`;
       }
       
-      const response = await fetch(url, {
-        headers
-      });
-      
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          toast.error(errorData.error || 'Acesso não autorizado. Faça login.');
+        } else if (response.status === 403 && errorData.needsSubscription) {
+          toast.error('Trial expirado. Assine para continuar.');
+        } else {
+          toast.error(errorData.error || 'Erro ao carregar kanban');
+        }
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
-        setFunnelData(data.funil);
+        setFunnelData(data.funil || []);
       } else {
         toast.error('Erro ao carregar kanban');
       }
@@ -351,12 +363,13 @@ const Kanban = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const storedToken = localStorage.getItem('token');
+      const authToken = token || storedToken;
       const response = await fetch(`/api/crm/leads/${draggedLead.id}/fase`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
         },
         body: JSON.stringify({
           faseId: newPhaseId,
