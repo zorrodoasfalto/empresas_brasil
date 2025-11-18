@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
 import styled from 'styled-components';
-import { 
-  Database, 
-  CheckCircle, 
+import {
+  Database,
+  CheckCircle,
   Sparkles, 
   ArrowLeft, 
   CreditCard,
@@ -14,8 +13,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logo from '../assets/images/logo.png';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const Container = styled.div`
   min-height: 100vh;
